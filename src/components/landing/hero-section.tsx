@@ -13,7 +13,7 @@ function HeroActions({ className }: { className?: string }) {
   return (
     <nav className={className} aria-label="Primary actions">
       <Link
-        href="#get-started"
+        href="/signup"
         className="group inline-flex items-center justify-center gap-2  bg-gradient-to-r from-blue-gray to-blue-gray/80 px-6 py-3 font-semibold text-[#0C0928] shadow-lg transition-all hover:shadow-xl hover:brightness-105"
       >
         Get started

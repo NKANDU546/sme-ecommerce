@@ -17,6 +17,11 @@ const sidebarTransition = { type: "tween" as const, duration: 0.3, ease: [0.32, 
 
 type StickyNavbarProps = {
   scrollToSection?: (sectionId: string) => void;
+  /**
+   * `hero` — bar is transparent until you scroll (sits on the dark hero).
+   * `surface` — solid bar for light pages (e.g. signup) so white link text stays readable.
+   */
+  variant?: "hero" | "surface";
 };
 
 function MenuIcon({ open }: { open: boolean }) {
@@ -41,7 +46,10 @@ function MenuIcon({ open }: { open: boolean }) {
   );
 }
 
-export default function StickyNavbar({ scrollToSection }: StickyNavbarProps) {
+export default function StickyNavbar({
+  scrollToSection,
+  variant = "hero",
+}: StickyNavbarProps) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -143,9 +151,11 @@ export default function StickyNavbar({ scrollToSection }: StickyNavbarProps) {
 
       <nav
         className={`relative sticky top-0 z-50 w-full border-b transition-colors ${
-          scrolled || menuOpen
-            ? "border-white/10 bg-primary-blue/95 backdrop-blur-md"
-            : "border-transparent bg-transparent"
+          variant === "surface"
+            ? "border-white/10 bg-primary-blue"
+            : scrolled || menuOpen
+              ? "border-white/10 bg-primary-blue/95 backdrop-blur-md"
+              : "border-transparent bg-transparent"
         }`}
         aria-label="Main navigation"
       >
@@ -173,7 +183,7 @@ export default function StickyNavbar({ scrollToSection }: StickyNavbarProps) {
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <Link
-              href="#get-started"
+              href="/signup"
               onClick={() => setMenuOpen(false)}
               className="inline-flex  bg-white/10 px-3 py-2 text-xs font-medium text-white ring-1 ring-white/20 transition-colors hover:bg-white/15 sm:px-4 sm:text-sm"
             >

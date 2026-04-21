@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SiteFooter } from "@/components/landing/site-footer";
+import { ConditionalSiteFooter } from "@/components/landing/conditional-site-footer";
 import { QueryProvider } from "@/providers/query-provider";
 import "./globals.css";
 
@@ -32,7 +32,7 @@ export default function RootLayout({
         <QueryProvider>
           <div className="flex min-h-full flex-1 flex-col">
             <div className="flex-1">{children}</div>
-            <SiteFooter />
+            <ConditionalSiteFooter />
           </div>
         </QueryProvider>
       </body>

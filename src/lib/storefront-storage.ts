@@ -1,4 +1,5 @@
 import defaultStorefrontJson from "@/data/default-storefront.json";
+import { normalizeStorefrontThemeId } from "@/lib/storefront-themes";
 import type {
   StorefrontConfig,
   StorefrontFeature,
@@ -7,6 +8,7 @@ import type {
   StorefrontPromoCard,
   StorefrontSeed,
   StorefrontTemplateId,
+  StorefrontThemeId,
 } from "@/types/storefront";
 
 const STORAGE_PREFIX = "sme_storefront_v1_";
@@ -114,10 +116,16 @@ export function upgradeStorefrontConfig(raw: StorefrontConfig): StorefrontConfig
     maxNav,
   );
 
+  const themeId = normalizeStorefrontThemeId(
+    (legacy as StorefrontConfig & { themeId?: string }).themeId ??
+      seed.themeId,
+  ) as StorefrontThemeId;
+
   return {
     ...seed,
     ...legacy,
-    configVersion: 2,
+    configVersion: 3,
+    themeId,
     heroBackgroundImageUrl: heroBg,
     navLinks,
     activeNavIndex,

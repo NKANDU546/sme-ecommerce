@@ -1,6 +1,8 @@
 "use client";
 
-import type { ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import { useState } from "react";
+import { STOREFRONT_THEME_DEFINITIONS } from "@/lib/storefront-themes";
 import type {
   StorefrontConfig,
   StorefrontFeature,
@@ -8,7 +10,29 @@ import type {
   StorefrontLink,
   StorefrontProductPlaceholder,
   StorefrontPromoCard,
+  StorefrontThemeId,
 } from "@/types/storefront";
+
+type StorefrontEditorSectionId =
+  | "appearance"
+  | "brand"
+  | "navbar"
+  | "hero"
+  | "products"
+  | "promos"
+  | "values"
+  | "footer";
+
+const EDITOR_SECTIONS: { id: StorefrontEditorSectionId; label: string }[] = [
+  { id: "appearance", label: "Appearance" },
+  { id: "brand", label: "Brand" },
+  { id: "navbar", label: "Navbar" },
+  { id: "hero", label: "Hero" },
+  { id: "products", label: "Products" },
+  { id: "promos", label: "Promos" },
+  { id: "values", label: "Value props" },
+  { id: "footer", label: "Footer" },
+];
 
 type StorefrontEditorProps = {
   config: StorefrontConfig;
@@ -101,6 +125,10 @@ const EMPTY_PRODUCT: StorefrontProductPlaceholder = {
 };
 
 export function StorefrontEditor({ config, onChange }: StorefrontEditorProps) {
+  const [section, setSection] = useState<StorefrontEditorSectionId>(
+    EDITOR_SECTIONS[0].id,
+  );
+
   function patch(partial: Partial<StorefrontConfig>) {
     onChange({ ...config, ...partial });
   }
@@ -162,66 +190,118 @@ export function StorefrontEditor({ config, onChange }: StorefrontEditorProps) {
     patch({ [key]: list });
   }
 
-  return (
-    <div className="space-y-6">
-      <p className="font-sans text-xs leading-relaxed text-muted-foreground">
-        Layout matches the stakeholder reference (nav, hero, grid, promos,
-        value props, footer). Data saves in{" "}
-        <span className="font-medium text-primary-blue/80">localStorage</span>{" "}
-        until your API is ready. Defaults live in{" "}
-        <code className="rounded bg-blue-gray/50 px-1 text-[11px]">
-          default-storefront.json
-        </code>
-        .
-      </p>
+  const sectionLabel =
+    EDITOR_SECTIONS.find((s) => s.id === section)?.label ?? section;
 
-      <Field
-        label="Brand name (header & footer)"
-        id="sf-shop-name"
-        value={config.shopName}
-        onChange={(e) => patch({ shopName: e.target.value })}
-      />
-      <TextAreaField
-        label="Tagline (under logo)"
-        id="sf-tagline"
-        value={config.tagline}
-        onChange={(e) => patch({ tagline: e.target.value })}
-      />
-
-      <div className="border-t border-primary-blue/10 pt-5">
-        <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
-          Navigation
-        </p>
-        <Field
-          label="Active nav item (0 = first link)"
-          id="sf-nav-active"
-          type="number"
-          min={0}
-          max={Math.max(0, config.navLinks.length - 1)}
-          value={config.activeNavIndex}
-          onChange={(e) =>
-            patch({ activeNavIndex: Number(e.target.value) || 0 })
-          }
-        />
-        <ul className="mt-3 space-y-3">
-          {config.navLinks.map((link, i) => (
-            <li key={i}>
-              <LinkPairEditor
-                label={`Nav link ${i + 1}`}
-                link={link}
-                idPrefix={`nav-${i}`}
-                onChange={(next) => patchNav(i, next)}
-              />
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="border-t border-primary-blue/10 pt-5">
-        <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
-          Hero (full-width background)
-        </p>
-        <div className="mt-3 space-y-4">
+  let body: ReactNode;
+  switch (section) {
+    case "appearance":
+      body = (
+        <div className="space-y-5">
+          <p className="font-sans text-xs leading-relaxed text-muted-foreground">
+            Theme presets control surfaces and default accent. Data saves in{" "}
+            <span className="font-medium text-primary-blue/80">
+              localStorage
+            </span>{" "}
+            until your API is ready.
+          </p>
+          <div>
+            <label
+              htmlFor="sf-theme"
+              className="mb-1.5 block font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60"
+            >
+              Theme preset
+            </label>
+            <select
+              id="sf-theme"
+              className="w-full border border-primary-blue/15 bg-white px-3 py-2 font-sans text-sm outline-none focus-visible:border-primary-blue/35 focus-visible:ring-2 focus-visible:ring-primary-blue/15"
+              value={config.themeId}
+              onChange={(e) =>
+                patch({ themeId: e.target.value as StorefrontThemeId })
+              }
+            >
+              {Object.values(STOREFRONT_THEME_DEFINITIONS).map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-2 font-sans text-[11px] leading-relaxed text-muted-foreground">
+              Use a valid 6-digit hex accent to override the preset default.
+            </p>
+          </div>
+          <Field
+            label="Accent colour (hex, e.g. #0a2540)"
+            id="sf-accent"
+            value={config.accentColor}
+            onChange={(e) => patch({ accentColor: e.target.value })}
+          />
+        </div>
+      );
+      break;
+    case "brand":
+      body = (
+        <div className="space-y-4">
+          <p className="font-sans text-xs leading-relaxed text-muted-foreground">
+            Shown in the header and footer. Defaults live in{" "}
+            <code className="rounded bg-blue-gray/50 px-1 text-[11px]">
+              default-storefront.json
+            </code>
+            .
+          </p>
+          <Field
+            label="Brand name (header & footer)"
+            id="sf-shop-name"
+            value={config.shopName}
+            onChange={(e) => patch({ shopName: e.target.value })}
+          />
+          <TextAreaField
+            label="Tagline (under logo)"
+            id="sf-tagline"
+            value={config.tagline}
+            onChange={(e) => patch({ tagline: e.target.value })}
+          />
+        </div>
+      );
+      break;
+    case "navbar":
+      body = (
+        <div className="space-y-5">
+          <Field
+            label="Active nav item (0 = first link)"
+            id="sf-nav-active"
+            type="number"
+            min={0}
+            max={Math.max(0, config.navLinks.length - 1)}
+            value={config.activeNavIndex}
+            onChange={(e) =>
+              patch({ activeNavIndex: Number(e.target.value) || 0 })
+            }
+          />
+          <ul className="space-y-3">
+            {config.navLinks.map((link, i) => (
+              <li key={i}>
+                <LinkPairEditor
+                  label={`Nav link ${i + 1}`}
+                  link={link}
+                  idPrefix={`nav-${i}`}
+                  onChange={(next) => patchNav(i, next)}
+                />
+              </li>
+            ))}
+          </ul>
+          <Field
+            label="Cart badge (e.g. 0)"
+            id="sf-cart"
+            value={config.cartCountLabel}
+            onChange={(e) => patch({ cartCountLabel: e.target.value })}
+          />
+        </div>
+      );
+      break;
+    case "hero":
+      body = (
+        <div className="space-y-4">
           <Field
             label="Hero background image URL (HTTPS)"
             id="sf-hero-bg"
@@ -256,143 +336,127 @@ export function StorefrontEditor({ config, onChange }: StorefrontEditorProps) {
             onChange={(next) => patch({ heroSecondaryCta: next })}
           />
         </div>
-      </div>
-
-      <div className="border-t border-primary-blue/10 pt-5">
-        <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
-          Featured grid
-        </p>
-        <div className="mt-3 space-y-3">
-          <Field
-            label="Section title"
-            id="sf-featured-title"
-            value={config.featuredTitle}
-            onChange={(e) => patch({ featuredTitle: e.target.value })}
-          />
-          <LinkPairEditor
-            label="“View all” link"
-            link={config.featuredViewAll}
-            idPrefix="feat-all"
-            onChange={(next) => patch({ featuredViewAll: next })}
-          />
-        </div>
-      </div>
-
-      <Field
-        label="Cart badge (e.g. 0)"
-        id="sf-cart"
-        value={config.cartCountLabel}
-        onChange={(e) => patch({ cartCountLabel: e.target.value })}
-      />
-      <Field
-        label="Accent colour (hex, reserved for future use)"
-        id="sf-accent"
-        value={config.accentColor}
-        onChange={(e) => patch({ accentColor: e.target.value })}
-      />
-      <Field
-        label="WhatsApp number (optional, for future CTAs)"
-        id="sf-wa"
-        placeholder="+27 …"
-        value={config.whatsappNumber}
-        onChange={(e) => patch({ whatsappNumber: e.target.value })}
-      />
-
-      <div className="border-t border-primary-blue/10 pt-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
-            Products
-          </p>
-          <button
-            type="button"
-            onClick={addProduct}
-            className="font-sans text-xs font-semibold text-primary-blue underline decoration-primary-blue/30 underline-offset-2 hover:decoration-primary-blue"
-          >
-            Add product
-          </button>
-        </div>
-        <ul className="mt-3 space-y-4">
-          {config.products.map((p, i) => (
-            <li
-              key={`${i}-${p.title}`}
-              className="rounded border border-primary-blue/10 bg-blue-gray/20 p-3"
-            >
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.14em] text-primary-blue/45">
-                  #{i + 1}
-                </span>
-                <div className="flex flex-wrap gap-1">
-                  <button
-                    type="button"
-                    disabled={i === 0}
-                    onClick={() => moveProduct(i, i - 1)}
-                    className="rounded border border-primary-blue/15 bg-white px-2 py-1 font-sans text-[11px] font-medium text-primary-blue disabled:opacity-30"
-                  >
-                    Up
-                  </button>
-                  <button
-                    type="button"
-                    disabled={i === config.products.length - 1}
-                    onClick={() => moveProduct(i, i + 1)}
-                    className="rounded border border-primary-blue/15 bg-white px-2 py-1 font-sans text-[11px] font-medium text-primary-blue disabled:opacity-30"
-                  >
-                    Down
-                  </button>
-                  <button
-                    type="button"
-                    disabled={config.products.length <= 1}
-                    onClick={() => removeProduct(i)}
-                    className="rounded border border-primary-blue/15 bg-white px-2 py-1 font-sans text-[11px] font-medium text-red-700/90 disabled:opacity-30"
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
-              <Field
-                label="Image URL (HTTPS)"
-                id={`sf-p-${i}-img`}
-                placeholder="https://…"
-                value={p.imageUrl}
-                onChange={(e) => patchProduct(i, { imageUrl: e.target.value })}
-              />
-              {p.imageUrl.trim() ? (
-                <div className="mt-2 overflow-hidden rounded border border-primary-blue/10">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={p.imageUrl}
-                    alt=""
-                    className="h-24 w-full object-cover"
+      );
+      break;
+    case "products":
+      body = (
+        <div className="space-y-6">
+          <div className="space-y-3">
+            <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
+              Featured block
+            </p>
+            <Field
+              label="Section title"
+              id="sf-featured-title"
+              value={config.featuredTitle}
+              onChange={(e) => patch({ featuredTitle: e.target.value })}
+            />
+            <LinkPairEditor
+              label="“View all” link"
+              link={config.featuredViewAll}
+              idPrefix="feat-all"
+              onChange={(next) => patch({ featuredViewAll: next })}
+            />
+          </div>
+          <div className="border-t border-primary-blue/10 pt-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
+                Product grid
+              </p>
+              <button
+                type="button"
+                onClick={addProduct}
+                className="font-sans text-xs font-semibold text-primary-blue underline decoration-primary-blue/30 underline-offset-2 hover:decoration-primary-blue"
+              >
+                Add product
+              </button>
+            </div>
+            <ul className="mt-3 space-y-4">
+              {config.products.map((p, i) => (
+                <li
+                  key={`${i}-${p.title}`}
+                  className="rounded border border-primary-blue/10 bg-blue-gray/20 p-3"
+                >
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.14em] text-primary-blue/45">
+                      #{i + 1}
+                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      <button
+                        type="button"
+                        disabled={i === 0}
+                        onClick={() => moveProduct(i, i - 1)}
+                        className="rounded border border-primary-blue/15 bg-white px-2 py-1 font-sans text-[11px] font-medium text-primary-blue disabled:opacity-30"
+                      >
+                        Up
+                      </button>
+                      <button
+                        type="button"
+                        disabled={i === config.products.length - 1}
+                        onClick={() => moveProduct(i, i + 1)}
+                        className="rounded border border-primary-blue/15 bg-white px-2 py-1 font-sans text-[11px] font-medium text-primary-blue disabled:opacity-30"
+                      >
+                        Down
+                      </button>
+                      <button
+                        type="button"
+                        disabled={config.products.length <= 1}
+                        onClick={() => removeProduct(i)}
+                        className="rounded border border-primary-blue/15 bg-white px-2 py-1 font-sans text-[11px] font-medium text-red-700/90 disabled:opacity-30"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                  <Field
+                    label="Image URL (HTTPS)"
+                    id={`sf-p-${i}-img`}
+                    placeholder="https://…"
+                    value={p.imageUrl}
+                    onChange={(e) =>
+                      patchProduct(i, { imageUrl: e.target.value })
+                    }
                   />
-                </div>
-              ) : null}
-              <div className="mt-3">
-                <Field
-                  label="Title"
-                  id={`sf-p-${i}-t`}
-                  value={p.title}
-                  onChange={(e) => patchProduct(i, { title: e.target.value })}
-                />
-              </div>
-              <div className="mt-2">
-                <Field
-                  label="Price label"
-                  id={`sf-p-${i}-p`}
-                  value={p.priceLabel}
-                  onChange={(e) =>
-                    patchProduct(i, { priceLabel: e.target.value })
-                  }
-                />
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="border-t border-primary-blue/10 pt-5">
-        <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
-          Promo tiles (wide + narrow)
-        </p>
-        <div className="mt-3 space-y-4">
+                  {p.imageUrl.trim() ? (
+                    <div className="mt-2 overflow-hidden rounded border border-primary-blue/10">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={p.imageUrl}
+                        alt=""
+                        className="h-24 w-full object-cover"
+                      />
+                    </div>
+                  ) : null}
+                  <div className="mt-3">
+                    <Field
+                      label="Title"
+                      id={`sf-p-${i}-t`}
+                      value={p.title}
+                      onChange={(e) =>
+                        patchProduct(i, { title: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="mt-2">
+                    <Field
+                      label="Price label"
+                      id={`sf-p-${i}-p`}
+                      value={p.priceLabel}
+                      onChange={(e) =>
+                        patchProduct(i, { priceLabel: e.target.value })
+                      }
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      );
+      break;
+    case "promos":
+      body = (
+        <div className="space-y-4">
           {([0, 1] as const).map((idx) => (
             <div
               key={idx}
@@ -442,13 +506,11 @@ export function StorefrontEditor({ config, onChange }: StorefrontEditorProps) {
             </div>
           ))}
         </div>
-      </div>
-
-      <div className="border-t border-primary-blue/10 pt-5">
-        <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
-          Value columns (3)
-        </p>
-        <ul className="mt-3 space-y-4">
+      );
+      break;
+    case "values":
+      body = (
+        <ul className="space-y-4">
           {config.features.map((f, i) => (
             <li
               key={i}
@@ -498,13 +560,11 @@ export function StorefrontEditor({ config, onChange }: StorefrontEditorProps) {
             </li>
           ))}
         </ul>
-      </div>
-
-      <div className="border-t border-primary-blue/10 pt-5">
-        <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
-          Footer
-        </p>
-        <div className="mt-3 space-y-3">
+      );
+      break;
+    case "footer":
+      body = (
+        <div className="space-y-4">
           <TextAreaField
             label="Brand blurb (first column)"
             id="sf-foot-blurb"
@@ -516,6 +576,13 @@ export function StorefrontEditor({ config, onChange }: StorefrontEditorProps) {
             id="sf-copy"
             value={config.copyrightLine}
             onChange={(e) => patch({ copyrightLine: e.target.value })}
+          />
+          <Field
+            label="WhatsApp number (optional, for future CTAs)"
+            id="sf-wa"
+            placeholder="+27 …"
+            value={config.whatsappNumber}
+            onChange={(e) => patch({ whatsappNumber: e.target.value })}
           />
           <p className="pt-2 font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-primary-blue/50">
             Shop links
@@ -558,6 +625,45 @@ export function StorefrontEditor({ config, onChange }: StorefrontEditorProps) {
             />
           ))}
         </div>
+      );
+      break;
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <nav
+        className="max-h-[min(13rem,36vh)] shrink-0 overflow-y-auto overscroll-contain border-b border-primary-blue/10 pb-3 sm:max-h-56 lg:max-h-none lg:overflow-visible"
+        aria-label="Storefront sections"
+      >
+        <ul className="flex flex-col gap-0.5">
+          {EDITOR_SECTIONS.map(({ id, label }) => {
+            const active = section === id;
+            return (
+              <li key={id}>
+                <button
+                  type="button"
+                  onClick={() => setSection(id)}
+                  className={`flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left font-sans text-sm transition-colors ${
+                    active
+                      ? "bg-primary-blue text-white"
+                      : "text-primary-blue hover:bg-blue-gray/40"
+                  }`}
+                >
+                  <span>{label}</span>
+                  {active ? (
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-white/80">
+                      Editing
+                    </span>
+                  ) : null}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-4">
+        <h2 className="sr-only">{sectionLabel}</h2>
+        {body}
       </div>
     </div>
   );

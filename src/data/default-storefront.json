@@ -1,6 +1,7 @@
 {
   "templateId": "classic-boutique",
-  "configVersion": 2,
+  "themeId": "boutique-navy",
+  "configVersion": 3,
   "shopName": "SME Operations",
   "tagline": "Curated retail, calmer days.",
   "navLinks": [

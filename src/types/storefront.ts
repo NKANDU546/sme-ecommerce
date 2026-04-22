@@ -1,5 +1,8 @@
 export type StorefrontTemplateId = "classic-boutique";
 
+/** Visual preset (surfaces + default accent). See `src/lib/storefront-themes.ts`. */
+export type StorefrontThemeId = "boutique-navy" | "warm-sand";
+
 export type StorefrontLink = {
   label: string;
   href: string;
@@ -29,6 +32,7 @@ export type StorefrontFeature = {
 
 export type StorefrontConfig = {
   templateId: StorefrontTemplateId;
+  themeId: StorefrontThemeId;
   /** Bump when schema changes (migration in `upgradeStorefrontConfig`). */
   configVersion: number;
 

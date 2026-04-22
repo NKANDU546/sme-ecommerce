@@ -91,7 +91,9 @@ export function DashboardWorkspaceClient({
           </div>
         </header>
         {activeId === "storefront" ? (
-          <StorefrontPanel workspaceId={workspaceId} />
+          <div className="flex min-h-0 flex-1 flex-col">
+            <StorefrontPanel workspaceId={workspaceId} />
+          </div>
         ) : (
           <WorkspaceEmptyState
             title={section.empty.title}

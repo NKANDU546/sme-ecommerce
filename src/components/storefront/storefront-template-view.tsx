@@ -1,5 +1,6 @@
-import type { StorefrontConfig } from "@/types/storefront";
+import { StorefrontThemeRoot } from "@/components/storefront/storefront-theme-root";
 import { ClassicBoutiqueStorefront } from "@/components/storefront/templates/classic-boutique-storefront";
+import type { StorefrontConfig } from "@/types/storefront";
 
 type StorefrontTemplateViewProps = {
   config: StorefrontConfig;
@@ -7,10 +8,11 @@ type StorefrontTemplateViewProps = {
 
 /** Registry: add cases when new `templateId` values ship from the backend. */
 export function StorefrontTemplateView({ config }: StorefrontTemplateViewProps) {
-  switch (config.templateId) {
-    case "classic-boutique":
-      return <ClassicBoutiqueStorefront config={config} />;
-    default:
-      return <ClassicBoutiqueStorefront config={config} />;
-  }
+  const body =
+    config.templateId === "classic-boutique" ? (
+      <ClassicBoutiqueStorefront config={config} />
+    ) : (
+      <ClassicBoutiqueStorefront config={config} />
+    );
+  return <StorefrontThemeRoot config={config}>{body}</StorefrontThemeRoot>;
 }

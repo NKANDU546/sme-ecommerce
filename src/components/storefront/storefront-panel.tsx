@@ -67,9 +67,9 @@ export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-      <aside className="max-h-[50vh] overflow-y-auto border-b border-primary-blue/10 bg-white px-5 py-6 lg:max-h-none lg:w-[min(100%,22rem)] lg:shrink-0 lg:border-b-0 lg:border-r">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+      <aside className="flex min-h-0 w-full shrink-0 flex-col overflow-hidden border-b border-primary-blue/10 bg-white max-lg:max-h-[min(48vh,22rem)] lg:w-[min(100%,22rem)] lg:border-b-0 lg:border-r">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-primary-blue/10 px-5 py-4">
           <p className="font-sans text-xs font-semibold uppercase tracking-[0.18em] text-primary-blue/55">
             Customize
           </p>
@@ -82,9 +82,11 @@ export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
             Open customer preview
           </Link>
         </div>
-        <StorefrontEditor config={config} onChange={persist} />
+        <div className="flex min-h-0 flex-1 flex-col px-5 pb-4 pt-2">
+          <StorefrontEditor config={config} onChange={persist} />
+        </div>
       </aside>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-blue-gray/30">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-blue-gray/30">
         <p className="border-b border-primary-blue/10 bg-white/80 px-4 py-2 text-center font-sans text-[11px] uppercase tracking-[0.14em] text-primary-blue/50">
           Live preview · template: {config.templateId}
         </p>

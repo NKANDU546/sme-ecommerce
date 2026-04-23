@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { STOREFRONT_THEME_DEFINITIONS } from "@/lib/storefront-themes";
 import type {
   StorefrontConfig,
@@ -34,9 +35,15 @@ const EDITOR_SECTIONS: { id: StorefrontEditorSectionId; label: string }[] = [
   { id: "footer", label: "Footer" },
 ];
 
+export type StorefrontCustomizeMode = "sections" | "section";
+
 type StorefrontEditorProps = {
   config: StorefrontConfig;
   onChange: (next: StorefrontConfig) => void;
+  /** Lets the parent resize the shell (e.g. hide preview) when a section is open vs. the list. */
+  onCustomizeModeChange?: (mode: StorefrontCustomizeMode) => void;
+  /** Shown next to Return on small screens while the preview column is hidden. */
+  previewHref?: string;
 };
 
 function Field({
@@ -124,10 +131,22 @@ const EMPTY_PRODUCT: StorefrontProductPlaceholder = {
   imageUrl: "",
 };
 
-export function StorefrontEditor({ config, onChange }: StorefrontEditorProps) {
+export function StorefrontEditor({
+  config,
+  onChange,
+  onCustomizeModeChange,
+  previewHref,
+}: StorefrontEditorProps) {
   const [section, setSection] = useState<StorefrontEditorSectionId>(
     EDITOR_SECTIONS[0].id,
   );
+  const [showSectionPicker, setShowSectionPicker] = useState(true);
+
+  useEffect(() => {
+    onCustomizeModeChange?.(
+      showSectionPicker ? "sections" : "section",
+    );
+  }, [showSectionPicker, onCustomizeModeChange]);
 
   function patch(partial: Partial<StorefrontConfig>) {
     onChange({ ...config, ...partial });
@@ -192,6 +211,11 @@ export function StorefrontEditor({ config, onChange }: StorefrontEditorProps) {
 
   const sectionLabel =
     EDITOR_SECTIONS.find((s) => s.id === section)?.label ?? section;
+
+  function selectSection(id: StorefrontEditorSectionId) {
+    setSection(id);
+    setShowSectionPicker(false);
+  }
 
   let body: ReactNode;
   switch (section) {
@@ -629,38 +653,68 @@ export function StorefrontEditor({ config, onChange }: StorefrontEditorProps) {
       break;
   }
 
+  const sectionNav = (
+    <nav
+      className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-primary-blue/10 py-2 lg:border-b lg:pb-3"
+      aria-label="Storefront sections"
+    >
+      <ul className="flex flex-col gap-0.5">
+        {EDITOR_SECTIONS.map(({ id, label }) => (
+          <li key={id}>
+            <button
+              type="button"
+              onClick={() => selectSection(id)}
+              className="flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left font-sans text-sm text-primary-blue transition-colors hover:bg-blue-gray/40"
+            >
+              <span>{label}</span>
+              <span aria-hidden className="text-primary-blue/35">
+                ›
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+
+  if (showSectionPicker) {
+    return <div className="flex min-h-0 flex-1 flex-col">{sectionNav}</div>;
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <nav
-        className="max-h-[min(13rem,36vh)] shrink-0 overflow-y-auto overscroll-contain border-b border-primary-blue/10 pb-3 sm:max-h-56 lg:max-h-none lg:overflow-visible"
-        aria-label="Storefront sections"
-      >
-        <ul className="flex flex-col gap-0.5">
-          {EDITOR_SECTIONS.map(({ id, label }) => {
-            const active = section === id;
-            return (
-              <li key={id}>
-                <button
-                  type="button"
-                  onClick={() => setSection(id)}
-                  className={`flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left font-sans text-sm transition-colors ${
-                    active
-                      ? "bg-primary-blue text-white"
-                      : "text-primary-blue hover:bg-blue-gray/40"
-                  }`}
-                >
-                  <span>{label}</span>
-                  {active ? (
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-white/80">
-                      Editing
-                    </span>
-                  ) : null}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      <div className="shrink-0 border-b border-primary-blue/10 bg-white pb-3 pt-0.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => setShowSectionPicker(true)}
+            className="inline-flex items-center gap-2 rounded-md px-1 py-1.5 font-sans text-sm font-semibold text-primary-blue transition-colors hover:bg-blue-gray/40"
+          >
+            <span aria-hidden className="text-base leading-none">
+              ←
+            </span>
+            <span>Return</span>
+          </button>
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-3 sm:justify-between">
+            <p className="hidden min-w-0 truncate font-sans text-xs font-medium text-primary-blue/70 sm:block">
+              {sectionLabel}
+            </p>
+            {previewHref ? (
+              <Link
+                href={previewHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 font-sans text-xs font-semibold text-primary-blue underline decoration-primary-blue/30 underline-offset-2 hover:decoration-primary-blue lg:hidden"
+              >
+                Preview
+              </Link>
+            ) : null}
+          </div>
+        </div>
+        <p className="mt-1 font-sans text-xs font-medium text-primary-blue/70 sm:hidden">
+          {sectionLabel}
+        </p>
+      </div>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-4">
         <h2 className="sr-only">{sectionLabel}</h2>
         {body}

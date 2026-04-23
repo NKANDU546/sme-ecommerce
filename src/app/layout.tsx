@@ -14,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className="min-h-full antialiased">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
@@ -30,7 +30,7 @@ export default function RootLayout({
       </head>
       <body className="flex min-h-full flex-col bg-background text-foreground">
         <QueryProvider>
-          <div className="flex min-h-full flex-1 flex-col">
+          <div className="flex min-h-full flex-1 flex-col pb-[calc(3.25rem+env(safe-area-inset-bottom))]">
             <div className="flex-1">{children}</div>
             <ConditionalSiteFooter />
           </div>

@@ -1,0 +1,98 @@
+{
+  "templateId": "classic-boutique",
+  "themeId": "boutique-navy",
+  "configVersion": 3,
+  "shopName": "SME Operations",
+  "tagline": "Curated retail, calmer days.",
+  "navLinks": [
+    { "label": "Shop", "href": "#" },
+    { "label": "Collections", "href": "#" },
+    { "label": "New arrivals", "href": "#" },
+    { "label": "Sale", "href": "#" }
+  ],
+  "activeNavIndex": 0,
+  "heroBackgroundImageUrl": "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=2000&q=80",
+  "heroHeading": "Curated excellence for every day",
+  "heroSubheading": "Elevate your daily rituals with a clean storefront—showcase essentials, share your story, and keep orders organised alongside WhatsApp.",
+  "heroPrimaryCta": { "label": "Shop collection", "href": "@shop" },
+  "heroSecondaryCta": { "label": "View lookbook", "href": "#" },
+  "featuredTitle": "Featured arrivals",
+  "featuredViewAll": { "label": "View all new arrivals →", "href": "#" },
+  "products": [
+    {
+      "title": "Titanium task light",
+      "priceLabel": "R 249.00",
+      "imageUrl": "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=800&q=80"
+    },
+    {
+      "title": "Ceramic tea set",
+      "priceLabel": "R 189.00",
+      "imageUrl": "https://images.unsplash.com/photo-1571091718767-18b5b1457add?auto=format&fit=crop&w=800&q=80"
+    },
+    {
+      "title": "Studio task chair",
+      "priceLabel": "R 2 450.00",
+      "imageUrl": "https://images.unsplash.com/photo-1580480055272-228038267cbd?auto=format&fit=crop&w=800&q=80"
+    },
+    {
+      "title": "Wireless headphones",
+      "priceLabel": "R 899.00",
+      "imageUrl": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80"
+    }
+  ],
+  "promos": [
+    {
+      "title": "Living space",
+      "description": "Warm textures and calm lines for the room where you reset—ready for your next seasonal drop.",
+      "buttonLabel": "Explore",
+      "imageUrl": "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1400&q=80",
+      "href": "#"
+    },
+    {
+      "title": "Workspace",
+      "description": "Keyboards, lighting, and small upgrades that keep fulfilment sharp.",
+      "buttonLabel": "Shop tech",
+      "imageUrl": "https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&w=1200&q=80",
+      "href": "#"
+    }
+  ],
+  "features": [
+    {
+      "title": "Authentic design",
+      "description": "Templates stay on-brand while you tune copy, imagery, and accents—no generic clutter.",
+      "icon": "check"
+    },
+    {
+      "title": "Priority logistics",
+      "description": "When orders flow in, your queue stays readable so nothing hides in chat threads.",
+      "icon": "truck"
+    },
+    {
+      "title": "Merchant concierge",
+      "description": "We built this for SMEs who sell on WhatsApp first and need a calm public face.",
+      "icon": "sparkle"
+    }
+  ],
+  "footerBlurb": "Architecting calmer retail through WhatsApp-native order capture—clear queues, fewer missed chats, and space to grow.",
+  "footerShopLinks": [
+    { "label": "Shop all", "href": "#" },
+    { "label": "New arrivals", "href": "#" },
+    { "label": "Collections", "href": "#" },
+    { "label": "Sale", "href": "#" }
+  ],
+  "footerPolicyLinks": [
+    { "label": "Privacy policy", "href": "/privacy" },
+    { "label": "Terms of service", "href": "/terms" },
+    { "label": "Shipping info", "href": "#" },
+    { "label": "Returns", "href": "#" }
+  ],
+  "footerConnectLinks": [
+    { "label": "Contact us", "href": "#" },
+    { "label": "Instagram", "href": "#" },
+    { "label": "Journal", "href": "#" }
+  ],
+  "copyrightLine": "© 2026 SME Operations. All rights reserved.",
+  "cartCountLabel": "0",
+  "whatsappNumber": "+27 00 000 0000",
+  "accentColor": "#0a2540"
+}

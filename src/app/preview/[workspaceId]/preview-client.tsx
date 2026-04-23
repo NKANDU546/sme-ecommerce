@@ -48,5 +48,5 @@ export function PreviewClient({ workspaceId }: PreviewClientProps) {
     );
   }
 
-  return <StorefrontTemplateView config={config} />;
+  return <StorefrontTemplateView config={config} workspaceId={workspaceId} />;
 }

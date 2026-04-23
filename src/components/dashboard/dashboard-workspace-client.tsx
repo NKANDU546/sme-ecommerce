@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
 import { WorkspaceEmptyState } from "@/components/dashboard/workspace-empty-state";
+import { ProductsPanel } from "@/components/dashboard/products-panel";
 import { StorefrontPanel } from "@/components/storefront/storefront-panel";
 import {
   getDashboardSection,
@@ -52,7 +53,7 @@ export function DashboardWorkspaceClient({
 
       <div
         className={
-          activeId === "storefront"
+          activeId === "storefront" || activeId === "products"
             ? "flex h-dvh max-h-dvh min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
             : "flex min-h-0 min-w-0 flex-1 flex-col"
         }
@@ -99,6 +100,10 @@ export function DashboardWorkspaceClient({
         {activeId === "storefront" ? (
           <div className="flex min-h-0 flex-1 flex-col">
             <StorefrontPanel workspaceId={workspaceId} />
+          </div>
+        ) : activeId === "products" ? (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <ProductsPanel workspaceId={workspaceId} />
           </div>
         ) : (
           <WorkspaceEmptyState

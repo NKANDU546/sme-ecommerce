@@ -1,53 +1,16 @@
-import Link from "next/link";
+import { ClassicBoutiqueSiteFooter } from "@/components/storefront/templates/classic-boutique-site-footer";
+import { ClassicBoutiqueSiteHeader } from "@/components/storefront/templates/classic-boutique-site-header";
+import { ClassicBoutiqueSmartLink as SmartLink } from "@/components/storefront/templates/classic-boutique-smart-link";
 import type {
   StorefrontConfig,
   StorefrontFeatureIconId,
-  StorefrontLink,
 } from "@/types/storefront";
 
 type ClassicBoutiqueStorefrontProps = {
   config: StorefrontConfig;
+  /** When set (dashboard live preview or customer preview), `@shop` CTAs resolve to the collection page. */
+  workspaceId?: string;
 };
-
-function NavLink({
-  link,
-  active,
-}: {
-  link: StorefrontLink;
-  active: boolean;
-}) {
-  const cls = `text-sm font-medium transition-colors ${
-    active
-      ? "border-b-2 border-[color:var(--sf-accent)] pb-0.5 text-[color:var(--sf-accent)]"
-      : "text-[color:var(--sf-accent-text-65)] hover:text-[color:var(--sf-accent)]"
-  }`;
-  return (
-    <a href={link.href} className={cls}>
-      {link.label}
-    </a>
-  );
-}
-
-function SmartLink({
-  link,
-  className,
-}: {
-  link: StorefrontLink;
-  className?: string;
-}) {
-  if (link.href.startsWith("/")) {
-    return (
-      <Link href={link.href} className={className}>
-        {link.label}
-      </Link>
-    );
-  }
-  return (
-    <a href={link.href} className={className}>
-      {link.label}
-    </a>
-  );
-}
 
 function FeatureIcon({ id }: { id: StorefrontFeatureIconId }) {
   const box =
@@ -161,70 +124,13 @@ function PromoCard({
 
 export function ClassicBoutiqueStorefront({
   config,
+  workspaceId,
 }: ClassicBoutiqueStorefrontProps) {
   const heroBg = config.heroBackgroundImageUrl?.trim() ?? "";
 
   return (
     <div className="min-h-full">
-      {/* ─── Top nav ─── */}
-      <header className="sticky top-0 z-20 border-b border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-header-surface)] backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-8">
-          <div className="min-w-0 shrink">
-            <p className="truncate font-sans text-lg font-bold tracking-tight text-[color:var(--sf-accent)] sm:text-xl">
-              {config.shopName}
-            </p>
-            <p className="truncate font-sans text-[11px] text-[color:var(--sf-accent-text-45)] sm:text-xs">
-              {config.tagline}
-            </p>
-          </div>
-          <nav
-            className="hidden min-w-0 flex-1 items-center justify-center gap-8 lg:flex"
-            aria-label="Storefront"
-          >
-            {config.navLinks.map((link, i) => (
-              <NavLink
-                key={`${link.label}-${i}`}
-                link={link}
-                active={i === config.activeNavIndex}
-              />
-            ))}
-          </nav>
-          <div className="flex shrink-0 items-center gap-4 text-[color:var(--sf-accent)]">
-            <button
-              type="button"
-              className="rounded-full p-2 ring-1 ring-[color:var(--sf-accent-border-15)] transition-colors hover:bg-[color:var(--sf-nav-hover-wash)]"
-              aria-label="Account"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden>
-                <path strokeLinecap="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM5 21a7 7 0 0114 0" />
-              </svg>
-            </button>
-            <a
-              href="#"
-              className="relative rounded-full p-2 ring-1 ring-[color:var(--sf-accent-border-15)] transition-colors hover:bg-[color:var(--sf-nav-hover-wash)]"
-              aria-label="Cart"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden>
-                <path strokeLinecap="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 9h12" />
-              </svg>
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[color:var(--sf-accent)] px-1 font-sans text-[10px] font-bold text-[color:var(--sf-cart-badge-fg)]">
-                {config.cartCountLabel}
-              </span>
-            </a>
-          </div>
-        </div>
-        <div className="border-t border-[color:var(--sf-accent-border-5)] px-4 py-2 lg:hidden">
-          <nav className="flex flex-wrap justify-center gap-x-5 gap-y-2" aria-label="Storefront mobile">
-            {config.navLinks.map((link, i) => (
-              <NavLink
-                key={`m-${link.label}-${i}`}
-                link={link}
-                active={i === config.activeNavIndex}
-              />
-            ))}
-          </nav>
-        </div>
-      </header>
+      <ClassicBoutiqueSiteHeader config={config} />
 
       {/* ─── Hero ─── */}
       <section
@@ -259,10 +165,12 @@ export function ClassicBoutiqueStorefront({
             <div className="mt-8 flex flex-wrap gap-3">
               <SmartLink
                 link={config.heroPrimaryCta}
+                workspaceId={workspaceId}
                 className="inline-flex items-center justify-center bg-white px-6 py-3 font-sans text-sm font-semibold text-[color:var(--sf-accent)] shadow-sm transition-colors hover:bg-white/90"
               />
               <SmartLink
                 link={config.heroSecondaryCta}
+                workspaceId={workspaceId}
                 className="inline-flex items-center justify-center border border-white/40 bg-white/10 px-6 py-3 font-sans text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/20"
               />
             </div>
@@ -284,6 +192,7 @@ export function ClassicBoutiqueStorefront({
           </h2>
           <SmartLink
             link={config.featuredViewAll}
+            workspaceId={workspaceId}
             className="font-sans text-sm font-medium text-[color:var(--sf-accent)] underline decoration-[color:var(--sf-accent-border-25)] underline-offset-4 transition-colors hover:decoration-[color:var(--sf-accent)]"
           />
         </div>
@@ -332,65 +241,7 @@ export function ClassicBoutiqueStorefront({
         </div>
       </section>
 
-      {/* ─── Footer ─── */}
-      <footer className="border-t border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-footer-bg)] py-14 text-[color:var(--sf-accent)]">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:grid-cols-2 sm:px-8 lg:grid-cols-4 lg:gap-12">
-          <div>
-            <p className="font-sans text-lg font-bold">{config.shopName}</p>
-            <p className="mt-3 font-sans text-sm leading-relaxed text-[color:var(--sf-accent-text-65)]">
-              {config.footerBlurb}
-            </p>
-          </div>
-          <div>
-            <p className="font-sans text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--sf-accent-text-45)]">
-              Shop
-            </p>
-            <ul className="mt-4 space-y-2 font-sans text-sm">
-              {config.footerShopLinks.map((l) => (
-                <li key={l.label}>
-                  <SmartLink
-                    link={l}
-                    className="text-[color:var(--sf-accent-text-70)] underline-offset-2 transition-colors hover:text-[color:var(--sf-accent)]"
-                  />
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <p className="font-sans text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--sf-accent-text-45)]">
-              Policies
-            </p>
-            <ul className="mt-4 space-y-2 font-sans text-sm">
-              {config.footerPolicyLinks.map((l) => (
-                <li key={l.label}>
-                  <SmartLink
-                    link={l}
-                    className="text-[color:var(--sf-accent-text-70)] underline-offset-2 transition-colors hover:text-[color:var(--sf-accent)]"
-                  />
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <p className="font-sans text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--sf-accent-text-45)]">
-              Connect
-            </p>
-            <ul className="mt-4 space-y-2 font-sans text-sm">
-              {config.footerConnectLinks.map((l) => (
-                <li key={l.label}>
-                  <SmartLink
-                    link={l}
-                    className="text-[color:var(--sf-accent-text-70)] underline-offset-2 transition-colors hover:text-[color:var(--sf-accent)]"
-                  />
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-        <p className="mx-auto mt-12 max-w-7xl border-t border-[color:var(--sf-accent-border-10)] px-4 pt-8 text-center font-sans text-[11px] font-medium uppercase tracking-[0.2em] text-[color:var(--sf-accent-text-45)] sm:px-8">
-          {config.copyrightLine}
-        </p>
-      </footer>
+      <ClassicBoutiqueSiteFooter config={config} workspaceId={workspaceId} />
     </div>
   );
 }

@@ -14,7 +14,7 @@
   "heroBackgroundImageUrl": "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=2000&q=80",
   "heroHeading": "Curated excellence for every day",
   "heroSubheading": "Elevate your daily rituals with a clean storefront—showcase essentials, share your story, and keep orders organised alongside WhatsApp.",
-  "heroPrimaryCta": { "label": "Shop collection", "href": "#" },
+  "heroPrimaryCta": { "label": "Shop collection", "href": "@shop" },
   "heroSecondaryCta": { "label": "View lookbook", "href": "#" },
   "featuredTitle": "Featured arrivals",
   "featuredViewAll": { "label": "View all new arrivals →", "href": "#" },

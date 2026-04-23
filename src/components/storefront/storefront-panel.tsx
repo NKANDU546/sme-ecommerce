@@ -129,7 +129,7 @@ export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
           Live preview · template: {config.templateId}
         </p>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          <StorefrontTemplateView config={config} />
+          <StorefrontTemplateView config={config} workspaceId={workspaceId} />
         </div>
         <footer className="shrink-0 border-t border-primary-blue/10 bg-white px-4 py-2.5 text-center font-sans text-[11px] leading-snug text-primary-blue/55">
           <span className="font-medium text-primary-blue/70">

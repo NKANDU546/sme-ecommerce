@@ -50,8 +50,14 @@ export function DashboardWorkspaceClient({
         </button>
       ) : null}
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-primary-blue/10 bg-white px-5 py-4 sm:px-8">
+      <div
+        className={
+          activeId === "storefront"
+            ? "flex h-dvh max-h-dvh min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+            : "flex min-h-0 min-w-0 flex-1 flex-col"
+        }
+      >
+        <header className="shrink-0 flex flex-wrap items-center justify-between gap-4 border-b border-primary-blue/10 bg-white px-5 py-4 sm:px-8">
           <div>
             <h1 className="font-serif text-xl font-light text-primary-blue sm:text-2xl">
               {section.panelTitle}

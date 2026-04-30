@@ -13,4 +13,7 @@ export type StoredWorkspace = {
   name: string;
   email: string;
   createdAt: number;
+  userId?: string;
+  businessName?: string;
+  publicLink?: string;
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
 import { WorkspaceEmptyState } from "@/components/dashboard/workspace-empty-state";
 import { ProductsPanel } from "@/components/dashboard/products-panel";
@@ -23,10 +23,11 @@ export function DashboardWorkspaceClient({
   const [workspaceRailOpen, setWorkspaceRailOpen] = useState(true);
   const section = getDashboardSection(activeId);
 
-  useEffect(() => {
-    if (activeId === "storefront") setWorkspaceRailOpen(false);
+  function selectNav(id: DashboardNavId) {
+    setActiveId(id);
+    if (id === "storefront") setWorkspaceRailOpen(false);
     else setWorkspaceRailOpen(true);
-  }, [activeId]);
+  }
 
   const showWorkspaceSidebar =
     activeId !== "storefront" || workspaceRailOpen;
@@ -37,7 +38,7 @@ export function DashboardWorkspaceClient({
         <DashboardSidebar
           workspaceId={workspaceId}
           activeId={activeId}
-          onSelect={setActiveId}
+          onSelect={selectNav}
         />
       ) : null}
 
@@ -59,7 +60,7 @@ export function DashboardWorkspaceClient({
         }
       >
         <header className="shrink-0 flex flex-wrap items-center justify-between gap-4 border-b border-primary-blue/10 bg-white px-5 py-4 sm:px-8">
-          <div>
+          <div className="min-w-0 flex-1">
             <h1 className="font-serif text-xl font-light text-primary-blue sm:text-2xl">
               {section.panelTitle}
             </h1>
@@ -110,7 +111,7 @@ export function DashboardWorkspaceClient({
             title={section.empty.title}
             description={section.empty.description}
             action={section.empty.action}
-            onNavigateSection={setActiveId}
+            onNavigateSection={selectNav}
           />
         )}
       </div>

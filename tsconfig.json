@@ -19,7 +19,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@modals": ["./src/modals/index.ts"],
+      "@modals/*": ["./src/modals/*"]
     }
   },
   "include": [

@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
+import { toast } from "sonner";
+import { registerBusinessAction } from "@/actions/auth";
+import { SignupVerifyModal } from "@/app/signup/components/signup-verify-modal";
 import {
-  createWorkspaceId,
   SME_WORKSPACE_STORAGE_KEY,
   type StoredWorkspace,
 } from "@/lib/workspace-id";
@@ -27,28 +28,56 @@ function strengthLabel(score: number): string {
 }
 
 export function SignupForm() {
-  const router = useRouter();
   const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [verifyModal, setVerifyModal] = useState<{
+    email: string;
+    businessId: string;
+    message: string;
+  } | null>(null);
   const score = useMemo(() => passwordScore(password), [password]);
   const filled = password ? score : 0;
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
     const fd = new FormData(form);
-    const workspaceId = createWorkspaceId();
+    const fullName = String(fd.get("name") ?? "").trim();
+    const email = String(fd.get("email") ?? "").trim();
+    const businessName = String(fd.get("businessName") ?? "").trim();
+    const description = String(fd.get("description") ?? "").trim();
+
+    setIsSubmitting(true);
+    const result = await registerBusinessAction({
+      email,
+      password,
+      fullName,
+      businessName,
+      description,
+    });
+    setIsSubmitting(false);
+
+    if (!result.ok) {
+      toast.error(result.errorMessage);
+      return;
+    }
+
+    const { businessId, userId, publicLink, message } = result.data;
     const payload: StoredWorkspace = {
-      workspaceId,
-      name: String(fd.get("name") ?? "").trim(),
-      email: String(fd.get("email") ?? "").trim(),
+      workspaceId: businessId,
+      name: fullName,
+      email,
+      businessName,
       createdAt: Date.now(),
+      userId,
+      publicLink,
     };
     try {
       localStorage.setItem(SME_WORKSPACE_STORAGE_KEY, JSON.stringify(payload));
     } catch {
-      /* still redirect; user panel may fall back to placeholders */
+      /* workspace panel may fall back to placeholders */
     }
-    router.push(`/dashboard/${workspaceId}`);
+    setVerifyModal({ email, businessId, message });
   }
 
   return (
@@ -88,6 +117,24 @@ export function SignupForm() {
 
           <div>
             <label
+              htmlFor="signup-business-name"
+              className="mb-2 block font-sans text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+            >
+              Business name
+            </label>
+            <input
+              id="signup-business-name"
+              name="businessName"
+              type="text"
+              autoComplete="organization"
+              required
+              placeholder="Acme Coffee Shop"
+              className="w-full border border-primary-blue/15 bg-white px-4 py-3 font-sans text-sm text-foreground outline-none transition-shadow placeholder:text-muted-foreground/50 focus-visible:border-primary-blue/35 focus-visible:ring-2 focus-visible:ring-primary-blue/20"
+            />
+          </div>
+
+          <div>
+            <label
               htmlFor="signup-email"
               className="mb-2 block font-sans text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground"
             >
@@ -101,6 +148,23 @@ export function SignupForm() {
               required
               placeholder="you@yourshop.co.za"
               className="w-full border border-primary-blue/15 bg-white px-4 py-3 font-sans text-sm text-foreground outline-none transition-shadow placeholder:text-muted-foreground/50 focus-visible:border-primary-blue/35 focus-visible:ring-2 focus-visible:ring-primary-blue/20"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="signup-description"
+              className="mb-2 block font-sans text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+            >
+              Short description
+            </label>
+            <textarea
+              id="signup-description"
+              name="description"
+              required
+              rows={3}
+              placeholder="What you sell and what makes your shop stand out"
+              className="w-full resize-y border border-primary-blue/15 bg-white px-4 py-3 font-sans text-sm text-foreground outline-none transition-shadow placeholder:text-muted-foreground/50 focus-visible:border-primary-blue/35 focus-visible:ring-2 focus-visible:ring-primary-blue/20"
             />
           </div>
 
@@ -151,9 +215,10 @@ export function SignupForm() {
 
           <button
             type="submit"
-            className="w-full bg-primary-blue px-6 py-3.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-primary-blue/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-blue"
+            disabled={isSubmitting}
+            className="w-full bg-primary-blue px-6 py-3.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-primary-blue/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-blue disabled:pointer-events-none disabled:opacity-60"
           >
-            Create account
+            {isSubmitting ? "Creating account…" : "Create account"}
           </button>
         </form>
 
@@ -258,6 +323,14 @@ export function SignupForm() {
           ← Back to homepage
         </Link>
       </aside>
+
+      <SignupVerifyModal
+        open={verifyModal !== null}
+        email={verifyModal?.email ?? ""}
+        businessId={verifyModal?.businessId ?? ""}
+        message={verifyModal?.message ?? ""}
+        onClose={() => setVerifyModal(null)}
+      />
     </div>
   );
 }

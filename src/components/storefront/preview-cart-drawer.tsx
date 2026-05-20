@@ -1,9 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect } from "react";
 import { usePreviewCartOptional } from "@/contexts/preview-cart-context";
 
-export function PreviewCartDrawer() {
+type PreviewCartDrawerProps = {
+  workspaceId: string;
+};
+
+export function PreviewCartDrawer({ workspaceId }: PreviewCartDrawerProps) {
   const cart = usePreviewCartOptional();
 
   useEffect(() => {
@@ -144,13 +149,23 @@ export function PreviewCartDrawer() {
             >
               Clear cart
             </button>
-            <button
-              type="button"
-              disabled={lines.length === 0}
-              className="rounded-lg bg-primary-blue px-4 py-2 font-sans text-xs font-semibold text-white opacity-90 transition-opacity hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Checkout (soon)
-            </button>
+            {lines.length === 0 ? (
+              <button
+                type="button"
+                disabled
+                className="rounded-lg bg-primary-blue px-4 py-2 font-sans text-xs font-semibold text-white opacity-40 disabled:cursor-not-allowed"
+              >
+                View cart
+              </button>
+            ) : (
+              <Link
+                href={`/preview/${workspaceId}/cart`}
+                onClick={closeDrawer}
+                className="rounded-lg bg-primary-blue px-4 py-2 font-sans text-xs font-semibold text-white opacity-90 transition-opacity hover:opacity-100"
+              >
+                View cart
+              </Link>
+            )}
           </div>
         </div>
       </aside>

@@ -7,7 +7,6 @@ import {
   type StorefrontCustomizeMode,
 } from "@/components/storefront/storefront-editor";
 import { StorefrontTemplateView } from "@/components/storefront/storefront-template-view";
-import { WorkspaceEmptyState } from "@/components/dashboard/workspace-empty-state";
 import {
   createInitialStorefrontFromSeed,
   loadStorefront,
@@ -18,6 +17,37 @@ import type { StorefrontConfig } from "@/types/storefront";
 type StorefrontPanelProps = {
   workspaceId: string;
 };
+
+type TemplateCard = {
+  name: string;
+  description: string;
+  tag: string;
+  available: boolean;
+};
+
+const STOREFRONT_TEMPLATE_CARDS: TemplateCard[] = [
+  {
+    name: "Classic Boutique",
+    description:
+      "A polished storefront with hero content, featured products, promos, and value props.",
+    tag: "Available now",
+    available: true,
+  },
+  {
+    name: "Minimal Catalogue",
+    description:
+      "A lean product-first layout for stores that want a simple catalogue feel.",
+    tag: "Not yet available",
+    available: false,
+  },
+  {
+    name: "Bold Retail",
+    description:
+      "A high-contrast campaign-style homepage for launches, sales, and seasonal drops.",
+    tag: "Not yet available",
+    available: false,
+  },
+];
 
 export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
   const [config, setConfig] = useState<StorefrontConfig | null>(null);
@@ -57,20 +87,78 @@ export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
 
   if (!config) {
     return (
-      <WorkspaceEmptyState
-        title="No storefront yet"
-        description="Start from our default boutique-style layout. You can edit copy, colours, WhatsApp details, and placeholder products—everything stays in this browser until your API is ready."
-      >
-        <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-          <button
-            type="button"
-            onClick={startFromTemplate}
-            className="inline-flex items-center justify-center bg-primary-blue px-5 py-2.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-primary-blue/90"
-          >
-            Use default template
-          </button>
+      <div className="flex flex-1 flex-col px-6 py-10 sm:px-8 sm:py-14">
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="max-w-2xl">
+            <p className="font-sans text-xs font-semibold uppercase tracking-[0.18em] text-primary-blue/55">
+              Storefront templates
+            </p>
+            <h2 className="mt-3 font-serif text-3xl font-light text-primary-blue sm:text-4xl">
+              Choose a template
+            </h2>
+            <p className="mt-4 font-sans text-sm leading-relaxed text-muted-foreground sm:text-base">
+              Start with a storefront layout, then edit copy, colours, WhatsApp
+              details, and products from the dashboard. More templates are
+              coming soon.
+            </p>
+          </div>
+
+          <ul className="mt-8 grid gap-5 md:grid-cols-3">
+            {STOREFRONT_TEMPLATE_CARDS.map((template) => (
+              <li
+                key={template.name}
+                className={`flex min-h-80 flex-col overflow-hidden rounded-xl border bg-white shadow-sm ${
+                  template.available
+                    ? "border-primary-blue/15"
+                    : "border-primary-blue/10 opacity-75"
+                }`}
+              >
+                <div className="border-b border-primary-blue/10 bg-blue-gray/25 p-4">
+                  <div className="overflow-hidden rounded-lg border border-primary-blue/10 bg-white p-3">
+                    <div className="h-28 rounded-md bg-gradient-to-br from-primary-blue via-primary-blue/80 to-blue-gray" />
+                    <div className="mt-3 h-2 w-2/3 rounded-full bg-primary-blue/20" />
+                    <div className="mt-2 h-2 w-1/2 rounded-full bg-primary-blue/10" />
+                  </div>
+                </div>
+
+                <div className="flex flex-1 flex-col p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="font-sans text-base font-bold text-primary-blue">
+                      {template.name}
+                    </h3>
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-1 font-sans text-[10px] font-bold uppercase tracking-wide ${
+                        template.available
+                          ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-700/15"
+                          : "bg-blue-gray/50 text-primary-blue/55 ring-1 ring-primary-blue/10"
+                      }`}
+                    >
+                      {template.tag}
+                    </span>
+                  </div>
+                  <p className="mt-3 flex-1 font-sans text-sm leading-relaxed text-muted-foreground">
+                    {template.description}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={template.available ? startFromTemplate : undefined}
+                    disabled={!template.available}
+                    className={`mt-5 inline-flex items-center justify-center rounded-md px-4 py-2.5 font-sans text-sm font-semibold transition-colors ${
+                      template.available
+                        ? "bg-primary-blue text-white hover:bg-primary-blue/90"
+                        : "cursor-not-allowed border border-primary-blue/10 bg-blue-gray/30 text-primary-blue/45"
+                    }`}
+                  >
+                    {template.available
+                      ? "Choose this template"
+                      : "Not yet available"}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
-      </WorkspaceEmptyState>
+      </div>
     );
   }
 

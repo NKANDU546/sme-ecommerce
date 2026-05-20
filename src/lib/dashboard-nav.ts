@@ -1,13 +1,16 @@
-export type DashboardNavId =
-  | "dashboard"
-  | "orders"
-  | "products"
-  | "storefront"
-  | "customers"
-  | "analytics"
-  | "inventory"
-  | "reports"
-  | "settings";
+export const DASHBOARD_NAV_IDS = [
+  "dashboard",
+  "orders",
+  "products",
+  "storefront",
+  "customers",
+  "analytics",
+  "inventory",
+  "reports",
+  "settings",
+] as const;
+
+export type DashboardNavId = (typeof DASHBOARD_NAV_IDS)[number];
 
 export type DashboardSectionAction =
   | { kind: "href"; label: string; href: string }

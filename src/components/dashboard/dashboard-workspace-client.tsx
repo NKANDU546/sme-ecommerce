@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
 import { WorkspaceEmptyState } from "@/components/dashboard/workspace-empty-state";
 import { ProductsPanel } from "@/components/dashboard/products-panel";
 import { StorefrontPanel } from "@/components/storefront/storefront-panel";
 import {
+  DASHBOARD_NAV_IDS,
   getDashboardSection,
   type DashboardNavId,
 } from "@/lib/dashboard-nav";
@@ -18,13 +20,18 @@ type DashboardWorkspaceClientProps = {
 export function DashboardWorkspaceClient({
   workspaceId,
 }: DashboardWorkspaceClientProps) {
-  const [activeId, setActiveId] = useState<DashboardNavId>("dashboard");
+  const [activeId, setActiveId] = useQueryState(
+    "section",
+    parseAsStringLiteral(DASHBOARD_NAV_IDS)
+      .withDefault("dashboard")
+      .withOptions({ history: "push", shallow: true }),
+  );
   /** When false on Storefront, the workspace sidebar is hidden for a wider editor. */
   const [workspaceRailOpen, setWorkspaceRailOpen] = useState(true);
   const section = getDashboardSection(activeId);
 
   function selectNav(id: DashboardNavId) {
-    setActiveId(id);
+    void setActiveId(id);
     if (id === "storefront") setWorkspaceRailOpen(false);
     else setWorkspaceRailOpen(true);
   }

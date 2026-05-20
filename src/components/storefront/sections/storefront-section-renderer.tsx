@@ -1,0 +1,343 @@
+import { ClassicBoutiqueSmartLink as SmartLink } from "@/components/storefront/templates/classic-boutique-smart-link";
+import { storefrontButtonClassName } from "@/components/storefront/storefront-button";
+import type {
+  StorefrontConfig,
+  StorefrontFeatureIconId,
+  StorefrontSection,
+} from "@/types/storefront";
+
+type StorefrontSectionRendererProps = {
+  section: StorefrontSection;
+  config: StorefrontConfig;
+  workspaceId?: string;
+};
+
+function FeatureIcon({ id }: { id: StorefrontFeatureIconId }) {
+  const box =
+    "flex h-12 w-12 items-center justify-center rounded-md bg-[color:var(--sf-icon-tile-bg)] text-[color:var(--sf-icon-tile-text)]";
+  switch (id) {
+    case "check":
+      return (
+        <span className={box} aria-hidden>
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        </span>
+      );
+    case "truck":
+      return (
+        <span className={box} aria-hidden>
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 7h11v10H3V7zm11 0h3l3 3v4h-6M9 19a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z" />
+          </svg>
+        </span>
+      );
+    case "sparkle":
+      return (
+        <span className={box} aria-hidden>
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+            <path strokeLinecap="round" d="M12 3v2m0 14v2M4.2 4.2l1.4 1.4m12.8 12.8l1.4 1.4M3 12h2m14 0h2M4.2 19.8l1.4-1.4M17.4 5.6l1.4-1.4" />
+            <path strokeLinecap="round" d="M12 8a4 4 0 104 4 4 4 0 00-4-4z" />
+          </svg>
+        </span>
+      );
+  }
+}
+
+function SectionProductCard({
+  title,
+  priceLabel,
+  imageUrl,
+}: {
+  title: string;
+  priceLabel: string;
+  imageUrl: string;
+}) {
+  return (
+    <article className="group flex flex-col">
+      <div className="aspect-square overflow-hidden rounded-xl border border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-card-frame-bg)]">
+        {imageUrl.trim() ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl}
+            alt=""
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+          />
+        ) : null}
+      </div>
+      <h3 className="mt-4 font-sans text-[15px] font-semibold text-[color:var(--sf-accent)]">
+        {title}
+      </h3>
+      <p className="mt-1 font-sans text-sm text-[color:var(--sf-accent-text-55)]">
+        {priceLabel}
+      </p>
+    </article>
+  );
+}
+
+export function StorefrontSectionRenderer({
+  section,
+  workspaceId,
+}: StorefrontSectionRendererProps) {
+  switch (section.type) {
+    case "hero": {
+      const heroBg = section.imageUrl.trim();
+      return (
+        <section
+          className="relative min-h-[min(70vh,36rem)] overflow-hidden"
+          aria-labelledby={`${section.id}-heading`}
+        >
+          {heroBg ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={heroBg}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : (
+            <div
+              className="absolute inset-0 bg-[color:var(--sf-hero-placeholder)]"
+              aria-hidden
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/35 to-transparent" />
+          <div className="relative z-10 mx-auto flex min-h-[min(70vh,36rem)] max-w-7xl items-center px-4 py-16 sm:px-8 sm:py-24">
+            <div className="max-w-xl">
+              <h1
+                id={`${section.id}-heading`}
+                className="font-serif text-[clamp(2rem,5vw,3.25rem)] font-semibold leading-[1.1] tracking-tight text-white"
+              >
+                {section.heading}
+              </h1>
+              <p className="mt-5 font-sans text-base leading-relaxed text-white/90 sm:text-lg">
+                {section.subheading}
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <SmartLink
+                  link={section.primaryCta}
+                  workspaceId={workspaceId}
+                  className={storefrontButtonClassName({ size: "lg" })}
+                />
+                <SmartLink
+                  link={section.secondaryCta}
+                  workspaceId={workspaceId}
+                  className={storefrontButtonClassName({
+                    variant: "outline",
+                    size: "lg",
+                  })}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+    case "featuredProducts":
+      return (
+        <section
+          className="mx-auto max-w-[100%] px-4 py-14 sm:px-8 sm:py-20"
+          aria-labelledby={`${section.id}-heading`}
+        >
+          <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
+            <h2
+              id={`${section.id}-heading`}
+              className="font-serif text-2xl font-light text-[color:var(--sf-accent)] sm:text-3xl"
+            >
+              {section.title}
+            </h2>
+            <SmartLink
+              link={section.viewAll}
+              workspaceId={workspaceId}
+              className={storefrontButtonClassName({ variant: "text" })}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-5 md:grid-cols-4 md:gap-8">
+            {section.products.map((p, i) => (
+              <SectionProductCard
+                key={`${p.title}-${i}`}
+                title={p.title}
+                priceLabel={p.priceLabel}
+                imageUrl={p.imageUrl}
+              />
+            ))}
+          </div>
+        </section>
+      );
+    case "promoBanner":
+      return (
+        <section className="border-y border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-promo-section-bg)] py-14 sm:py-16">
+          <div className="mx-auto max-w-[100%] px-4 sm:px-8">
+            <a
+              href={section.href}
+              className="relative flex min-h-[17rem] flex-col justify-end overflow-hidden rounded-xl border border-[color:var(--sf-accent-border-10)] shadow-sm transition-opacity hover:opacity-[0.98] sm:min-h-[20rem]"
+            >
+              {section.imageUrl.trim() ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={section.imageUrl}
+                  alt=""
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              ) : (
+                <div
+                  className="absolute inset-0 bg-[color:var(--sf-promo-placeholder)]"
+                  aria-hidden
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
+              <div className="relative z-10 p-6 sm:p-8">
+                <h3 className="font-serif text-2xl font-light text-white sm:text-3xl">
+                  {section.title}
+                </h3>
+                <p className="mt-2 max-w-md font-sans text-sm leading-relaxed text-white/85">
+                  {section.description}
+                </p>
+                <span
+                  className={storefrontButtonClassName({
+                    size: "sm",
+                    className: "mt-5 w-fit uppercase tracking-[0.12em]",
+                  })}
+                >
+                  {section.buttonLabel}
+                </span>
+              </div>
+            </a>
+          </div>
+        </section>
+      );
+    case "textImage":
+      return (
+        <section className="bg-[color:var(--sf-page-bg)] px-4 py-14 sm:px-8 sm:py-20">
+          <div
+            className={`mx-auto grid max-w-7xl items-center gap-8 lg:grid-cols-2 ${
+              section.imagePosition === "left" ? "" : "lg:[&>*:first-child]:order-2"
+            }`}
+          >
+            <div className="overflow-hidden rounded-2xl border border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-card-frame-bg)]">
+              {section.imageUrl.trim() ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={section.imageUrl}
+                  alt=""
+                  className="aspect-[4/3] h-full w-full object-cover"
+                />
+              ) : (
+                <div className="aspect-[4/3] bg-[color:var(--sf-hero-placeholder)]" />
+              )}
+            </div>
+            <div>
+              <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--sf-accent-text-45)]">
+                {section.eyebrow}
+              </p>
+              <h2 className="mt-3 font-serif text-3xl font-light text-[color:var(--sf-accent)]">
+                {section.title}
+              </h2>
+              <p className="mt-4 font-sans text-sm leading-relaxed text-[color:var(--sf-accent-text-65)] sm:text-base">
+                {section.body}
+              </p>
+              <SmartLink
+                link={section.cta}
+                workspaceId={workspaceId}
+                className={storefrontButtonClassName({
+                  variant: "text",
+                  className: "mt-6",
+                })}
+              />
+            </div>
+          </div>
+        </section>
+      );
+    case "features":
+      return (
+        <section
+          className="bg-[color:var(--sf-values-section-bg)] py-14 sm:py-20"
+          aria-labelledby={`${section.id}-heading`}
+        >
+          <h2 id={`${section.id}-heading`} className="sr-only">
+            {section.title || "Why shop with us"}
+          </h2>
+          <div className="mx-auto grid max-w-[100%] gap-10 px-4 sm:grid-cols-3 sm:gap-12 sm:px-8">
+            {section.items.map((f, i) => (
+              <div key={`${f.title}-${i}`} className="text-center sm:text-left">
+                <div className="mx-auto flex justify-center sm:mx-0 sm:justify-start">
+                  <FeatureIcon id={f.icon} />
+                </div>
+                <h3 className="mt-5 font-sans text-base font-semibold text-[color:var(--sf-accent)]">
+                  {f.title}
+                </h3>
+                <p className="mt-2 font-sans text-sm leading-relaxed text-[color:var(--sf-accent-text-60)]">
+                  {f.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      );
+    case "faq":
+      return (
+        <section className="px-4 py-14 sm:px-8 sm:py-20">
+          <div className="mx-auto max-w-3xl">
+            <h2 className="font-serif text-3xl font-light text-[color:var(--sf-accent)]">
+              {section.title}
+            </h2>
+            <div className="mt-8 divide-y divide-[color:var(--sf-accent-border-10)] rounded-xl border border-[color:var(--sf-accent-border-10)] bg-white">
+              {section.items.map((item, i) => (
+                <div key={`${item.question}-${i}`} className="p-5">
+                  <h3 className="font-sans text-sm font-bold text-[color:var(--sf-accent)]">
+                    {item.question}
+                  </h3>
+                  <p className="mt-2 font-sans text-sm leading-relaxed text-[color:var(--sf-accent-text-60)]">
+                    {item.answer}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      );
+    case "contactCta":
+      return (
+        <section className="bg-[color:var(--sf-promo-section-bg)] px-4 py-14 sm:px-8 sm:py-20">
+          <div className="mx-auto max-w-3xl rounded-2xl border border-[color:var(--sf-accent-border-10)] bg-white p-8 text-center shadow-sm">
+            <h2 className="font-serif text-3xl font-light text-[color:var(--sf-accent)]">
+              {section.title}
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl font-sans text-sm leading-relaxed text-[color:var(--sf-accent-text-60)] sm:text-base">
+              {section.body}
+            </p>
+            <a
+              href={section.href || "#"}
+              className={storefrontButtonClassName({
+                className: "mt-6",
+              })}
+            >
+              {section.buttonLabel}
+            </a>
+          </div>
+        </section>
+      );
+  }
+}
+
+export function StorefrontSections({
+  sections,
+  config,
+  workspaceId,
+}: {
+  sections: StorefrontSection[];
+  config: StorefrontConfig;
+  workspaceId?: string;
+}) {
+  return (
+    <>
+      {sections.map((section) => (
+        <StorefrontSectionRenderer
+          key={section.id}
+          section={section}
+          config={config}
+          workspaceId={workspaceId}
+        />
+      ))}
+    </>
+  );
+}

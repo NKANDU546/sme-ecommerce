@@ -21,14 +21,17 @@ export function WorkspaceUserPanel({ workspaceId }: WorkspaceUserPanelProps) {
   const [stored, setStored] = useState<StoredWorkspace | null>(null);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SME_WORKSPACE_STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as StoredWorkspace;
-      if (parsed.workspaceId === workspaceId) setStored(parsed);
-    } catch {
-      /* ignore */
-    }
+    const id = window.setTimeout(() => {
+      try {
+        const raw = localStorage.getItem(SME_WORKSPACE_STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw) as StoredWorkspace;
+        if (parsed.workspaceId === workspaceId) setStored(parsed);
+      } catch {
+        /* ignore */
+      }
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [workspaceId]);
 
   const displayName = stored?.name?.trim() || "Merchant";

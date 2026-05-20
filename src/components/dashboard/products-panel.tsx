@@ -36,8 +36,11 @@ export function ProductsPanel({ workspaceId }: ProductsPanelProps) {
   const [sort, setSort] = useState<SortKey>("newest");
 
   useEffect(() => {
-    setProducts(loadCatalogProducts(workspaceId));
-    setHydrated(true);
+    const id = window.setTimeout(() => {
+      setProducts(loadCatalogProducts(workspaceId));
+      setHydrated(true);
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [workspaceId]);
 
   const persist = useCallback(

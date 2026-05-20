@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import type { StorefrontConfig, StorefrontThemeId } from "@/types/storefront";
 
-export const DEFAULT_STOREFRONT_THEME_ID: StorefrontThemeId = "boutique-navy";
+export const DEFAULT_STOREFRONT_THEME_ID: StorefrontThemeId = "blue";
 
 export type StorefrontThemeDefinition = {
   id: StorefrontThemeId;
@@ -25,9 +25,9 @@ export const STOREFRONT_THEME_DEFINITIONS: Record<
   StorefrontThemeId,
   StorefrontThemeDefinition
 > = {
-  "boutique-navy": {
-    id: "boutique-navy",
-    label: "Boutique navy",
+  blue: {
+    id: "blue",
+    label: "Blue",
     defaultAccent: "#0a2540",
     pageBg: "#ffffff",
     bodyText: "#1a1a1a",
@@ -41,20 +41,20 @@ export const STOREFRONT_THEME_DEFINITIONS: Record<
     neutralWashStrong: "rgba(220, 220, 237, 0.6)",
     cartBadgeText: "#ffffff",
   },
-  "warm-sand": {
-    id: "warm-sand",
-    label: "Warm sand",
-    defaultAccent: "#6b4423",
-    pageBg: "#fffdf8",
-    bodyText: "#2a2118",
-    headerSurface: "rgba(255, 253, 248, 0.95)",
-    promoSectionBg: "#f3ebe1",
-    valuesSectionBg: "#ebe2d6",
-    footerBg: "#e4d8c8",
-    neutralWash: "rgba(212, 196, 176, 0.75)",
-    neutralWashSoft: "rgba(212, 196, 176, 0.35)",
-    neutralWashMedium: "rgba(212, 196, 176, 0.5)",
-    neutralWashStrong: "rgba(212, 196, 176, 0.62)",
+  red: {
+    id: "red",
+    label: "Red",
+    defaultAccent: "#b91c1c",
+    pageBg: "#fffafa",
+    bodyText: "#211818",
+    headerSurface: "rgba(255, 250, 250, 0.95)",
+    promoSectionBg: "#fff1f1",
+    valuesSectionBg: "#fee7e7",
+    footerBg: "#fde2e2",
+    neutralWash: "rgba(248, 113, 113, 0.18)",
+    neutralWashSoft: "rgba(248, 113, 113, 0.1)",
+    neutralWashMedium: "rgba(248, 113, 113, 0.16)",
+    neutralWashStrong: "rgba(248, 113, 113, 0.24)",
     cartBadgeText: "#ffffff",
   },
 };
@@ -120,6 +120,8 @@ const THEME_IDS = new Set<string>(Object.keys(STOREFRONT_THEME_DEFINITIONS));
 export function normalizeStorefrontThemeId(
   raw: string | undefined,
 ): StorefrontThemeId {
+  if (raw === "boutique-navy") return "blue";
+  if (raw === "warm-sand") return "red";
   if (raw && THEME_IDS.has(raw)) return raw as StorefrontThemeId;
   return DEFAULT_STOREFRONT_THEME_ID;
 }

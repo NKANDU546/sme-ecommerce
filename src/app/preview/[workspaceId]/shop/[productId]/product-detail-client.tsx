@@ -24,9 +24,12 @@ export function ProductDetailClient({
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setConfig(loadStorefront(workspaceId));
-    setProduct(getCatalogProductById(workspaceId, productId));
-    setReady(true);
+    const id = window.setTimeout(() => {
+      setConfig(loadStorefront(workspaceId));
+      setProduct(getCatalogProductById(workspaceId, productId));
+      setReady(true);
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [workspaceId, productId]);
 
   if (!ready) {

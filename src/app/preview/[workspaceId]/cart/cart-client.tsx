@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { type FormEvent, useEffect, useState } from "react";
 import { usePreviewCartOptional } from "@/contexts/preview-cart-context";
+import {
+  StorefrontButton,
+  StorefrontButtonLink,
+} from "@/components/storefront/storefront-button";
 import { StorefrontThemeRoot } from "@/components/storefront/storefront-theme-root";
 import { ClassicBoutiqueSiteFooter } from "@/components/storefront/templates/classic-boutique-site-footer";
 import { ClassicBoutiqueSiteHeader } from "@/components/storefront/templates/classic-boutique-site-header";
@@ -211,14 +215,14 @@ function OrderSummary({
       </div>
 
       {showCheckoutButton ? (
-        <button
+        <StorefrontButton
           type="button"
           disabled={lines.length === 0}
           onClick={onCheckout}
-          className="mt-7 w-full bg-[color:var(--sf-accent)] px-4 py-3 font-sans text-sm font-bold text-[color:var(--sf-cart-badge-fg)] transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-45"
+          className="mt-7 w-full rounded-none font-bold"
         >
           Proceed to Checkout
-        </button>
+        </StorefrontButton>
       ) : null}
     </aside>
   );
@@ -307,14 +311,15 @@ function CartStepView({
             <p className="font-sans text-sm font-bold text-[color:var(--sf-accent)]">
               {line.priceLabel}
             </p>
-            <button
+            <StorefrontButton
               type="button"
               onClick={() => removeLine(line.productId)}
-              className="h-10 w-10 font-sans text-xl text-red-600"
+              variant="text"
+              className="h-10 w-10 text-xl no-underline"
               aria-label="Remove item"
             >
-              ×
-            </button>
+              &times;
+            </StorefrontButton>
           </li>
         ))}
       </ul>
@@ -536,7 +541,7 @@ export function CartClient({
       <div className="min-h-screen bg-[color:var(--sf-page-bg)]">
         <ClassicBoutiqueSiteHeader config={config} />
 
-        <main className="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-10">
+        <main className="mx-auto max-w-[100%] px-4 py-8 sm:px-8 sm:py-10">
           <h1 className="mb-6 font-sans text-2xl font-bold text-[color:var(--sf-accent)]">
             Shopping Cart
           </h1>
@@ -574,20 +579,20 @@ export function CartClient({
                         : "Payment"}
                   </button>
                   {activeStep === "confirmation" ? (
-                    <Link
+                    <StorefrontButtonLink
                       href={`/preview/${workspaceId}/shop`}
-                      className="bg-[color:var(--sf-accent)] px-10 py-3 text-center font-sans text-sm font-bold text-[color:var(--sf-cart-badge-fg)] transition-opacity hover:opacity-95"
+                      className="rounded-none px-10 font-bold"
                     >
                       {primaryLabel}
-                    </Link>
+                    </StorefrontButtonLink>
                   ) : (
-                    <button
+                    <StorefrontButton
                       type="submit"
                       disabled={!hasItems}
-                      className="bg-[color:var(--sf-accent)] px-10 py-3 font-sans text-sm font-bold text-[color:var(--sf-cart-badge-fg)] transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-45"
+                      className="rounded-none px-10 font-bold"
                     >
                       {primaryLabel}
-                    </button>
+                    </StorefrontButton>
                   )}
                 </div>
               ) : null}

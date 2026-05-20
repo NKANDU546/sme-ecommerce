@@ -1,6 +1,6 @@
 {
   "templateId": "classic-boutique",
-  "themeId": "boutique-navy",
+  "themeId": "blue",
   "configVersion": 3,
   "shopName": "SME Operations",
   "tagline": "Curated retail, calmer days.",
@@ -29,11 +29,7 @@
       "priceLabel": "R 189.00",
       "imageUrl": "https://images.unsplash.com/photo-1571091718767-18b5b1457add?auto=format&fit=crop&w=800&q=80"
     },
-    {
-      "title": "Studio task chair",
-      "priceLabel": "R 2 450.00",
-      "imageUrl": "https://images.unsplash.com/photo-1580480055272-228038267cbd?auto=format&fit=crop&w=800&q=80"
-    },
+    
     {
       "title": "Wireless headphones",
       "priceLabel": "R 899.00",

@@ -217,13 +217,21 @@ export function StorefrontEditor({
     setShowSectionPicker(false);
   }
 
+  function selectTheme(themeId: StorefrontThemeId) {
+    patch({
+      themeId,
+      accentColor: STOREFRONT_THEME_DEFINITIONS[themeId].defaultAccent,
+    });
+  }
+
   let body: ReactNode;
   switch (section) {
     case "appearance":
       body = (
         <div className="space-y-5">
           <p className="font-sans text-xs leading-relaxed text-muted-foreground">
-            Theme presets control surfaces and default accent. Data saves in{" "}
+            Choose the main colour theme for storefront backgrounds, text, and
+            buttons. Data saves in{" "}
             <span className="font-medium text-primary-blue/80">
               localStorage
             </span>{" "}
@@ -241,7 +249,7 @@ export function StorefrontEditor({
               className="w-full border border-primary-blue/15 bg-white px-3 py-2 font-sans text-sm outline-none focus-visible:border-primary-blue/35 focus-visible:ring-2 focus-visible:ring-primary-blue/15"
               value={config.themeId}
               onChange={(e) =>
-                patch({ themeId: e.target.value as StorefrontThemeId })
+                selectTheme(e.target.value as StorefrontThemeId)
               }
             >
               {Object.values(STOREFRONT_THEME_DEFINITIONS).map((t) => (
@@ -251,15 +259,9 @@ export function StorefrontEditor({
               ))}
             </select>
             <p className="mt-2 font-sans text-[11px] leading-relaxed text-muted-foreground">
-              Use a valid 6-digit hex accent to override the preset default.
+              Switching theme updates the live preview immediately.
             </p>
           </div>
-          <Field
-            label="Accent colour (hex, e.g. #0a2540)"
-            id="sf-accent"
-            value={config.accentColor}
-            onChange={(e) => patch({ accentColor: e.target.value })}
-          />
         </div>
       );
       break;

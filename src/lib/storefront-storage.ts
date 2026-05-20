@@ -1,5 +1,8 @@
 import defaultStorefrontJson from "@/data/default-storefront.json";
-import { normalizeStorefrontThemeId } from "@/lib/storefront-themes";
+import {
+  STOREFRONT_THEME_DEFINITIONS,
+  normalizeStorefrontThemeId,
+} from "@/lib/storefront-themes";
 import type {
   StorefrontConfig,
   StorefrontFeature,
@@ -116,10 +119,15 @@ export function upgradeStorefrontConfig(raw: StorefrontConfig): StorefrontConfig
     maxNav,
   );
 
+  const rawThemeId = (legacy as StorefrontConfig & { themeId?: string })
+    .themeId;
   const themeId = normalizeStorefrontThemeId(
-    (legacy as StorefrontConfig & { themeId?: string }).themeId ??
-      seed.themeId,
+    rawThemeId ?? seed.themeId,
   ) as StorefrontThemeId;
+  const accentColor =
+    rawThemeId === "blue" || rawThemeId === "red"
+      ? String(legacy.accentColor || seed.accentColor)
+      : STOREFRONT_THEME_DEFINITIONS[themeId].defaultAccent;
 
   return {
     ...seed,
@@ -153,7 +161,7 @@ export function upgradeStorefrontConfig(raw: StorefrontConfig): StorefrontConfig
     heroHeading: String(legacy.heroHeading || seed.heroHeading),
     heroSubheading: String(legacy.heroSubheading || seed.heroSubheading),
     whatsappNumber: String(legacy.whatsappNumber || seed.whatsappNumber),
-    accentColor: String(legacy.accentColor || seed.accentColor),
+    accentColor,
     templateId: (legacy.templateId ||
       seed.templateId) as StorefrontTemplateId,
   };

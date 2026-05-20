@@ -26,8 +26,11 @@ export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
     useState<StorefrontCustomizeMode>("sections");
 
   useEffect(() => {
-    setConfig(loadStorefront(workspaceId));
-    setHydrated(true);
+    const id = window.setTimeout(() => {
+      setConfig(loadStorefront(workspaceId));
+      setHydrated(true);
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [workspaceId]);
 
   const persist = useCallback(

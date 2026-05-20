@@ -1,6 +1,7 @@
 import { ClassicBoutiqueSiteFooter } from "@/components/storefront/templates/classic-boutique-site-footer";
 import { ClassicBoutiqueSiteHeader } from "@/components/storefront/templates/classic-boutique-site-header";
 import { ClassicBoutiqueSmartLink as SmartLink } from "@/components/storefront/templates/classic-boutique-smart-link";
+import { storefrontButtonClassName } from "@/components/storefront/storefront-button";
 import type {
   StorefrontConfig,
   StorefrontFeatureIconId,
@@ -113,7 +114,10 @@ function PromoCard({
           {card.description}
         </p>
         <span
-          className="mt-5 inline-flex w-fit border border-white/40 bg-white/10 px-4 py-2 font-sans text-xs font-semibold uppercase tracking-[0.12em] text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+          className={storefrontButtonClassName({
+            size: "sm",
+            className: "mt-5 w-fit uppercase tracking-[0.12em]",
+          })}
         >
           {card.buttonLabel}
         </span>
@@ -166,12 +170,15 @@ export function ClassicBoutiqueStorefront({
               <SmartLink
                 link={config.heroPrimaryCta}
                 workspaceId={workspaceId}
-                className="inline-flex items-center justify-center bg-white px-6 py-3 font-sans text-sm font-semibold text-[color:var(--sf-accent)] shadow-sm transition-colors hover:bg-white/90"
+                className={storefrontButtonClassName({ size: "lg" })}
               />
               <SmartLink
                 link={config.heroSecondaryCta}
                 workspaceId={workspaceId}
-                className="inline-flex items-center justify-center border border-white/40 bg-white/10 px-6 py-3 font-sans text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+                className={storefrontButtonClassName({
+                  variant: "outline",
+                  size: "lg",
+                })}
               />
             </div>
           </div>
@@ -180,7 +187,7 @@ export function ClassicBoutiqueStorefront({
 
       {/* ─── Featured arrivals ─── */}
       <section
-        className="mx-auto max-w-7xl px-4 py-14 sm:px-8 sm:py-20"
+        className="mx-auto max-w-[100%] px-4 py-14 sm:px-8 sm:py-20"
         aria-labelledby="featured-heading"
       >
         <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
@@ -193,7 +200,7 @@ export function ClassicBoutiqueStorefront({
           <SmartLink
             link={config.featuredViewAll}
             workspaceId={workspaceId}
-            className="font-sans text-sm font-medium text-[color:var(--sf-accent)] underline decoration-[color:var(--sf-accent-border-25)] underline-offset-4 transition-colors hover:decoration-[color:var(--sf-accent)]"
+            className={storefrontButtonClassName({ variant: "text" })}
           />
         </div>
         <div className="grid grid-cols-2 gap-5 md:grid-cols-4 md:gap-8">
@@ -210,7 +217,7 @@ export function ClassicBoutiqueStorefront({
 
       {/* ─── Promo split ─── */}
       <section className="border-y border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-promo-section-bg)] py-14 sm:py-16">
-        <div className="mx-auto grid max-w-7xl gap-4 px-4 sm:px-8 lg:grid-cols-5 lg:gap-5">
+        <div className="mx-auto grid max-w-[100%] gap-4 px-4 sm:px-8 lg:grid-cols-5 lg:gap-5">
           <PromoCard card={config.promos[0]} wide />
           <PromoCard card={config.promos[1]} wide={false} />
         </div>
@@ -224,7 +231,7 @@ export function ClassicBoutiqueStorefront({
         <h2 id="values-heading" className="sr-only">
           Why shop with us
         </h2>
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:grid-cols-3 sm:gap-12 sm:px-8">
+        <div className="mx-auto grid max-w-[100%] gap-10 px-4 sm:grid-cols-3 sm:gap-12 sm:px-8">
           {config.features.map((f, i) => (
             <div key={`${f.title}-${i}`} className="text-center sm:text-left">
               <div className="mx-auto flex justify-center sm:mx-0 sm:justify-start">

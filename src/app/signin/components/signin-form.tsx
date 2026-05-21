@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
-import { loginAction } from "@/actions/auth";
+import { getAccountMeAction, loginAction } from "@/actions/auth";
 import { persistLoginSuccess } from "@/lib/auth-login-storage";
 
 export function SigninForm() {
@@ -19,10 +19,18 @@ export function SigninForm() {
     const password = String(fd.get("password") ?? "");
 
     setIsSubmitting(true);
-    const result = await loginAction({ email, password });
-    setIsSubmitting(false);
+    const result = await loginAction({ email, password }).catch(() => null);
+
+    if (!result) {
+      setIsSubmitting(false);
+      toast.error("Sign in could not be completed.", {
+        description: "The server returned an unexpected response.",
+      });
+      return;
+    }
 
     if (!result.ok) {
+      setIsSubmitting(false);
       const { errorMessage, errorCode } = result;
       if (errorCode === "ACCESS_DENIED") {
         toast.error(errorMessage, {
@@ -39,11 +47,46 @@ export function SigninForm() {
     persistLoginSuccess(email, result.data);
 
     if (result.data.businessId) {
+      setIsSubmitting(false);
       toast.success("Signed in");
       router.push(`/dashboard/${result.data.businessId}`);
       return;
     }
 
+    if (result.data.accessToken) {
+      const profile = await getAccountMeAction(result.data.accessToken).catch(
+        () => null,
+      );
+      setIsSubmitting(false);
+
+      if (!profile) {
+        toast.error("Could not load your workspace profile.", {
+          description:
+            "Sign in worked, but /account/me failed. Check that the token is accepted by the backend.",
+        });
+        return;
+      }
+
+      if (!profile.ok) {
+        toast.error(profile.errorMessage);
+        return;
+      }
+
+      persistLoginSuccess(email, {
+        ...result.data,
+        userId: profile.data.userId,
+        businessId: profile.data.businessId,
+        businessName: profile.data.businessName,
+        publicLink: profile.data.publicLink,
+        fullName: profile.data.fullName,
+      });
+
+      toast.success("Signed in");
+      router.push(`/dashboard/${profile.data.businessId}`);
+      return;
+    }
+
+    setIsSubmitting(false);
     toast.success("Signed in", {
       description: "Your session is saved. Open your workspace from the app when your account is fully linked.",
     });

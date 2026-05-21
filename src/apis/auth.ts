@@ -1,21 +1,31 @@
 import { getSmeApiBaseUrl } from "@/apis/config";
 import type {
+  AccountMeApiEnvelope,
   LoginApiEnvelope,
   LoginCredentials,
   LoginSuccessData,
+  GetAccountMeResult,
   PostLoginResult,
+  LogoutApiEnvelope,
+  PostLogoutResult,
   RegisterApiEnvelope,
   RegisterBusinessInput,
   PostRegisterResult,
+  VerifyEmailApiEnvelope,
+  VerifyEmailResult,
 } from "@/types/auth";
 
 export type {
   LoginCredentials,
   LoginSuccessData,
+  AccountProfileData,
+  GetAccountMeResult,
   PostLoginResult,
+  PostLogoutResult,
   RegisterBusinessInput,
   RegisterSuccessData,
   PostRegisterResult,
+  VerifyEmailResult,
 } from "@/types/auth";
 
 function normalizeLoginData(raw: unknown): LoginSuccessData {
@@ -117,6 +127,148 @@ export async function postLogin(
   const errorMessage =
     json.error?.message ??
     (res.ok ? "Sign in could not be completed." : `Request failed (${res.status}).`);
+
+  return {
+    ok: false,
+    errorMessage,
+    errorCode: json.error?.code,
+  };
+}
+
+/** GET /account/me */
+export async function getAccountMe(
+  accessToken: string,
+): Promise<GetAccountMeResult> {
+  const url = `${getSmeApiBaseUrl()}/account/me`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: "no-store",
+    });
+  } catch {
+    return {
+      ok: false,
+      errorMessage:
+        "Could not load your account profile. Check your connection and try again.",
+    };
+  }
+
+  let json: AccountMeApiEnvelope;
+  try {
+    json = (await res.json()) as AccountMeApiEnvelope;
+  } catch {
+    return {
+      ok: false,
+      errorMessage: `Unexpected profile response (${res.status}). Please try again.`,
+    };
+  }
+
+  if (json.success && json.data) {
+    return { ok: true, data: json.data };
+  }
+
+  const errorMessage =
+    json.error?.message ??
+    (res.ok
+      ? "Your account profile could not be loaded."
+      : `Profile request failed (${res.status}).`);
+
+  return {
+    ok: false,
+    errorMessage,
+    errorCode: json.error?.code,
+  };
+}
+
+/** POST /auth/logout */
+export async function postLogout(
+  refreshToken: string,
+): Promise<PostLogoutResult> {
+  const url = `${getSmeApiBaseUrl()}/auth/logout`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "*/*",
+      },
+      body: JSON.stringify({ refreshToken }),
+    });
+  } catch {
+    return {
+      ok: false,
+      errorMessage:
+        "Could not reach the server to log out. Your local session can still be cleared.",
+    };
+  }
+
+  let json: LogoutApiEnvelope;
+  try {
+    json = (await res.json()) as LogoutApiEnvelope;
+  } catch {
+    return {
+      ok: false,
+      errorMessage: `Unexpected logout response (${res.status}).`,
+    };
+  }
+
+  if (json.success) {
+    return { ok: true, message: json.data ?? "Logged out successfully" };
+  }
+
+  const errorMessage =
+    json.error?.message ??
+    (res.ok ? "Logout could not be completed." : `Logout failed (${res.status}).`);
+
+  return {
+    ok: false,
+    errorMessage,
+    errorCode: json.error?.code,
+  };
+}
+
+/** GET /auth/verify?token=... */
+export async function verifyEmailToken(
+  token: string,
+): Promise<VerifyEmailResult> {
+  const url = `${getSmeApiBaseUrl()}/auth/verify?token=${encodeURIComponent(token)}`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: { Accept: "*/*" },
+      cache: "no-store",
+    });
+  } catch {
+    return {
+      ok: false,
+      errorMessage:
+        "Could not reach the server to verify your email. Check your connection and try again.",
+    };
+  }
+
+  let json: VerifyEmailApiEnvelope;
+  try {
+    json = (await res.json()) as VerifyEmailApiEnvelope;
+  } catch {
+    return {
+      ok: false,
+      errorMessage: `Unexpected verification response (${res.status}).`,
+    };
+  }
+
+  if (json.success) {
+    return { ok: true, message: json.data ?? "Email verified successfully." };
+  }
+
+  const errorMessage =
+    json.error?.message ??
+    (res.ok
+      ? "Email verification could not be completed."
+      : `Verification failed (${res.status}).`);
 
   return {
     ok: false,

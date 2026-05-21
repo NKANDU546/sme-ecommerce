@@ -36,6 +36,9 @@ export type LoginSuccessData = {
   accessToken?: string;
   refreshToken?: string;
   expiresIn?: number;
+  businessName?: string;
+  publicLink?: string;
+  fullName?: string;
 };
 
 export type PostLoginResult =
@@ -47,3 +50,49 @@ export type LoginApiEnvelope = {
   data: unknown;
   error: { code?: string; message?: string } | null;
 };
+
+export type AccountProfileData = {
+  userId: string;
+  email: string;
+  fullName: string;
+  accountStatus: string;
+  role: string;
+  userCreatedAt: string;
+  userUpdatedAt: string;
+  businessId: string;
+  businessName: string;
+  businessDescription: string;
+  slug: string;
+  publicLink: string;
+  businessUpdatedAt: string;
+};
+
+export type AccountMeApiEnvelope = {
+  success: boolean;
+  data: AccountProfileData | null;
+  error: { code?: string; message?: string } | null;
+};
+
+export type GetAccountMeResult =
+  | { ok: true; data: AccountProfileData }
+  | { ok: false; errorMessage: string; errorCode?: string };
+
+export type LogoutApiEnvelope = {
+  success: boolean;
+  data: string | null;
+  error: { code?: string; message?: string } | null;
+};
+
+export type PostLogoutResult =
+  | { ok: true; message: string }
+  | { ok: false; errorMessage: string; errorCode?: string };
+
+export type VerifyEmailApiEnvelope = {
+  success: boolean;
+  data: string | null;
+  error: { code?: string; message?: string } | null;
+};
+
+export type VerifyEmailResult =
+  | { ok: true; message: string }
+  | { ok: false; errorMessage: string; errorCode?: string };

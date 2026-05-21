@@ -1,6 +1,13 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { logoutAction } from "@/actions/auth";
+import {
+  clearStoredAuthSession,
+  getStoredAuthSession,
+} from "@/lib/auth-login-storage";
 import {
   SME_WORKSPACE_STORAGE_KEY,
   type StoredWorkspace,
@@ -18,7 +25,9 @@ function initials(name: string): string {
 }
 
 export function WorkspaceUserPanel({ workspaceId }: WorkspaceUserPanelProps) {
+  const router = useRouter();
   const [stored, setStored] = useState<StoredWorkspace | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -37,6 +46,26 @@ export function WorkspaceUserPanel({ workspaceId }: WorkspaceUserPanelProps) {
   const displayName = stored?.name?.trim() || "Merchant";
   const displayEmail = stored?.email?.trim() || "Workspace";
 
+  async function handleLogout() {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+
+    const session = getStoredAuthSession();
+    if (session?.refreshToken) {
+      const result = await logoutAction(session.refreshToken);
+      if (!result.ok) {
+        toast.error(result.errorMessage, {
+          description: "Your local session will still be cleared.",
+        });
+      }
+    }
+
+    clearStoredAuthSession();
+    setIsLoggingOut(false);
+    toast.success("Logged out");
+    router.push("/signin");
+  }
+
   return (
     <div className="mt-auto border-t border-primary-blue/10 p-4">
       <div className="flex items-center gap-3">
@@ -52,6 +81,14 @@ export function WorkspaceUserPanel({ workspaceId }: WorkspaceUserPanelProps) {
           </p>
         </div>
       </div>
+      <button
+        type="button"
+        onClick={handleLogout}
+        disabled={isLoggingOut}
+        className="mt-4 flex w-full cursor-pointer items-center justify-center rounded border border-primary-blue/15 px-3 py-2 font-sans text-xs font-semibold text-primary-blue transition-colors hover:bg-blue-gray/40 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {isLoggingOut ? "Logging out..." : "Log out"}
+      </button>
     </div>
   );
 }

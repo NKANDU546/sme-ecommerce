@@ -44,27 +44,6 @@ export function SignupVerifyModal({
         </p>
       ) : null}
 
-      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <Link
-          href="/signin"
-          className="inline-flex items-center justify-center bg-primary-blue px-5 py-3 font-sans text-sm font-semibold text-white transition-colors hover:bg-primary-blue/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-blue"
-        >
-          Go to sign in
-        </Link>
-        <Link
-          href={`/dashboard/${businessId}`}
-          className="inline-flex items-center justify-center border border-primary-blue/20 bg-white px-5 py-3 font-sans text-sm font-medium text-primary-blue transition-colors hover:bg-blue-gray/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-blue"
-        >
-          Preview workspace
-        </Link>
-      </div>
-      <button
-        type="button"
-        onClick={onClose}
-        className="mt-6 font-sans text-sm font-medium text-muted-foreground underline decoration-primary-blue/25 underline-offset-4 transition-colors hover:text-primary-blue"
-      >
-        Close and stay on this page
-      </button>
     </Modal>
   );
 }

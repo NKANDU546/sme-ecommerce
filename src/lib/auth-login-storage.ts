@@ -9,7 +9,30 @@ export const SME_AUTH_SESSION_KEY = "sme_auth_session";
 type StoredAuthSession = {
   accessToken: string;
   refreshToken?: string;
+  expiresIn?: number;
 };
+
+export function getStoredAuthSession(): StoredAuthSession | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(SME_AUTH_SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredAuthSession;
+    return parsed.accessToken ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearStoredAuthSession(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(SME_AUTH_SESSION_KEY);
+    localStorage.removeItem(SME_WORKSPACE_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 
 /** Persist tokens and workspace id after a successful login (client-only). */
 export function persistLoginSuccess(email: string, data: LoginSuccessData): void {
@@ -20,6 +43,7 @@ export function persistLoginSuccess(email: string, data: LoginSuccessData): void
       const session: StoredAuthSession = {
         accessToken: data.accessToken,
         refreshToken: data.refreshToken,
+        expiresIn: data.expiresIn,
       };
       localStorage.setItem(SME_AUTH_SESSION_KEY, JSON.stringify(session));
     } catch {
@@ -47,11 +71,11 @@ export function persistLoginSuccess(email: string, data: LoginSuccessData): void
   const payload: StoredWorkspace = {
     workspaceId: data.businessId,
     email,
-    name: matched ? matched.name : "Merchant",
+    name: data.fullName ?? (matched ? matched.name : "Merchant"),
     createdAt: matched ? matched.createdAt : Date.now(),
     userId: data.userId ?? matched?.userId,
-    businessName: matched?.businessName,
-    publicLink: matched?.publicLink,
+    businessName: data.businessName ?? matched?.businessName,
+    publicLink: data.publicLink ?? matched?.publicLink,
   };
 
   try {

@@ -56,8 +56,6 @@ const DEFAULT_SIDEBAR: CatalogProductSidebarBlock[] = [
 export function enrichCatalogProductForPdp(
   product: CatalogProduct,
 ): CatalogProductPdpView {
-  const inStock = product.status === "active";
-
   const galleryFrom = [product.imageUrl, ...(product.galleryUrls ?? [])];
   const seen = new Set<string>();
   const gallery: string[] = [];

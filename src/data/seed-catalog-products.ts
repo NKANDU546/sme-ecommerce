@@ -18,28 +18,8 @@ export const SEED_CATALOG_PRODUCTS: CatalogProduct[] = [
     ],
     updatedAt: Date.now() - 86400000 * 2,
   },
-  {
-    id: "p-2",
-    title: "Ceramic tea set",
-    sku: "SKU-HOM-014",
-    priceLabel: "R 189.00",
-    category: "Home",
-    status: "active",
-    imageUrl:
-      "https://images.unsplash.com/photo-1571091718767-18b5b1457add?auto=format&fit=crop&w=1200&q=80",
-    updatedAt: Date.now() - 86400000 * 5,
-  },
-  {
-    id: "p-3",
-    title: "Studio task chair",
-    sku: "SKU-OFC-003",
-    priceLabel: "R 2 450.00",
-    category: "Office",
-    status: "active",
-    imageUrl:
-      "https://images.unsplash.com/photo-1580480055272-228038267cbd?auto=format&fit=crop&w=1200&q=80",
-    updatedAt: Date.now() - 86400000,
-  },
+  
+ 
   {
     id: "p-4",
     title: "Wireless headphones",
@@ -116,17 +96,7 @@ export const SEED_CATALOG_PRODUCTS: CatalogProduct[] = [
       "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=1200&q=80",
     updatedAt: Date.now() - 86400000 * 12,
   },
-  {
-    id: "p-6",
-    title: "Standing desk frame",
-    sku: "SKU-OFC-102",
-    priceLabel: "R 3 200.00",
-    category: "Office",
-    status: "active",
-    imageUrl:
-      "https://images.unsplash.com/photo-1518455027357-f3f8164ba6bd?auto=format&fit=crop&w=1200&q=80",
-    updatedAt: Date.now() - 86400000 * 3,
-  },
+  
   {
     id: "p-7",
     title: "USB-C hub (7-in-1)",

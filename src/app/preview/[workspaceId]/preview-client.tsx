@@ -14,8 +14,11 @@ export function PreviewClient({ workspaceId }: PreviewClientProps) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setConfig(loadStorefront(workspaceId));
-    setReady(true);
+    const id = window.setTimeout(() => {
+      setConfig(loadStorefront(workspaceId));
+      setReady(true);
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [workspaceId]);
 
   if (!ready) {

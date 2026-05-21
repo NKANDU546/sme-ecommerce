@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePreviewCartOptional } from "@/contexts/preview-cart-context";
+import { StorefrontButtonLink } from "@/components/storefront/storefront-button";
 import { ClassicBoutiqueSiteHeader } from "@/components/storefront/templates/classic-boutique-site-header";
 import { StorefrontThemeRoot } from "@/components/storefront/storefront-theme-root";
 import { loadCatalogProducts } from "@/lib/catalog-storage";
@@ -21,9 +22,12 @@ export function ShopCollectionClient({ workspaceId }: ShopCollectionClientProps)
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setConfig(loadStorefront(workspaceId));
-    setProducts(loadCatalogProducts(workspaceId));
-    setReady(true);
+    const id = window.setTimeout(() => {
+      setConfig(loadStorefront(workspaceId));
+      setProducts(loadCatalogProducts(workspaceId));
+      setReady(true);
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [workspaceId]);
 
   if (!ready) {
@@ -61,7 +65,7 @@ export function ShopCollectionClient({ workspaceId }: ShopCollectionClientProps)
       <div className="min-h-full bg-[color:var(--sf-page-bg)]">
         <ClassicBoutiqueSiteHeader config={config} />
 
-        <main className="mx-auto max-w-7xl px-4 py-12 sm:px-8 sm:py-16">
+        <main className="mx-auto max-w-[100%] px-4 py-12 sm:px-8 sm:py-16">
           <h1 className="font-serif text-3xl font-light text-[color:var(--sf-accent)] sm:text-4xl">
             Shop collection
           </h1>
@@ -117,25 +121,13 @@ export function ShopCollectionClient({ workspaceId }: ShopCollectionClientProps)
                   </Link>
                   {cart ? (
                     <div className="mt-auto border-t border-[color:var(--sf-accent-border-5)] px-3 py-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          cart.addItem(
-                            {
-                              productId: p.id,
-                              title: p.title,
-                              sku: p.sku,
-                              priceLabel: p.priceLabel,
-                              imageUrl: p.imageUrl,
-                              quantity: 1,
-                            },
-                            { openDrawer: false },
-                          )
-                        }
-                        className="w-full rounded-md bg-[color:var(--sf-accent)] py-2 font-sans text-xs font-semibold text-[color:var(--sf-cart-badge-fg)] transition-opacity hover:opacity-95"
+                      <StorefrontButtonLink
+                        href={`/preview/${workspaceId}/shop/${p.id}`}
+                        size="sm"
+                        className="w-full"
                       >
-                        Add to cart
-                      </button>
+                        View product
+                      </StorefrontButtonLink>
                     </div>
                   ) : null}
                 </li>

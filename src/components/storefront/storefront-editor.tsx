@@ -6,16 +6,19 @@ import { useEffect, useState } from "react";
 import { STOREFRONT_THEME_DEFINITIONS } from "@/lib/storefront-themes";
 import type {
   StorefrontConfig,
+  StorefrontCustomPage,
   StorefrontFeature,
   StorefrontFeatureIconId,
   StorefrontLink,
   StorefrontProductPlaceholder,
   StorefrontPromoCard,
+  StorefrontSection,
   StorefrontThemeId,
 } from "@/types/storefront";
 
 type StorefrontEditorSectionId =
   | "appearance"
+  | "pages"
   | "brand"
   | "navbar"
   | "hero"
@@ -26,12 +29,9 @@ type StorefrontEditorSectionId =
 
 const EDITOR_SECTIONS: { id: StorefrontEditorSectionId; label: string }[] = [
   { id: "appearance", label: "Appearance" },
+  { id: "pages", label: "Pages & sections" },
   { id: "brand", label: "Brand" },
   { id: "navbar", label: "Navbar" },
-  { id: "hero", label: "Hero" },
-  { id: "products", label: "Products" },
-  { id: "promos", label: "Promos" },
-  { id: "values", label: "Value props" },
   { id: "footer", label: "Footer" },
 ];
 
@@ -44,6 +44,7 @@ type StorefrontEditorProps = {
   onCustomizeModeChange?: (mode: StorefrontCustomizeMode) => void;
   /** Shown next to Return on small screens while the preview column is hidden. */
   previewHref?: string;
+  sectionEditTarget?: { id: string; requestId: number } | null;
 };
 
 function Field({
@@ -131,22 +132,186 @@ const EMPTY_PRODUCT: StorefrontProductPlaceholder = {
   imageUrl: "",
 };
 
+const SECTION_LIBRARY: Array<{
+  type: StorefrontSection["type"];
+  label: string;
+  description: string;
+}> = [
+  {
+    type: "hero",
+    label: "Hero banner",
+    description: "Large image-led intro with two buttons.",
+  },
+  {
+    type: "featuredProducts",
+    label: "Featured products",
+    description: "A simple grid of highlighted products.",
+  },
+  {
+    type: "promoBanner",
+    label: "Promo banner",
+    description: "Sale or campaign card with image and CTA.",
+  },
+  {
+    type: "textImage",
+    label: "Text + image",
+    description: "Story block with supporting image.",
+  },
+  {
+    type: "features",
+    label: "Benefits",
+    description: "Three feature columns with icons.",
+  },
+  {
+    type: "faq",
+    label: "FAQ",
+    description: "Frequently asked questions.",
+  },
+  {
+    type: "contactCta",
+    label: "Contact CTA",
+    description: "WhatsApp or contact call-to-action.",
+  },
+];
+
+function slugifyPageTitle(title: string, fallback: string): string {
+  const slug = title
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || fallback;
+}
+
+function newSection(type: StorefrontSection["type"]): StorefrontSection {
+  const id = `${type}-${Date.now()}`;
+  switch (type) {
+    case "hero":
+      return {
+        id,
+        type,
+        imageUrl: "",
+        heading: "New page hero",
+        subheading: "Tell customers what this page is about.",
+        primaryCta: { label: "Shop collection", href: "@shop" },
+        secondaryCta: { label: "Learn more", href: "#" },
+      };
+    case "featuredProducts":
+      return {
+        id,
+        type,
+        title: "Featured products",
+        viewAll: { label: "View all", href: "@shop" },
+        products: [{ ...EMPTY_PRODUCT }],
+      };
+    case "promoBanner":
+      return {
+        id,
+        type,
+        title: "Special offer",
+        description: "Highlight a launch, sale, or seasonal promotion.",
+        buttonLabel: "Shop now",
+        imageUrl: "",
+        href: "@shop",
+      };
+    case "textImage":
+      return {
+        id,
+        type,
+        eyebrow: "Story",
+        title: "Add your story",
+        body: "Use this section to explain your brand, service, or product range.",
+        imageUrl: "",
+        imagePosition: "right",
+        cta: { label: "Learn more", href: "#" },
+      };
+    case "features":
+      return {
+        id,
+        type,
+        title: "Why shop with us",
+        items: [
+          {
+            title: "Fast service",
+            description: "Help customers understand why ordering is easy.",
+            icon: "check",
+          },
+          {
+            title: "Reliable delivery",
+            description: "Explain pickup, shipping, or local fulfilment.",
+            icon: "truck",
+          },
+          {
+            title: "Helpful support",
+            description: "Mention WhatsApp support or personal service.",
+            icon: "sparkle",
+          },
+        ],
+      };
+    case "faq":
+      return {
+        id,
+        type,
+        title: "Frequently asked questions",
+        items: [
+          {
+            question: "How do I place an order?",
+            answer: "Browse products, add them to cart, and complete checkout.",
+          },
+          {
+            question: "Can I contact you first?",
+            answer: "Yes, use the contact button and we will help on WhatsApp.",
+          },
+        ],
+      };
+    case "contactCta":
+      return {
+        id,
+        type,
+        title: "Need help?",
+        body: "Message us and we will help you choose the right products.",
+        buttonLabel: "Contact us",
+        href: "#",
+      };
+  }
+}
+
 export function StorefrontEditor({
   config,
   onChange,
   onCustomizeModeChange,
   previewHref,
+  sectionEditTarget,
 }: StorefrontEditorProps) {
   const [section, setSection] = useState<StorefrontEditorSectionId>(
     EDITOR_SECTIONS[0].id,
   );
   const [showSectionPicker, setShowSectionPicker] = useState(true);
+  const [selectedPageId, setSelectedPageId] = useState<"home" | string>("home");
+  const [focusedSectionId, setFocusedSectionId] = useState<string | null>(null);
 
   useEffect(() => {
     onCustomizeModeChange?.(
       showSectionPicker ? "sections" : "section",
     );
   }, [showSectionPicker, onCustomizeModeChange]);
+
+  useEffect(() => {
+    if (!sectionEditTarget) return;
+    const timeoutId = window.setTimeout(() => {
+      setSection("pages");
+      setShowSectionPicker(false);
+      setSelectedPageId("home");
+      setFocusedSectionId(sectionEditTarget.id);
+      window.requestAnimationFrame(() => {
+        document
+          .getElementById(`storefront-editor-section-${sectionEditTarget.id}`)
+          ?.scrollIntoView({ block: "start", behavior: "smooth" });
+      });
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [sectionEditTarget]);
 
   function patch(partial: Partial<StorefrontConfig>) {
     onChange({ ...config, ...partial });
@@ -209,12 +374,580 @@ export function StorefrontEditor({
     patch({ [key]: list });
   }
 
+  const selectedPage =
+    selectedPageId === "home"
+      ? null
+      : config.pages.find((p) => p.id === selectedPageId) ?? null;
+  const editableSections =
+    selectedPageId === "home" ? config.sections : selectedPage?.sections ?? [];
+
+  function patchSections(nextSections: StorefrontSection[]) {
+    if (selectedPageId === "home") {
+      patch({ sections: nextSections });
+      return;
+    }
+    patch({
+      pages: config.pages.map((page) =>
+        page.id === selectedPageId
+          ? { ...page, sections: nextSections }
+          : page,
+      ),
+    });
+  }
+
+  function patchSelectedPage(partial: Partial<StorefrontCustomPage>) {
+    if (selectedPageId === "home") return;
+    patch({
+      pages: config.pages.map((page) =>
+        page.id === selectedPageId ? { ...page, ...partial } : page,
+      ),
+    });
+  }
+
+  function addPage() {
+    const n = config.pages.length + 1;
+    const title = `New page ${n}`;
+    const page: StorefrontCustomPage = {
+      id: `page-${Date.now()}`,
+      title,
+      slug: slugifyPageTitle(title, `page-${n}`),
+      sections: [newSection("hero")],
+    };
+    patch({ pages: [...config.pages, page] });
+    setSelectedPageId(page.id);
+  }
+
+  function removeSelectedPage() {
+    if (selectedPageId === "home") return;
+    patch({ pages: config.pages.filter((page) => page.id !== selectedPageId) });
+    setSelectedPageId("home");
+  }
+
+  function addSection(type: StorefrontSection["type"]) {
+    patchSections([...editableSections, newSection(type)]);
+  }
+
+  function removeSection(index: number) {
+    if (editableSections.length <= 1) return;
+    patchSections(editableSections.filter((_, i) => i !== index));
+  }
+
+  function patchSectionAt(index: number, nextSection: StorefrontSection) {
+    patchSections(
+      editableSections.map((item, i) => (i === index ? nextSection : item)),
+    );
+  }
+
   const sectionLabel =
     EDITOR_SECTIONS.find((s) => s.id === section)?.label ?? section;
+  const focusedSectionIndex = focusedSectionId
+    ? editableSections.findIndex((item) => item.id === focusedSectionId)
+    : -1;
+  const isFocusedSectionEditing = focusedSectionIndex >= 0;
+  const visibleSectionEntries = isFocusedSectionEditing
+    ? [
+        {
+          item: editableSections[focusedSectionIndex],
+          index: focusedSectionIndex,
+        },
+      ]
+    : editableSections.map((item, index) => ({ item, index }));
 
   function selectSection(id: StorefrontEditorSectionId) {
     setSection(id);
     setShowSectionPicker(false);
+    setFocusedSectionId(null);
+  }
+
+  function selectTheme(themeId: StorefrontThemeId) {
+    patch({
+      themeId,
+      accentColor: STOREFRONT_THEME_DEFINITIONS[themeId].defaultAccent,
+    });
+  }
+
+  function renderSectionLayoutField(item: StorefrontSection, index: number) {
+    return (
+      <div>
+        <label
+          htmlFor={`sec-${item.id}-desktop-layout`}
+          className="mb-1.5 block font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60"
+        >
+          Desktop layout
+        </label>
+        <select
+          id={`sec-${item.id}-desktop-layout`}
+          value={item.desktopLayout ?? "full"}
+          onChange={(event) =>
+            patchSectionAt(index, {
+              ...item,
+              desktopLayout:
+                event.target.value === "half" ? "half" : "full",
+            })
+          }
+          className="w-full border border-primary-blue/15 bg-white px-3 py-2 font-sans text-sm text-foreground outline-none focus-visible:border-primary-blue/35 focus-visible:ring-2 focus-visible:ring-primary-blue/15"
+        >
+          <option value="full">Full width</option>
+          <option value="half">Half width, pair on desktop</option>
+        </select>
+        <p className="mt-1 font-sans text-[11px] leading-relaxed text-muted-foreground">
+          Place two half-width sections next to each other to create a desktop
+          flex row.
+        </p>
+      </div>
+    );
+  }
+
+  function renderSectionFields(item: StorefrontSection, index: number) {
+    switch (item.type) {
+      case "hero":
+        return (
+          <div className="space-y-3">
+            <Field
+              label="Heading"
+              id={`sec-${item.id}-heading`}
+              value={item.heading}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, heading: e.target.value })
+              }
+            />
+            <TextAreaField
+              label="Subheading"
+              id={`sec-${item.id}-subheading`}
+              value={item.subheading}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, subheading: e.target.value })
+              }
+            />
+            <Field
+              label="Background image URL"
+              id={`sec-${item.id}-image`}
+              value={item.imageUrl}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, imageUrl: e.target.value })
+              }
+            />
+            <LinkPairEditor
+              label="Primary button"
+              link={item.primaryCta}
+              idPrefix={`sec-${item.id}-primary`}
+              onChange={(next) =>
+                patchSectionAt(index, { ...item, primaryCta: next })
+              }
+            />
+            <LinkPairEditor
+              label="Secondary button"
+              link={item.secondaryCta}
+              idPrefix={`sec-${item.id}-secondary`}
+              onChange={(next) =>
+                patchSectionAt(index, { ...item, secondaryCta: next })
+              }
+            />
+          </div>
+        );
+      case "featuredProducts":
+        return (
+          <div className="space-y-3">
+            <Field
+              label="Title"
+              id={`sec-${item.id}-title`}
+              value={item.title}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, title: e.target.value })
+              }
+            />
+            <LinkPairEditor
+              label="View all link"
+              link={item.viewAll}
+              idPrefix={`sec-${item.id}-view-all`}
+              onChange={(next) =>
+                patchSectionAt(index, { ...item, viewAll: next })
+              }
+            />
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-primary-blue/55">
+                  Products
+                </p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    patchSectionAt(index, {
+                      ...item,
+                      products: [...item.products, { ...EMPTY_PRODUCT }],
+                    })
+                  }
+                  className="font-sans text-xs font-semibold text-primary-blue underline decoration-primary-blue/30 underline-offset-2"
+                >
+                  Add product
+                </button>
+              </div>
+              {item.products.map((product, productIndex) => (
+                <div
+                  key={`${item.id}-product-${productIndex}`}
+                  className="rounded border border-primary-blue/10 bg-white p-3"
+                >
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.14em] text-primary-blue/45">
+                      Product {productIndex + 1}
+                    </p>
+                    <button
+                      type="button"
+                      disabled={item.products.length <= 1}
+                      onClick={() =>
+                        patchSectionAt(index, {
+                          ...item,
+                          products: item.products.filter(
+                            (_, i) => i !== productIndex,
+                          ),
+                        })
+                      }
+                      className="font-sans text-xs font-semibold text-red-700/90 disabled:opacity-30"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <div className="grid gap-2">
+                    <Field
+                      label="Title"
+                      id={`sec-${item.id}-product-${productIndex}-title`}
+                      value={product.title}
+                      onChange={(e) =>
+                        patchSectionAt(index, {
+                          ...item,
+                          products: item.products.map((p, i) =>
+                            i === productIndex
+                              ? { ...p, title: e.target.value }
+                              : p,
+                          ),
+                        })
+                      }
+                    />
+                    <Field
+                      label="Price"
+                      id={`sec-${item.id}-product-${productIndex}-price`}
+                      value={product.priceLabel}
+                      onChange={(e) =>
+                        patchSectionAt(index, {
+                          ...item,
+                          products: item.products.map((p, i) =>
+                            i === productIndex
+                              ? { ...p, priceLabel: e.target.value }
+                              : p,
+                          ),
+                        })
+                      }
+                    />
+                    <Field
+                      label="Image URL"
+                      id={`sec-${item.id}-product-${productIndex}-image`}
+                      value={product.imageUrl}
+                      onChange={(e) =>
+                        patchSectionAt(index, {
+                          ...item,
+                          products: item.products.map((p, i) =>
+                            i === productIndex
+                              ? { ...p, imageUrl: e.target.value }
+                              : p,
+                          ),
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      case "promoBanner":
+        return (
+          <div className="space-y-3">
+            <Field
+              label="Title"
+              id={`sec-${item.id}-title`}
+              value={item.title}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, title: e.target.value })
+              }
+            />
+            <TextAreaField
+              label="Description"
+              id={`sec-${item.id}-description`}
+              value={item.description}
+              onChange={(e) =>
+                patchSectionAt(index, {
+                  ...item,
+                  description: e.target.value,
+                })
+              }
+            />
+            <Field
+              label="Button label"
+              id={`sec-${item.id}-button`}
+              value={item.buttonLabel}
+              onChange={(e) =>
+                patchSectionAt(index, {
+                  ...item,
+                  buttonLabel: e.target.value,
+                })
+              }
+            />
+            <Field
+              label="Link"
+              id={`sec-${item.id}-href`}
+              value={item.href}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, href: e.target.value })
+              }
+            />
+            <Field
+              label="Image URL"
+              id={`sec-${item.id}-image`}
+              value={item.imageUrl}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, imageUrl: e.target.value })
+              }
+            />
+          </div>
+        );
+      case "textImage":
+        return (
+          <div className="space-y-3">
+            <Field
+              label="Eyebrow"
+              id={`sec-${item.id}-eyebrow`}
+              value={item.eyebrow}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, eyebrow: e.target.value })
+              }
+            />
+            <Field
+              label="Title"
+              id={`sec-${item.id}-title`}
+              value={item.title}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, title: e.target.value })
+              }
+            />
+            <TextAreaField
+              label="Body"
+              id={`sec-${item.id}-body`}
+              value={item.body}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, body: e.target.value })
+              }
+            />
+            <Field
+              label="Image URL"
+              id={`sec-${item.id}-image`}
+              value={item.imageUrl}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, imageUrl: e.target.value })
+              }
+            />
+            <label
+              htmlFor={`sec-${item.id}-position`}
+              className="block font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60"
+            >
+              Image position
+            </label>
+            <select
+              id={`sec-${item.id}-position`}
+              value={item.imagePosition}
+              onChange={(e) =>
+                patchSectionAt(index, {
+                  ...item,
+                  imagePosition:
+                    e.target.value === "left" ? "left" : "right",
+                })
+              }
+              className="w-full border border-primary-blue/15 bg-white px-3 py-2 font-sans text-sm outline-none"
+            >
+              <option value="left">Left</option>
+              <option value="right">Right</option>
+            </select>
+            <LinkPairEditor
+              label="Button"
+              link={item.cta}
+              idPrefix={`sec-${item.id}-cta`}
+              onChange={(next) => patchSectionAt(index, { ...item, cta: next })}
+            />
+          </div>
+        );
+      case "features":
+        return (
+          <div className="space-y-3">
+            <Field
+              label="Section title"
+              id={`sec-${item.id}-title`}
+              value={item.title}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, title: e.target.value })
+              }
+            />
+            {item.items.map((feature, featureIndex) => (
+              <div
+                key={`${item.id}-feature-${featureIndex}`}
+                className="rounded border border-primary-blue/10 bg-white p-3"
+              >
+                <Field
+                  label={`Feature ${featureIndex + 1} title`}
+                  id={`sec-${item.id}-feature-${featureIndex}-title`}
+                  value={feature.title}
+                  onChange={(e) =>
+                    patchSectionAt(index, {
+                      ...item,
+                      items: item.items.map((f, i) =>
+                        i === featureIndex ? { ...f, title: e.target.value } : f,
+                      ),
+                    })
+                  }
+                />
+                <div className="mt-2">
+                  <TextAreaField
+                    label="Description"
+                    id={`sec-${item.id}-feature-${featureIndex}-description`}
+                    value={feature.description}
+                    onChange={(e) =>
+                      patchSectionAt(index, {
+                        ...item,
+                        items: item.items.map((f, i) =>
+                          i === featureIndex
+                            ? { ...f, description: e.target.value }
+                            : f,
+                        ),
+                      })
+                    }
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      case "faq":
+        return (
+          <div className="space-y-3">
+            <Field
+              label="Title"
+              id={`sec-${item.id}-title`}
+              value={item.title}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, title: e.target.value })
+              }
+            />
+            {item.items.map((faq, faqIndex) => (
+              <div
+                key={`${item.id}-faq-${faqIndex}`}
+                className="rounded border border-primary-blue/10 bg-white p-3"
+              >
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.14em] text-primary-blue/45">
+                    FAQ {faqIndex + 1}
+                  </p>
+                  <button
+                    type="button"
+                    disabled={item.items.length <= 1}
+                    onClick={() =>
+                      patchSectionAt(index, {
+                        ...item,
+                        items: item.items.filter((_, i) => i !== faqIndex),
+                      })
+                    }
+                    className="font-sans text-xs font-semibold text-red-700/90 disabled:opacity-30"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <Field
+                  label="Question"
+                  id={`sec-${item.id}-faq-${faqIndex}-question`}
+                  value={faq.question}
+                  onChange={(e) =>
+                    patchSectionAt(index, {
+                      ...item,
+                      items: item.items.map((f, i) =>
+                        i === faqIndex
+                          ? { ...f, question: e.target.value }
+                          : f,
+                      ),
+                    })
+                  }
+                />
+                <div className="mt-2">
+                  <TextAreaField
+                    label="Answer"
+                    id={`sec-${item.id}-faq-${faqIndex}-answer`}
+                    value={faq.answer}
+                    onChange={(e) =>
+                      patchSectionAt(index, {
+                        ...item,
+                        items: item.items.map((f, i) =>
+                          i === faqIndex ? { ...f, answer: e.target.value } : f,
+                        ),
+                      })
+                    }
+                  />
+                </div>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() =>
+                patchSectionAt(index, {
+                  ...item,
+                  items: [
+                    ...item.items,
+                    { question: "New question", answer: "New answer" },
+                  ],
+                })
+              }
+              className="font-sans text-xs font-semibold text-primary-blue underline decoration-primary-blue/30 underline-offset-2"
+            >
+              Add FAQ
+            </button>
+          </div>
+        );
+      case "contactCta":
+        return (
+          <div className="space-y-3">
+            <Field
+              label="Title"
+              id={`sec-${item.id}-title`}
+              value={item.title}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, title: e.target.value })
+              }
+            />
+            <TextAreaField
+              label="Body"
+              id={`sec-${item.id}-body`}
+              value={item.body}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, body: e.target.value })
+              }
+            />
+            <Field
+              label="Button label"
+              id={`sec-${item.id}-button`}
+              value={item.buttonLabel}
+              onChange={(e) =>
+                patchSectionAt(index, {
+                  ...item,
+                  buttonLabel: e.target.value,
+                })
+              }
+            />
+            <Field
+              label="Link"
+              id={`sec-${item.id}-href`}
+              value={item.href}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, href: e.target.value })
+              }
+            />
+          </div>
+        );
+    }
   }
 
   let body: ReactNode;
@@ -223,7 +956,8 @@ export function StorefrontEditor({
       body = (
         <div className="space-y-5">
           <p className="font-sans text-xs leading-relaxed text-muted-foreground">
-            Theme presets control surfaces and default accent. Data saves in{" "}
+            Choose the main colour theme for storefront backgrounds, text, and
+            buttons. Data saves in{" "}
             <span className="font-medium text-primary-blue/80">
               localStorage
             </span>{" "}
@@ -241,7 +975,7 @@ export function StorefrontEditor({
               className="w-full border border-primary-blue/15 bg-white px-3 py-2 font-sans text-sm outline-none focus-visible:border-primary-blue/35 focus-visible:ring-2 focus-visible:ring-primary-blue/15"
               value={config.themeId}
               onChange={(e) =>
-                patch({ themeId: e.target.value as StorefrontThemeId })
+                selectTheme(e.target.value as StorefrontThemeId)
               }
             >
               {Object.values(STOREFRONT_THEME_DEFINITIONS).map((t) => (
@@ -251,15 +985,198 @@ export function StorefrontEditor({
               ))}
             </select>
             <p className="mt-2 font-sans text-[11px] leading-relaxed text-muted-foreground">
-              Use a valid 6-digit hex accent to override the preset default.
+              Switching theme updates the live preview immediately.
             </p>
           </div>
-          <Field
-            label="Accent colour (hex, e.g. #0a2540)"
-            id="sf-accent"
-            value={config.accentColor}
-            onChange={(e) => patch({ accentColor: e.target.value })}
-          />
+        </div>
+      );
+      break;
+    case "pages":
+      body = (
+        <div className="space-y-6">
+          {!isFocusedSectionEditing ? (
+          <>
+          <div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
+                Pages
+              </p>
+              <button
+                type="button"
+                onClick={addPage}
+                className="font-sans text-xs font-semibold text-primary-blue underline decoration-primary-blue/30 underline-offset-2"
+              >
+                Add page
+              </button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedPageId("home")}
+                className={`rounded border px-3 py-2 font-sans text-xs font-semibold ${
+                  selectedPageId === "home"
+                    ? "border-primary-blue bg-primary-blue text-white"
+                    : "border-primary-blue/15 bg-white text-primary-blue"
+                }`}
+              >
+                Homepage
+              </button>
+              {config.pages.map((page) => (
+                <button
+                  key={page.id}
+                  type="button"
+                  onClick={() => setSelectedPageId(page.id)}
+                  className={`rounded border px-3 py-2 font-sans text-xs font-semibold ${
+                    selectedPageId === page.id
+                      ? "border-primary-blue bg-primary-blue text-white"
+                      : "border-primary-blue/15 bg-white text-primary-blue"
+                  }`}
+                >
+                  {page.title}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {selectedPage ? (
+            <div className="rounded border border-primary-blue/10 bg-blue-gray/15 p-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field
+                  label="Page title"
+                  id={`page-${selectedPage.id}-title`}
+                  value={selectedPage.title}
+                  onChange={(e) => {
+                    const title = e.target.value;
+                    patchSelectedPage({
+                      title,
+                      slug: slugifyPageTitle(title, selectedPage.slug),
+                    });
+                  }}
+                />
+                <Field
+                  label="Page slug"
+                  id={`page-${selectedPage.id}-slug`}
+                  value={selectedPage.slug}
+                  onChange={(e) =>
+                    patchSelectedPage({
+                      slug: slugifyPageTitle(e.target.value, selectedPage.slug),
+                    })
+                  }
+                />
+              </div>
+              {previewHref ? (
+                <Link
+                  href={`${previewHref}/page/${selectedPage.slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-flex font-sans text-xs font-semibold text-primary-blue underline decoration-primary-blue/30 underline-offset-2"
+                >
+                  Preview page
+                </Link>
+              ) : null}
+              <button
+                type="button"
+                onClick={removeSelectedPage}
+                className="ml-4 font-sans text-xs font-semibold text-red-700/90 underline decoration-red-700/25 underline-offset-2"
+              >
+                Remove page
+              </button>
+            </div>
+          ) : null}
+
+          <div className="rounded border border-primary-blue/10 bg-white p-3">
+            <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
+              Section library
+            </p>
+            <div className="mt-3 grid gap-2">
+              {SECTION_LIBRARY.map((item) => (
+                <button
+                  key={item.type}
+                  type="button"
+                  onClick={() => addSection(item.type)}
+                  className="rounded border border-primary-blue/10 bg-blue-gray/15 p-3 text-left transition-colors hover:bg-blue-gray/35"
+                >
+                  <span className="block font-sans text-sm font-semibold text-primary-blue">
+                    {item.label}
+                  </span>
+                  <span className="mt-1 block font-sans text-xs leading-relaxed text-muted-foreground">
+                    {item.description}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+          </>
+          ) : (
+          <div className="rounded border border-primary-blue/10 bg-white p-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
+                  Editing section
+                </p>
+                <p className="mt-1 font-sans text-xs text-muted-foreground">
+                  Only this selected section is shown here.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFocusedSectionId(null)}
+                className="rounded border border-primary-blue/15 px-3 py-1.5 font-sans text-xs font-semibold text-primary-blue"
+              >
+                All sections
+              </button>
+            </div>
+          </div>
+          )}
+
+          <div>
+            <div>
+              <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
+                Sections
+              </p>
+              <p className="mt-1 font-sans text-xs leading-relaxed text-muted-foreground">
+                Reorder sections directly on the live storefront preview. Use
+                this panel to edit section content.
+              </p>
+            </div>
+            <div className="mt-4 space-y-3">
+              {visibleSectionEntries.map(({ item, index }) => (
+                <div
+                  id={`storefront-editor-section-${item.id}`}
+                  key={item.id}
+                  className={`scroll-mt-4 rounded border bg-blue-gray/15 p-3 transition-colors ${
+                    focusedSectionId === item.id
+                      ? "border-primary-blue bg-white shadow-sm"
+                      : "border-primary-blue/10"
+                  }`}
+                >
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-primary-blue/10 bg-white/70 p-2">
+                    <div className="min-w-0">
+                      <p className="font-sans text-sm font-semibold text-primary-blue">
+                        {SECTION_LIBRARY.find((s) => s.type === item.type)
+                          ?.label ?? item.type}
+                      </p>
+                      <p className="font-sans text-[10px] uppercase tracking-[0.14em] text-primary-blue/45">
+                        Section {index + 1}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={editableSections.length <= 1}
+                      onClick={() => removeSection(index)}
+                      className="rounded border border-primary-blue/15 bg-white px-2 py-1 font-sans text-[11px] font-medium text-red-700/90 disabled:opacity-30"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  {renderSectionLayoutField(item, index)}
+                  <div className="mt-3">
+                  {renderSectionFields(item, index)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       );
       break;
@@ -664,9 +1581,18 @@ export function StorefrontEditor({
             <button
               type="button"
               onClick={() => selectSection(id)}
-              className="flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left font-sans text-sm text-primary-blue transition-colors hover:bg-blue-gray/40"
+              className={`flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left font-sans text-sm text-primary-blue transition-colors hover:bg-blue-gray/40 ${
+                id === "pages" ? "bg-blue-gray/30" : ""
+              }`}
             >
-              <span>{label}</span>
+              <span>
+                {label}
+                {id === "pages" ? (
+                  <span className="mt-0.5 block font-sans text-[10px] font-semibold uppercase tracking-[0.12em] text-primary-blue/45">
+                    Add, edit and drag sections
+                  </span>
+                ) : null}
+              </span>
               <span aria-hidden className="text-primary-blue/35">
                 ›
               </span>

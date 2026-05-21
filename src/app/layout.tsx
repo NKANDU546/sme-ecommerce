@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { ConditionalSiteFooter } from "@/components/landing/conditional-site-footer";
+import { AppToaster } from "@/providers/app-toaster";
 import { QueryProvider } from "@/providers/query-provider";
 import "./globals.css";
 
@@ -29,12 +31,15 @@ export default function RootLayout({
         />
       </head>
       <body className="flex min-h-full flex-col bg-background text-foreground">
-        <QueryProvider>
-          <div className="flex min-h-full flex-1 flex-col pb-[calc(3.25rem+env(safe-area-inset-bottom))]">
-            <div className="flex-1">{children}</div>
-            <ConditionalSiteFooter />
-          </div>
-        </QueryProvider>
+        <NuqsAdapter>
+          <QueryProvider>
+            <AppToaster />
+            <div className="flex min-h-full flex-1 flex-col pb-[calc(3.25rem+env(safe-area-inset-bottom))]">
+              <div className="flex-1">{children}</div>
+              <ConditionalSiteFooter />
+            </div>
+          </QueryProvider>
+        </NuqsAdapter>
       </body>
     </html>
   );

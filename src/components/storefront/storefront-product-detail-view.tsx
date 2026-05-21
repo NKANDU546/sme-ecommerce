@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { usePreviewCartOptional } from "@/contexts/preview-cart-context";
+import { StorefrontButton } from "@/components/storefront/storefront-button";
 import { ClassicBoutiqueSiteFooter } from "@/components/storefront/templates/classic-boutique-site-footer";
 import { ClassicBoutiqueSiteHeader } from "@/components/storefront/templates/classic-boutique-site-header";
 import type { CatalogProductPdpView } from "@/lib/catalog-product-pdp";
@@ -181,12 +182,13 @@ export function StorefrontProductDetailView({
                     {product.configurationLabel}
                   </p>
                 </div>
-                <button
+                <StorefrontButton
                   type="button"
-                  className="shrink-0 font-sans text-sm font-semibold text-[color:var(--sf-accent)] underline decoration-[color:var(--sf-accent-border-25)] underline-offset-4 hover:decoration-[color:var(--sf-accent)]"
+                  variant="text"
+                  className="shrink-0 text-sm"
                 >
                   Change
-                </button>
+                </StorefrontButton>
               </div>
             </div>
 
@@ -215,9 +217,10 @@ export function StorefrontProductDetailView({
               </div>
             </div>
 
-            <button
+            <StorefrontButton
               type="button"
-              className="mt-6 inline-flex w-full max-w-md items-center justify-center gap-2 rounded-lg bg-[color:var(--sf-accent)] px-6 py-3.5 font-sans text-sm font-semibold text-[color:var(--sf-cart-badge-fg)] shadow-sm transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
+              size="lg"
+              className="mt-6 w-full max-w-md gap-2 rounded-lg"
               disabled={product.status === "archived" || !cart}
               onClick={() => {
                 if (!cart) return;
@@ -238,7 +241,7 @@ export function StorefrontProductDetailView({
                 <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
               Add to cart
-            </button>
+            </StorefrontButton>
             {justAdded ? (
               <p className="mt-2 font-sans text-xs font-medium text-emerald-700/90" role="status">
                 Added to your cart — open the bag icon to review or change quantities.
@@ -327,12 +330,13 @@ export function StorefrontProductDetailView({
               ))}
             </div>
             <div className="mt-10 flex justify-end">
-              <button
+              <StorefrontButton
                 type="button"
-                className="rounded-lg bg-[color:var(--sf-body-text)] px-5 py-2.5 font-sans text-xs font-semibold uppercase tracking-wide text-white transition-opacity hover:opacity-90"
+                size="sm"
+                className="rounded-lg uppercase tracking-wide"
               >
                 Download whitepaper
-              </button>
+              </StorefrontButton>
             </div>
           </div>
         </section>

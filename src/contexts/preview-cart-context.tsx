@@ -17,11 +17,14 @@ import type { PreviewCartLine } from "@/types/preview-cart";
 
 export type PreviewCartContextValue = {
   lines: PreviewCartLine[];
+  lastAddedLine: PreviewCartLine | null;
   itemCount: number;
   isDrawerOpen: boolean;
+  isAddedModalOpen: boolean;
   openDrawer: () => void;
   closeDrawer: () => void;
   toggleDrawer: () => void;
+  closeAddedModal: () => void;
   addItem: (
     input: {
       productId: string;
@@ -58,12 +61,19 @@ export function PreviewCartProvider({
   children,
 }: PreviewCartProviderProps) {
   const [lines, setLines] = useState<PreviewCartLine[]>([]);
+  const [lastAddedLine, setLastAddedLine] = useState<PreviewCartLine | null>(
+    null,
+  );
   const [hydrated, setHydrated] = useState(false);
   const [isDrawerOpen, setDrawerOpen] = useState(false);
+  const [isAddedModalOpen, setAddedModalOpen] = useState(false);
 
   useEffect(() => {
-    setLines(loadPreviewCart(workspaceId));
-    setHydrated(true);
+    const id = window.setTimeout(() => {
+      setLines(loadPreviewCart(workspaceId));
+      setHydrated(true);
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [workspaceId]);
 
   useEffect(() => {
@@ -76,9 +86,16 @@ export function PreviewCartProvider({
     [lines],
   );
 
-  const openDrawer = useCallback(() => setDrawerOpen(true), []);
+  const openDrawer = useCallback(() => {
+    setAddedModalOpen(false);
+    setDrawerOpen(true);
+  }, []);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
-  const toggleDrawer = useCallback(() => setDrawerOpen((o) => !o), []);
+  const toggleDrawer = useCallback(() => {
+    setAddedModalOpen(false);
+    setDrawerOpen((o) => !o);
+  }, []);
+  const closeAddedModal = useCallback(() => setAddedModalOpen(false), []);
 
   const addItem = useCallback(
     (
@@ -93,26 +110,28 @@ export function PreviewCartProvider({
       opts?: { openDrawer?: boolean },
     ) => {
       const q = Math.max(1, Math.floor(input.quantity ?? 1));
+      const addedLine: PreviewCartLine = {
+        productId: input.productId,
+        title: input.title,
+        sku: input.sku,
+        priceLabel: input.priceLabel,
+        imageUrl: input.imageUrl,
+        quantity: q,
+      };
       setLines((prev) => {
         const i = prev.findIndex((l) => l.productId === input.productId);
         if (i === -1) {
-          return [
-            ...prev,
-            {
-              productId: input.productId,
-              title: input.title,
-              sku: input.sku,
-              priceLabel: input.priceLabel,
-              imageUrl: input.imageUrl,
-              quantity: q,
-            },
-          ];
+          return [...prev, addedLine];
         }
         const next = [...prev];
         next[i] = { ...next[i], quantity: next[i].quantity + q };
         return next;
       });
-      if (opts?.openDrawer !== false) setDrawerOpen(true);
+      setLastAddedLine(addedLine);
+      if (opts?.openDrawer !== false) {
+        setDrawerOpen(false);
+        setAddedModalOpen(true);
+      }
     },
     [],
   );
@@ -162,11 +181,14 @@ export function PreviewCartProvider({
   const value = useMemo<PreviewCartContextValue>(
     () => ({
       lines,
+      lastAddedLine,
       itemCount,
       isDrawerOpen,
+      isAddedModalOpen,
       openDrawer,
       closeDrawer,
       toggleDrawer,
+      closeAddedModal,
       addItem,
       setQuantity,
       incrementLine,
@@ -176,11 +198,14 @@ export function PreviewCartProvider({
     }),
     [
       lines,
+      lastAddedLine,
       itemCount,
       isDrawerOpen,
+      isAddedModalOpen,
       openDrawer,
       closeDrawer,
       toggleDrawer,
+      closeAddedModal,
       addItem,
       setQuantity,
       incrementLine,

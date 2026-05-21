@@ -16,7 +16,7 @@ export function PreviewCartLayoutClient({
   return (
     <PreviewCartProvider workspaceId={workspaceId}>
       {children}
-      <PreviewCartDrawer />
+      <PreviewCartDrawer workspaceId={workspaceId} />
     </PreviewCartProvider>
   );
 }

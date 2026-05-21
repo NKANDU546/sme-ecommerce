@@ -46,7 +46,7 @@ export function ClassicBoutiqueSiteHeader({ config }: ClassicBoutiqueSiteHeaderP
 
   return (
     <header className="sticky top-0 z-20 border-b border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-header-surface)] backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-8">
+      <div className="mx-auto flex max-w-[100%] items-center justify-between gap-4 px-4 py-4 sm:px-8">
         <div className="min-w-0 shrink">
           <p className="truncate font-sans text-lg font-bold tracking-tight text-[color:var(--sf-accent)] sm:text-xl">
             {config.shopName}

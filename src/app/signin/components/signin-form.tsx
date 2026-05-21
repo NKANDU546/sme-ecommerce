@@ -1,8 +1,55 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState, type FormEvent } from "react";
+import { toast } from "sonner";
+import { loginAction } from "@/actions/auth";
+import { persistLoginSuccess } from "@/lib/auth-login-storage";
 
 export function SigninForm() {
+  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+    const email = String(fd.get("email") ?? "").trim();
+    const password = String(fd.get("password") ?? "");
+
+    setIsSubmitting(true);
+    const result = await loginAction({ email, password });
+    setIsSubmitting(false);
+
+    if (!result.ok) {
+      const { errorMessage, errorCode } = result;
+      if (errorCode === "ACCESS_DENIED") {
+        toast.error(errorMessage, {
+          description:
+            "Check your inbox for the verification link, then try again.",
+          duration: 8000,
+        });
+      } else {
+        toast.error(errorMessage);
+      }
+      return;
+    }
+
+    persistLoginSuccess(email, result.data);
+
+    if (result.data.businessId) {
+      toast.success("Signed in");
+      router.push(`/dashboard/${result.data.businessId}`);
+      return;
+    }
+
+    toast.success("Signed in", {
+      description: "Your session is saved. Open your workspace from the app when your account is fully linked.",
+    });
+    router.push("/");
+  }
+
   return (
     <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md flex-col justify-center px-5 py-12 sm:px-6">
       <header className="mb-10">
@@ -17,7 +64,7 @@ export function SigninForm() {
         </p>
       </header>
 
-      <form className="space-y-6" action="#" method="post">
+      <form className="space-y-6" onSubmit={handleSubmit}>
         <div>
           <label
             htmlFor="signin-email"
@@ -56,9 +103,10 @@ export function SigninForm() {
 
         <button
           type="submit"
-          className="w-full bg-primary-blue px-6 py-3.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-primary-blue/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-blue"
+          disabled={isSubmitting}
+          className="w-full bg-primary-blue px-6 py-3.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-primary-blue/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-blue disabled:pointer-events-none disabled:opacity-60"
         >
-          Sign in
+          {isSubmitting ? "Signing in…" : "Sign in"}
         </button>
       </form>
 

@@ -5,6 +5,7 @@ import type { StorefrontLink } from "@/types/storefront";
  * the workspace shop collection preview when `workspaceId` is known.
  */
 export const PREVIEW_SHOP_COLLECTION_HREF = "@shop";
+export const PREVIEW_CUSTOM_PAGE_HREF_PREFIX = "@page:";
 
 /** Default hero label that pairs with legacy `#` hrefs from older drafts. */
 const SHOP_COLLECTION_LABEL = "shop collection";
@@ -20,6 +21,10 @@ export function resolvePreviewShopCollectionHref(
     (link.href === "#" && label === SHOP_COLLECTION_LABEL)
   ) {
     return `/preview/${workspaceId}/shop`;
+  }
+  if (link.href.startsWith(PREVIEW_CUSTOM_PAGE_HREF_PREFIX)) {
+    const slug = link.href.slice(PREVIEW_CUSTOM_PAGE_HREF_PREFIX.length);
+    if (slug.trim()) return `/preview/${workspaceId}/page/${slug}`;
   }
   return link.href;
 }

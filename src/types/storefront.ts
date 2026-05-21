@@ -37,6 +37,7 @@ export type StorefrontFaqItem = {
 
 export type StorefrontSectionBase = {
   id: string;
+  desktopLayout?: "full" | "half";
 };
 
 export type StorefrontHeroSection = StorefrontSectionBase & {

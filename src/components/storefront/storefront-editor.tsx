@@ -32,10 +32,6 @@ const EDITOR_SECTIONS: { id: StorefrontEditorSectionId; label: string }[] = [
   { id: "pages", label: "Pages & sections" },
   { id: "brand", label: "Brand" },
   { id: "navbar", label: "Navbar" },
-  { id: "hero", label: "Hero" },
-  { id: "products", label: "Products" },
-  { id: "promos", label: "Promos" },
-  { id: "values", label: "Value props" },
   { id: "footer", label: "Footer" },
 ];
 
@@ -48,6 +44,7 @@ type StorefrontEditorProps = {
   onCustomizeModeChange?: (mode: StorefrontCustomizeMode) => void;
   /** Shown next to Return on small screens while the preview column is hidden. */
   previewHref?: string;
+  sectionEditTarget?: { id: string; requestId: number } | null;
 };
 
 function Field({
@@ -284,18 +281,37 @@ export function StorefrontEditor({
   onChange,
   onCustomizeModeChange,
   previewHref,
+  sectionEditTarget,
 }: StorefrontEditorProps) {
   const [section, setSection] = useState<StorefrontEditorSectionId>(
     EDITOR_SECTIONS[0].id,
   );
   const [showSectionPicker, setShowSectionPicker] = useState(true);
   const [selectedPageId, setSelectedPageId] = useState<"home" | string>("home");
+  const [focusedSectionId, setFocusedSectionId] = useState<string | null>(null);
 
   useEffect(() => {
     onCustomizeModeChange?.(
       showSectionPicker ? "sections" : "section",
     );
   }, [showSectionPicker, onCustomizeModeChange]);
+
+  useEffect(() => {
+    if (!sectionEditTarget) return;
+    const timeoutId = window.setTimeout(() => {
+      setSection("pages");
+      setShowSectionPicker(false);
+      setSelectedPageId("home");
+      setFocusedSectionId(sectionEditTarget.id);
+      window.requestAnimationFrame(() => {
+        document
+          .getElementById(`storefront-editor-section-${sectionEditTarget.id}`)
+          ?.scrollIntoView({ block: "start", behavior: "smooth" });
+      });
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [sectionEditTarget]);
 
   function patch(partial: Partial<StorefrontConfig>) {
     onChange({ ...config, ...partial });
@@ -411,14 +427,6 @@ export function StorefrontEditor({
     patchSections([...editableSections, newSection(type)]);
   }
 
-  function moveSection(from: number, to: number) {
-    if (to < 0 || to >= editableSections.length) return;
-    const next = [...editableSections];
-    const [row] = next.splice(from, 1);
-    next.splice(to, 0, row);
-    patchSections(next);
-  }
-
   function removeSection(index: number) {
     if (editableSections.length <= 1) return;
     patchSections(editableSections.filter((_, i) => i !== index));
@@ -432,10 +440,23 @@ export function StorefrontEditor({
 
   const sectionLabel =
     EDITOR_SECTIONS.find((s) => s.id === section)?.label ?? section;
+  const focusedSectionIndex = focusedSectionId
+    ? editableSections.findIndex((item) => item.id === focusedSectionId)
+    : -1;
+  const isFocusedSectionEditing = focusedSectionIndex >= 0;
+  const visibleSectionEntries = isFocusedSectionEditing
+    ? [
+        {
+          item: editableSections[focusedSectionIndex],
+          index: focusedSectionIndex,
+        },
+      ]
+    : editableSections.map((item, index) => ({ item, index }));
 
   function selectSection(id: StorefrontEditorSectionId) {
     setSection(id);
     setShowSectionPicker(false);
+    setFocusedSectionId(null);
   }
 
   function selectTheme(themeId: StorefrontThemeId) {
@@ -443,6 +464,38 @@ export function StorefrontEditor({
       themeId,
       accentColor: STOREFRONT_THEME_DEFINITIONS[themeId].defaultAccent,
     });
+  }
+
+  function renderSectionLayoutField(item: StorefrontSection, index: number) {
+    return (
+      <div>
+        <label
+          htmlFor={`sec-${item.id}-desktop-layout`}
+          className="mb-1.5 block font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60"
+        >
+          Desktop layout
+        </label>
+        <select
+          id={`sec-${item.id}-desktop-layout`}
+          value={item.desktopLayout ?? "full"}
+          onChange={(event) =>
+            patchSectionAt(index, {
+              ...item,
+              desktopLayout:
+                event.target.value === "half" ? "half" : "full",
+            })
+          }
+          className="w-full border border-primary-blue/15 bg-white px-3 py-2 font-sans text-sm text-foreground outline-none focus-visible:border-primary-blue/35 focus-visible:ring-2 focus-visible:ring-primary-blue/15"
+        >
+          <option value="full">Full width</option>
+          <option value="half">Half width, pair on desktop</option>
+        </select>
+        <p className="mt-1 font-sans text-[11px] leading-relaxed text-muted-foreground">
+          Place two half-width sections next to each other to create a desktop
+          flex row.
+        </p>
+      </div>
+    );
   }
 
   function renderSectionFields(item: StorefrontSection, index: number) {
@@ -941,6 +994,8 @@ export function StorefrontEditor({
     case "pages":
       body = (
         <div className="space-y-6">
+          {!isFocusedSectionEditing ? (
+          <>
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
@@ -1051,43 +1106,60 @@ export function StorefrontEditor({
               ))}
             </div>
           </div>
-
-          <div className="space-y-4">
-            <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
-              Sections
-            </p>
-            {editableSections.map((item, index) => (
-              <div
-                key={item.id}
-                className="rounded border border-primary-blue/10 bg-blue-gray/15 p-3"
+          </>
+          ) : (
+          <div className="rounded border border-primary-blue/10 bg-white p-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
+                  Editing section
+                </p>
+                <p className="mt-1 font-sans text-xs text-muted-foreground">
+                  Only this selected section is shown here.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFocusedSectionId(null)}
+                className="rounded border border-primary-blue/15 px-3 py-1.5 font-sans text-xs font-semibold text-primary-blue"
               >
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <p className="font-sans text-sm font-semibold text-primary-blue">
-                      {SECTION_LIBRARY.find((s) => s.type === item.type)?.label ??
-                        item.type}
-                    </p>
-                    <p className="font-sans text-[10px] uppercase tracking-[0.14em] text-primary-blue/45">
-                      Section {index + 1}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    <button
-                      type="button"
-                      disabled={index === 0}
-                      onClick={() => moveSection(index, index - 1)}
-                      className="rounded border border-primary-blue/15 bg-white px-2 py-1 font-sans text-[11px] font-medium text-primary-blue disabled:opacity-30"
-                    >
-                      Up
-                    </button>
-                    <button
-                      type="button"
-                      disabled={index === editableSections.length - 1}
-                      onClick={() => moveSection(index, index + 1)}
-                      className="rounded border border-primary-blue/15 bg-white px-2 py-1 font-sans text-[11px] font-medium text-primary-blue disabled:opacity-30"
-                    >
-                      Down
-                    </button>
+                All sections
+              </button>
+            </div>
+          </div>
+          )}
+
+          <div>
+            <div>
+              <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
+                Sections
+              </p>
+              <p className="mt-1 font-sans text-xs leading-relaxed text-muted-foreground">
+                Reorder sections directly on the live storefront preview. Use
+                this panel to edit section content.
+              </p>
+            </div>
+            <div className="mt-4 space-y-3">
+              {visibleSectionEntries.map(({ item, index }) => (
+                <div
+                  id={`storefront-editor-section-${item.id}`}
+                  key={item.id}
+                  className={`scroll-mt-4 rounded border bg-blue-gray/15 p-3 transition-colors ${
+                    focusedSectionId === item.id
+                      ? "border-primary-blue bg-white shadow-sm"
+                      : "border-primary-blue/10"
+                  }`}
+                >
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-primary-blue/10 bg-white/70 p-2">
+                    <div className="min-w-0">
+                      <p className="font-sans text-sm font-semibold text-primary-blue">
+                        {SECTION_LIBRARY.find((s) => s.type === item.type)
+                          ?.label ?? item.type}
+                      </p>
+                      <p className="font-sans text-[10px] uppercase tracking-[0.14em] text-primary-blue/45">
+                        Section {index + 1}
+                      </p>
+                    </div>
                     <button
                       type="button"
                       disabled={editableSections.length <= 1}
@@ -1097,10 +1169,13 @@ export function StorefrontEditor({
                       Remove
                     </button>
                   </div>
+                  {renderSectionLayoutField(item, index)}
+                  <div className="mt-3">
+                  {renderSectionFields(item, index)}
+                  </div>
                 </div>
-                {renderSectionFields(item, index)}
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       );
@@ -1506,9 +1581,18 @@ export function StorefrontEditor({
             <button
               type="button"
               onClick={() => selectSection(id)}
-              className="flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left font-sans text-sm text-primary-blue transition-colors hover:bg-blue-gray/40"
+              className={`flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left font-sans text-sm text-primary-blue transition-colors hover:bg-blue-gray/40 ${
+                id === "pages" ? "bg-blue-gray/30" : ""
+              }`}
             >
-              <span>{label}</span>
+              <span>
+                {label}
+                {id === "pages" ? (
+                  <span className="mt-0.5 block font-sans text-[10px] font-semibold uppercase tracking-[0.12em] text-primary-blue/45">
+                    Add, edit and drag sections
+                  </span>
+                ) : null}
+              </span>
               <span aria-hidden className="text-primary-blue/35">
                 ›
               </span>

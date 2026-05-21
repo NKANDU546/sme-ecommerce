@@ -91,6 +91,7 @@ const VALID_SECTION_TYPES = new Set<StorefrontSection["type"]>([
   "faq",
   "contactCta",
 ]);
+const VALID_DESKTOP_LAYOUTS = new Set(["full", "half"]);
 
 function mergeFeatures(
   raw: StorefrontFeature[] | undefined,
@@ -216,11 +217,15 @@ function mergeSection(
     return { ...fallback, id: fallback.id || sectionId("section", index) };
   }
   const id = String(raw.id || fallback.id || sectionId(raw.type, index));
+  const desktopLayout = VALID_DESKTOP_LAYOUTS.has(raw.desktopLayout ?? "")
+    ? raw.desktopLayout
+    : fallback.desktopLayout;
   switch (raw.type) {
     case "hero":
       return {
         ...raw,
         id,
+        desktopLayout,
         imageUrl: String(raw.imageUrl || ""),
         heading: String(raw.heading || "Welcome to our store"),
         subheading: String(raw.subheading || ""),
@@ -237,6 +242,7 @@ function mergeSection(
       return {
         ...raw,
         id,
+        desktopLayout,
         title: String(raw.title || "Featured products"),
         viewAll: mergeLink(raw.viewAll, { label: "View all", href: "@shop" }),
         products: mergeProducts(raw.products, fallback.type === "featuredProducts" ? fallback.products : []),
@@ -245,6 +251,7 @@ function mergeSection(
       return {
         ...raw,
         id,
+        desktopLayout,
         title: String(raw.title || "Promotion"),
         description: String(raw.description || ""),
         buttonLabel: String(raw.buttonLabel || "Shop now"),
@@ -255,6 +262,7 @@ function mergeSection(
       return {
         ...raw,
         id,
+        desktopLayout,
         eyebrow: String(raw.eyebrow || "Our story"),
         title: String(raw.title || "Tell customers what makes you different"),
         body: String(raw.body || ""),
@@ -266,6 +274,7 @@ function mergeSection(
       return {
         ...raw,
         id,
+        desktopLayout,
         title: String(raw.title || "Why shop with us"),
         items: mergeFeatureItems(
           raw.items,
@@ -278,6 +287,7 @@ function mergeSection(
       return {
         ...raw,
         id,
+        desktopLayout,
         title: String(raw.title || "Frequently asked questions"),
         items: mergeFaqItems(raw.items),
       };
@@ -285,6 +295,7 @@ function mergeSection(
       return {
         ...raw,
         id,
+        desktopLayout,
         title: String(raw.title || "Contact us"),
         body: String(raw.body || ""),
         buttonLabel: String(raw.buttonLabel || "Contact us"),

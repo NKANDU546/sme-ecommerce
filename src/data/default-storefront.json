@@ -1,7 +1,7 @@
 {
   "templateId": "classic-boutique",
   "themeId": "blue",
-  "configVersion": 4,
+  "configVersion": 5,
   "shopName": "SME Operations",
   "tagline": "Curated retail, calmer days.",
   "navLinks": [
@@ -109,6 +109,15 @@
       "description": "Warm textures and calm lines for the room where you reset—ready for your next seasonal drop.",
       "buttonLabel": "Explore",
       "imageUrl": "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1400&q=80",
+      "href": "#"
+    },
+    {
+      "id": "home-promo-workspace",
+      "type": "promoBanner",
+      "title": "Workspace",
+      "description": "Keyboards, lighting, and small upgrades that keep fulfilment sharp.",
+      "buttonLabel": "Shop tech",
+      "imageUrl": "https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&w=1200&q=80",
       "href": "#"
     },
     {

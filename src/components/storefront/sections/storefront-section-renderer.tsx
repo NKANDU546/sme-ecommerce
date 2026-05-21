@@ -1,3 +1,7 @@
+"use client";
+
+import type { PointerEvent, ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ClassicBoutiqueSmartLink as SmartLink } from "@/components/storefront/templates/classic-boutique-smart-link";
 import { storefrontButtonClassName } from "@/components/storefront/storefront-button";
 import type {
@@ -5,6 +9,45 @@ import type {
   StorefrontFeatureIconId,
   StorefrontSection,
 } from "@/types/storefront";
+
+const SITE_SECTION_LIBRARY: Array<{
+  type: StorefrontSection["type"];
+  label: string;
+}> = [
+  { type: "hero", label: "Hero" },
+  { type: "featuredProducts", label: "Products" },
+  { type: "promoBanner", label: "Promo" },
+  { type: "textImage", label: "Text + image" },
+  { type: "features", label: "Benefits" },
+  { type: "faq", label: "FAQ" },
+  { type: "contactCta", label: "Contact" },
+];
+
+type SectionDragState = {
+  index: number;
+  label: string;
+  x: number;
+  y: number;
+};
+
+type SectionRenderGroup =
+  | { type: "single"; section: StorefrontSection; index: number }
+  | {
+      type: "row";
+      items: Array<{ section: StorefrontSection; index: number }>;
+    };
+
+function getScrollParent(element: HTMLElement): HTMLElement | Window {
+  let parent = element.parentElement;
+  while (parent) {
+    const { overflowY } = window.getComputedStyle(parent);
+    if (/(auto|scroll)/.test(overflowY) && parent.scrollHeight > parent.clientHeight) {
+      return parent;
+    }
+    parent = parent.parentElement;
+  }
+  return window;
+}
 
 type StorefrontSectionRendererProps = {
   section: StorefrontSection;
@@ -323,21 +366,291 @@ export function StorefrontSections({
   sections,
   config,
   workspaceId,
+  isEditing = false,
+  onMoveSection,
+  onAddSection,
+  onEditSection,
 }: {
   sections: StorefrontSection[];
   config: StorefrontConfig;
   workspaceId?: string;
+  isEditing?: boolean;
+  onMoveSection?: (from: number, to: number) => void;
+  onAddSection?: (type: StorefrontSection["type"], index: number) => void;
+  onEditSection?: (sectionId: string) => void;
 }) {
+  const [dragState, setDragState] = useState<SectionDragState | null>(null);
+  const dragStateRef = useRef<SectionDragState | null>(null);
+  const scrollParentRef = useRef<HTMLElement | Window | null>(null);
+  const pointerPositionRef = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    dragStateRef.current = dragState;
+  }, [dragState]);
+
+  useEffect(() => {
+    if (!dragState) return;
+
+    function updateDrag(event: globalThis.PointerEvent) {
+      pointerPositionRef.current = { x: event.clientX, y: event.clientY };
+      setDragState((current) =>
+        current
+          ? { ...current, x: event.clientX, y: event.clientY }
+          : current,
+      );
+    }
+
+    function finishDrag(event: globalThis.PointerEvent) {
+      const current = dragStateRef.current;
+      if (!current) return;
+      const dropTarget = document
+        .elementFromPoint(event.clientX, event.clientY)
+        ?.closest<HTMLElement>("[data-section-drop-index]");
+      const dropIndex = Number.parseInt(
+        dropTarget?.dataset.sectionDropIndex ?? "",
+        10,
+      );
+      if (Number.isInteger(dropIndex)) {
+        const to = current.index < dropIndex ? dropIndex - 1 : dropIndex;
+        onMoveSection?.(current.index, to);
+      }
+      setDragState(null);
+      pointerPositionRef.current = null;
+      scrollParentRef.current = null;
+    }
+
+    window.addEventListener("pointermove", updateDrag);
+    window.addEventListener("pointerup", finishDrag, { once: true });
+    window.addEventListener("pointercancel", finishDrag, { once: true });
+
+    return () => {
+      window.removeEventListener("pointermove", updateDrag);
+      window.removeEventListener("pointerup", finishDrag);
+      window.removeEventListener("pointercancel", finishDrag);
+    };
+  }, [dragState, onMoveSection]);
+
+  useEffect(() => {
+    if (!dragState) return;
+
+    const interval = window.setInterval(() => {
+      const position = pointerPositionRef.current;
+      const scrollParent = scrollParentRef.current;
+      if (!position || !scrollParent) return;
+
+      const rect =
+        scrollParent instanceof Window
+          ? { top: 0, bottom: window.innerHeight }
+          : scrollParent.getBoundingClientRect();
+      const edgeSize = 96;
+      const maxStep = 18;
+      let step = 0;
+
+      if (position.y < rect.top + edgeSize) {
+        step = -Math.ceil(((rect.top + edgeSize - position.y) / edgeSize) * maxStep);
+      } else if (position.y > rect.bottom - edgeSize) {
+        step = Math.ceil(((position.y - (rect.bottom - edgeSize)) / edgeSize) * maxStep);
+      }
+
+      if (step === 0) return;
+      if (scrollParent instanceof Window) {
+        scrollParent.scrollBy({ top: step });
+      } else {
+        scrollParent.scrollTop += step;
+      }
+    }, 16);
+
+    return () => window.clearInterval(interval);
+  }, [dragState]);
+
+  function startSectionDrag(
+    event: PointerEvent<HTMLButtonElement>,
+    section: StorefrontSection,
+    index: number,
+  ) {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const label =
+      SITE_SECTION_LIBRARY.find((item) => item.type === section.type)?.label ??
+      section.type;
+    scrollParentRef.current = getScrollParent(event.currentTarget);
+    pointerPositionRef.current = { x: event.clientX, y: event.clientY };
+    setDragState({ index, label, x: event.clientX, y: event.clientY });
+  }
+
+  function renderDropZone(index: number) {
+    if (!isEditing || (!onMoveSection && !onAddSection)) return null;
+    const isDragging = dragState !== null;
+    return (
+      <div
+        key={`section-drop-${index}`}
+        data-section-drop-index={index}
+        className={`mx-4 my-2 rounded-lg border border-dashed px-4 py-3 font-sans transition-colors sm:mx-8 ${
+          isDragging
+            ? "border-primary-blue bg-white text-primary-blue shadow-sm"
+            : "border-primary-blue/25 bg-white/80 text-primary-blue/55"
+        }`}
+      >
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {isDragging && onMoveSection ? (
+            <span className="rounded-full bg-primary-blue px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-white">
+              Put it here
+            </span>
+          ) : null}
+          {onAddSection ? (
+            <>
+              <span className="text-[11px] font-bold uppercase tracking-[0.14em]">
+                + Add section:
+              </span>
+              {SITE_SECTION_LIBRARY.map((item) => (
+                <button
+                  key={item.type}
+                  type="button"
+                  onClick={() => onAddSection(item.type, index)}
+                  className="rounded-full border border-primary-blue/15 bg-white px-2.5 py-1 text-[11px] font-semibold text-primary-blue shadow-sm"
+                >
+                  + {item.label}
+                </button>
+              ))}
+            </>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  function renderEditableFrame(
+    section: StorefrontSection,
+    index: number,
+    children: ReactNode,
+  ) {
+    if (!isEditing || (!onMoveSection && !onEditSection)) return children;
+    const isDraggingThisSection = dragState?.index === index;
+    return (
+      <div
+        key={section.id}
+        className={`group/section relative ring-inset transition-opacity ${
+          isDraggingThisSection ? "opacity-45" : ""
+        }`}
+      >
+        <div className="pointer-events-none absolute inset-0 z-20 ring-2 ring-primary-blue/35" />
+        <div className="absolute left-3 top-3 flex flex-wrap items-center gap-1 rounded-full border border-primary-blue/20 bg-white/95 p-1.5 shadow-lg backdrop-blur">
+          {onMoveSection ? (
+            <button
+              type="button"
+              onPointerDown={(event) => startSectionDrag(event, section, index)}
+              className="flex h-8 w-8 touch-none cursor-grab items-center justify-center rounded-full bg-primary-blue font-sans text-[13px] font-bold leading-none text-white active:cursor-grabbing"
+              aria-label={`Drag section ${index + 1}`}
+              title="Hold and drag this section"
+            >
+              ⋮⋮
+            </button>
+          ) : null}
+        </div>
+        {onEditSection ? (
+          <button
+            type="button"
+            onClick={() => onEditSection(section.id)}
+            className="absolute right-3 top-3 z-30 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-primary-blue/20 bg-white/95 text-primary-blue shadow-lg backdrop-blur transition-colors hover:bg-blue-gray/30"
+            aria-label={`Edit section ${index + 1}`}
+            title="Edit this section"
+          >
+            <svg
+              aria-hidden
+              className="h-3.5 w-3.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M19.5 7.125L16.875 4.5"
+              />
+            </svg>
+          </button>
+        ) : null}
+        {children}
+      </div>
+    );
+  }
+
+  function renderSectionEntry(section: StorefrontSection, index: number) {
+    return renderEditableFrame(
+      section,
+      index,
+      <StorefrontSectionRenderer
+        section={section}
+        config={config}
+        workspaceId={workspaceId}
+      />,
+    );
+  }
+
+  const sectionGroups: SectionRenderGroup[] = [];
+  for (let index = 0; index < sections.length; index += 1) {
+    const section = sections[index];
+    if (
+      section.desktopLayout === "half" &&
+      sections[index + 1]?.desktopLayout === "half"
+    ) {
+      sectionGroups.push({
+        type: "row",
+        items: [
+          { section, index },
+          { section: sections[index + 1], index: index + 1 },
+        ],
+      });
+      index += 1;
+    } else {
+      sectionGroups.push({ type: "single", section, index });
+    }
+  }
+
   return (
     <>
-      {sections.map((section) => (
-        <StorefrontSectionRenderer
-          key={section.id}
-          section={section}
-          config={config}
-          workspaceId={workspaceId}
-        />
-      ))}
+      {dragState ? (
+        <div
+          className="pointer-events-none fixed z-[120] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-primary-blue/20 bg-white/95 px-4 py-3 font-sans text-xs font-bold uppercase tracking-[0.12em] text-primary-blue shadow-2xl"
+          style={{ left: dragState.x, top: dragState.y }}
+        >
+          Moving {dragState.label}
+          <div className="mt-1 text-[10px] font-semibold normal-case tracking-normal text-primary-blue/55">
+            Release over “Put it here”
+          </div>
+        </div>
+      ) : null}
+      {isEditing ? renderDropZone(0) : null}
+      {sectionGroups.map((group) => {
+        if (group.type === "single") {
+          return (
+            <div key={group.section.id}>
+              {renderSectionEntry(group.section, group.index)}
+              {renderDropZone(group.index + 1)}
+            </div>
+          );
+        }
+
+        const lastIndex = group.items[group.items.length - 1].index;
+        return (
+          <div key={group.items.map((item) => item.section.id).join("-")}>
+            <div className="mx-4 grid gap-4 sm:mx-8 md:grid-cols-2">
+              {group.items.map(({ section, index }) => (
+                <div key={section.id} className="min-w-0">
+                  {renderSectionEntry(section, index)}
+                </div>
+              ))}
+            </div>
+            {renderDropZone(lastIndex + 1)}
+          </div>
+        );
+      })}
     </>
   );
 }

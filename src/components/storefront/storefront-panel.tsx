@@ -12,7 +12,7 @@ import {
   loadStorefront,
   saveStorefront,
 } from "@/lib/storefront-storage";
-import type { StorefrontConfig } from "@/types/storefront";
+import type { StorefrontConfig, StorefrontSection } from "@/types/storefront";
 
 type StorefrontPanelProps = {
   workspaceId: string;
@@ -49,11 +49,104 @@ const STOREFRONT_TEMPLATE_CARDS: TemplateCard[] = [
   },
 ];
 
+function createStorefrontSection(type: StorefrontSection["type"]): StorefrontSection {
+  const id = `${type}-${Date.now()}`;
+  switch (type) {
+    case "hero":
+      return {
+        id,
+        type,
+        imageUrl: "",
+        heading: "New page hero",
+        subheading: "Tell customers what this section is about.",
+        primaryCta: { label: "Shop collection", href: "@shop" },
+        secondaryCta: { label: "Learn more", href: "#" },
+      };
+    case "featuredProducts":
+      return {
+        id,
+        type,
+        title: "Featured products",
+        viewAll: { label: "View all", href: "@shop" },
+        products: [{ title: "New product", priceLabel: "R 0.00", imageUrl: "" }],
+      };
+    case "promoBanner":
+      return {
+        id,
+        type,
+        title: "Special offer",
+        description: "Highlight a launch, sale, or seasonal promotion.",
+        buttonLabel: "Shop now",
+        imageUrl: "",
+        href: "@shop",
+      };
+    case "textImage":
+      return {
+        id,
+        type,
+        eyebrow: "Story",
+        title: "Add your story",
+        body: "Use this section to explain your brand, service, or product range.",
+        imageUrl: "",
+        imagePosition: "right",
+        cta: { label: "Learn more", href: "#" },
+      };
+    case "features":
+      return {
+        id,
+        type,
+        title: "Why shop with us",
+        items: [
+          {
+            title: "Fast service",
+            description: "Help customers understand why ordering is easy.",
+            icon: "check",
+          },
+          {
+            title: "Reliable delivery",
+            description: "Explain pickup, shipping, or local fulfilment.",
+            icon: "truck",
+          },
+          {
+            title: "Helpful support",
+            description: "Mention WhatsApp support or personal service.",
+            icon: "sparkle",
+          },
+        ],
+      };
+    case "faq":
+      return {
+        id,
+        type,
+        title: "Frequently asked questions",
+        items: [
+          {
+            question: "How do I place an order?",
+            answer: "Browse products, add them to cart, and complete checkout.",
+          },
+        ],
+      };
+    case "contactCta":
+      return {
+        id,
+        type,
+        title: "Need help?",
+        body: "Message us and we will help you choose the right products.",
+        buttonLabel: "Contact us",
+        href: "#",
+      };
+  }
+}
+
 export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
   const [config, setConfig] = useState<StorefrontConfig | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [customizeMode, setCustomizeMode] =
     useState<StorefrontCustomizeMode>("sections");
+  const [sectionEditTarget, setSectionEditTarget] = useState<{
+    id: string;
+    requestId: number;
+  } | null>(null);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -71,6 +164,36 @@ export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
     },
     [workspaceId],
   );
+
+  const moveHomepageSection = useCallback(
+    (from: number, to: number) => {
+      if (!config || to < 0 || to >= config.sections.length || from === to) {
+        return;
+      }
+      const sections = [...config.sections];
+      const [section] = sections.splice(from, 1);
+      sections.splice(to, 0, section);
+      persist({ ...config, sections });
+    },
+    [config, persist],
+  );
+
+  const addHomepageSection = useCallback(
+    (type: StorefrontSection["type"], index: number) => {
+      if (!config) return;
+      const sections = [...config.sections];
+      sections.splice(index, 0, createStorefrontSection(type));
+      persist({ ...config, sections });
+    },
+    [config, persist],
+  );
+
+  const editHomepageSection = useCallback((sectionId: string) => {
+    setSectionEditTarget((current) => ({
+      id: sectionId,
+      requestId: (current?.requestId ?? 0) + 1,
+    }));
+  }, []);
 
   function startFromTemplate() {
     const initial = createInitialStorefrontFromSeed();
@@ -191,6 +314,7 @@ export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
             onChange={persist}
             previewHref={`/preview/${workspaceId}`}
             onCustomizeModeChange={setCustomizeMode}
+            sectionEditTarget={sectionEditTarget}
           />
         </div>
         <footer
@@ -220,7 +344,14 @@ export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
           Live preview · template: {config.templateId}
         </p>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          <StorefrontTemplateView config={config} workspaceId={workspaceId} />
+          <StorefrontTemplateView
+            config={config}
+            workspaceId={workspaceId}
+            isEditing
+            onMoveSection={moveHomepageSection}
+            onAddSection={addHomepageSection}
+            onEditSection={editHomepageSection}
+          />
         </div>
         <footer className="shrink-0 border-t border-primary-blue/10 bg-white px-4 py-2.5 text-center font-sans text-[11px] leading-snug text-primary-blue/55">
           <span className="font-medium text-primary-blue/70">

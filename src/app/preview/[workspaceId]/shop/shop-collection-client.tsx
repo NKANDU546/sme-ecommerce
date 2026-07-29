@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { usePreviewCartOptional } from "@/contexts/preview-cart-context";
 import { StorefrontButtonLink } from "@/components/storefront/storefront-button";
 import { ClassicBoutiqueSiteHeader } from "@/components/storefront/templates/classic-boutique-site-header";
 import { StorefrontThemeRoot } from "@/components/storefront/storefront-theme-root";
-import { loadCatalogProducts } from "@/lib/catalog-storage";
-import { loadStorefront } from "@/lib/storefront-storage";
+import { useProducts } from "@/hooks/use-products";
+import { usePreviewStorefrontConfig } from "@/hooks/use-preview-storefront-config";
+import { getStoredAuthSession } from "@/lib/auth-login-storage";
+import { productApiToCatalog } from "@/lib/product-mapper";
 import type { CatalogProduct } from "@/types/catalog-product";
-import type { StorefrontConfig } from "@/types/storefront";
 
 type ShopCollectionClientProps = {
   workspaceId: string;
@@ -17,20 +18,19 @@ type ShopCollectionClientProps = {
 
 export function ShopCollectionClient({ workspaceId }: ShopCollectionClientProps) {
   const cart = usePreviewCartOptional();
-  const [config, setConfig] = useState<StorefrontConfig | null>(null);
-  const [products, setProducts] = useState<CatalogProduct[]>([]);
-  const [ready, setReady] = useState(false);
+  const storefront = usePreviewStorefrontConfig(workspaceId);
+  const accessToken = getStoredAuthSession()?.accessToken ?? null;
+  const productsQuery = useProducts(workspaceId, accessToken, {
+    page: 0,
+    limit: 100,
+  });
 
-  useEffect(() => {
-    const id = window.setTimeout(() => {
-      setConfig(loadStorefront(workspaceId));
-      setProducts(loadCatalogProducts(workspaceId));
-      setReady(true);
-    }, 0);
-    return () => window.clearTimeout(id);
-  }, [workspaceId]);
+  const products: CatalogProduct[] = useMemo(
+    () => (productsQuery.data?.items ?? []).map(productApiToCatalog),
+    [productsQuery.data],
+  );
 
-  if (!ready) {
+  if (storefront.status === "loading" || productsQuery.isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background font-sans text-sm text-muted-foreground">
         Loading…
@@ -38,15 +38,30 @@ export function ShopCollectionClient({ workspaceId }: ShopCollectionClientProps)
     );
   }
 
-  if (!config) {
+  if (storefront.status === "unauthenticated") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background px-6 text-center">
         <h1 className="font-serif text-2xl text-primary-blue">
-          No storefront in this browser
+          Sign in to preview
+        </h1>
+        <Link
+          href="/signin"
+          className="mt-2 font-sans text-sm font-semibold text-primary-blue underline"
+        >
+          Go to sign in
+        </Link>
+      </div>
+    );
+  }
+
+  if (storefront.status === "error") {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background px-6 text-center">
+        <h1 className="font-serif text-2xl text-primary-blue">
+          No storefront draft
         </h1>
         <p className="max-w-md font-sans text-sm text-muted-foreground">
-          Set up a storefront from the dashboard for this workspace, then open
-          the shop collection again.
+          {storefront.message}
         </p>
         <Link
           href={`/dashboard/${workspaceId}`}
@@ -58,20 +73,42 @@ export function ShopCollectionClient({ workspaceId }: ShopCollectionClientProps)
     );
   }
 
+  if (productsQuery.isError) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background px-6 text-center">
+        <h1 className="font-serif text-2xl text-primary-blue">
+          Could not load products
+        </h1>
+        <p className="max-w-md font-sans text-sm text-muted-foreground">
+          {productsQuery.error instanceof Error
+            ? productsQuery.error.message
+            : "Please try again."}
+        </p>
+        <button
+          type="button"
+          onClick={() => productsQuery.refetch()}
+          className="mt-2 font-sans text-sm font-semibold text-primary-blue underline"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const config = storefront.config;
   const visible = products.filter((p) => p.status !== "archived");
 
   return (
     <StorefrontThemeRoot config={config}>
       <div className="min-h-full bg-[color:var(--sf-page-bg)]">
-        <ClassicBoutiqueSiteHeader config={config} />
+        <ClassicBoutiqueSiteHeader config={config} workspaceId={workspaceId} />
 
         <main className="mx-auto max-w-[100%] px-4 py-12 sm:px-8 sm:py-16">
           <h1 className="font-serif text-3xl font-light text-[color:var(--sf-accent)] sm:text-4xl">
             Shop collection
           </h1>
           <p className="mt-3 max-w-2xl font-sans text-sm leading-relaxed text-[color:var(--sf-accent-text-60)] sm:text-base">
-            Browse the catalogue synced from your workspace (local draft on this
-            device until your API is ready).
+            Browse the catalogue synced from your workspace.
           </p>
 
           {visible.length === 0 ? (

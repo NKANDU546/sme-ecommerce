@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { usePreviewCartOptional } from "@/contexts/preview-cart-context";
 import {
   StorefrontButton,
   StorefrontButtonLink,
 } from "@/components/storefront/storefront-button";
 import { StorefrontThemeRoot } from "@/components/storefront/storefront-theme-root";
-import { loadStorefront } from "@/lib/storefront-storage";
-import type { StorefrontConfig } from "@/types/storefront";
+import { usePreviewStorefrontConfig } from "@/hooks/use-preview-storefront-config";
 
 type PreviewCartDrawerProps = {
   workspaceId: string;
@@ -16,14 +15,9 @@ type PreviewCartDrawerProps = {
 
 export function PreviewCartDrawer({ workspaceId }: PreviewCartDrawerProps) {
   const cart = usePreviewCartOptional();
-  const [config, setConfig] = useState<StorefrontConfig | null>(null);
-
-  useEffect(() => {
-    const id = window.setTimeout(() => {
-      setConfig(loadStorefront(workspaceId));
-    }, 0);
-    return () => window.clearTimeout(id);
-  }, [workspaceId]);
+  const storefront = usePreviewStorefrontConfig(workspaceId);
+  const config =
+    storefront.status === "ready" ? storefront.config : null;
 
   useEffect(() => {
     if (!cart?.isDrawerOpen && !cart?.isAddedModalOpen) return;

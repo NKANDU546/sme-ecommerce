@@ -4,12 +4,38 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
+import { listWorkspaces } from "@/apis/workspaces";
 import { getAccountMeAction, loginAction } from "@/actions/auth";
-import { persistLoginSuccess } from "@/lib/auth-login-storage";
+import {
+  persistLoginSuccess,
+  persistResolvedWorkspace,
+} from "@/lib/auth-login-storage";
 
 export function SigninForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function resolveDashboardPath(
+    accessToken: string | undefined,
+    fallbackBusinessId?: string,
+  ): Promise<string | null> {
+    if (accessToken) {
+      const workspaces = await listWorkspaces(accessToken).catch(() => null);
+      if (workspaces?.ok && workspaces.data[0]) {
+        const primary = workspaces.data[0];
+        persistResolvedWorkspace({
+          workspaceId: primary.id,
+          businessId: primary.businessId,
+          businessName: primary.name,
+        });
+        return `/dashboard/${primary.id}`;
+      }
+    }
+    if (fallbackBusinessId) {
+      return `/dashboard/${fallbackBusinessId}`;
+    }
+    return null;
+  }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -46,49 +72,68 @@ export function SigninForm() {
 
     persistLoginSuccess(email, result.data);
 
-    if (result.data.businessId) {
-      setIsSubmitting(false);
-      toast.success("Signed in");
-      router.push(`/dashboard/${result.data.businessId}`);
-      return;
-    }
+    if (result.data.businessId || result.data.accessToken) {
+      let accessToken = result.data.accessToken;
+      let businessId = result.data.businessId;
+      let profileName = result.data.fullName;
 
-    if (result.data.accessToken) {
-      const profile = await getAccountMeAction(result.data.accessToken).catch(
-        () => null,
-      );
-      setIsSubmitting(false);
-
-      if (!profile) {
-        toast.error("Could not load your workspace profile.", {
-          description:
-            "Sign in worked, but /account/me failed. Check that the token is accepted by the backend.",
+      if (!businessId && accessToken) {
+        const profile = await getAccountMeAction(accessToken).catch(() => null);
+        if (!profile) {
+          setIsSubmitting(false);
+          toast.error("Could not load your workspace profile.", {
+            description:
+              "Sign in worked, but /account/me failed. Check that the token is accepted by the backend.",
+          });
+          return;
+        }
+        if (!profile.ok) {
+          setIsSubmitting(false);
+          toast.error(profile.errorMessage);
+          return;
+        }
+        persistLoginSuccess(email, {
+          ...result.data,
+          userId: profile.data.userId,
+          businessId: profile.data.businessId,
+          businessName: profile.data.businessName,
+          publicLink: profile.data.publicLink,
+          fullName: profile.data.fullName,
         });
+        businessId = profile.data.businessId;
+        profileName = profile.data.fullName;
+      }
+
+      const path = await resolveDashboardPath(accessToken, businessId);
+      setIsSubmitting(false);
+
+      if (!path) {
+        toast.success("Signed in", {
+          description:
+            "Your session is saved. Open your workspace from the app when your account is fully linked.",
+        });
+        router.push("/");
         return;
       }
 
-      if (!profile.ok) {
-        toast.error(profile.errorMessage);
-        return;
+      if (profileName) {
+        persistResolvedWorkspace({
+          workspaceId: path.replace("/dashboard/", ""),
+          businessId,
+          name: profileName,
+          email,
+        });
       }
-
-      persistLoginSuccess(email, {
-        ...result.data,
-        userId: profile.data.userId,
-        businessId: profile.data.businessId,
-        businessName: profile.data.businessName,
-        publicLink: profile.data.publicLink,
-        fullName: profile.data.fullName,
-      });
 
       toast.success("Signed in");
-      router.push(`/dashboard/${profile.data.businessId}`);
+      router.push(path);
       return;
     }
 
     setIsSubmitting(false);
     toast.success("Signed in", {
-      description: "Your session is saved. Open your workspace from the app when your account is fully linked.",
+      description:
+        "Your session is saved. Open your workspace from the app when your account is fully linked.",
     });
     router.push("/");
   }

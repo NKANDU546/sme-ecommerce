@@ -10,7 +10,10 @@ import type { CatalogProductPdpView } from "@/lib/catalog-product-pdp";
 import type { StorefrontConfig } from "@/types/storefront";
 
 type StorefrontProductDetailViewProps = {
-  workspaceId: string;
+  /** Preview workspace id — used when `basePath` is omitted. */
+  workspaceId?: string;
+  /** Explicit storefront root, e.g. `/s/my-store`. */
+  basePath?: string;
   config: StorefrontConfig;
   product: CatalogProductPdpView;
 };
@@ -54,6 +57,7 @@ const STANDARD_ICONS: Array<"shield" | "fingerprint" | "layers"> = [
 
 export function StorefrontProductDetailView({
   workspaceId,
+  basePath,
   config,
   product,
 }: StorefrontProductDetailViewProps) {
@@ -62,12 +66,15 @@ export function StorefrontProductDetailView({
   const [qty, setQty] = useState(1);
   const [justAdded, setJustAdded] = useState(false);
 
+  const root =
+    basePath?.replace(/\/$/, "") ??
+    (workspaceId ? `/preview/${workspaceId}` : "");
   const images = product.gallery.filter((u) => u.trim());
   const mainSrc = images[activeImage] ?? "";
 
   return (
     <div className="min-h-full">
-      <ClassicBoutiqueSiteHeader config={config} />
+      <ClassicBoutiqueSiteHeader config={config} basePath={basePath} workspaceId={workspaceId} />
 
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-8">
         <nav
@@ -75,7 +82,7 @@ export function StorefrontProductDetailView({
           aria-label="Breadcrumb"
         >
           <Link
-            href={`/preview/${workspaceId}`}
+            href={`${root}` || "/"}
             className="text-[color:var(--sf-accent)]/70 transition-colors hover:text-[color:var(--sf-accent)]"
           >
             Shop
@@ -85,7 +92,7 @@ export function StorefrontProductDetailView({
             /{" "}
           </span>
           <Link
-            href={`/preview/${workspaceId}/shop`}
+            href={`${root}/shop`}
             className="text-[color:var(--sf-accent)]/70 transition-colors hover:text-[color:var(--sf-accent)]"
           >
             Products
@@ -342,7 +349,11 @@ export function StorefrontProductDetailView({
         </section>
       </div>
 
-      <ClassicBoutiqueSiteFooter config={config} workspaceId={workspaceId} />
+      <ClassicBoutiqueSiteFooter
+        config={config}
+        workspaceId={workspaceId}
+        basePath={basePath ?? (workspaceId ? `/preview/${workspaceId}` : undefined)}
+      />
     </div>
   );
 }

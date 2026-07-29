@@ -1,46 +1,52 @@
 # Step 06: Cart, Checkout, Orders, And Payments
 
-This step turns the public storefront into a transactional store. It adds
-customer carts, checkout, order creation, and payment tracking.
+This step turns the public storefront into a transactional store. It is split
+into two sub-steps to allow independent delivery.
 
-## Goal
+---
 
-Allow customers to add products to cart, complete checkout, and create real
-orders for a live storefront.
+## Step 06A: Cart And Checkout (Current Priority)
 
-After this step, the backend should be able to:
+This sub-step adds anonymous carts, server-side totals, checkout order creation,
+and order confirmation. Payment is intentionally excluded here — merchants
+can collect payment manually (bank transfer, WhatsApp) while Step 06B is
+being built.
+
+### Goal
+
+After Step 06A the backend should be able to:
 
 - Create anonymous carts.
 - Add, update, and remove cart items.
 - Calculate totals from backend product prices.
 - Create an order from checkout details.
-- Initialize a payment.
-- Confirm payment through a provider webhook.
 - Return an order confirmation.
+- Orders start with status `pending_payment` and payment status `unpaid`.
 
-## Scope
+### Scope
 
-### Included
+#### Included In 06A
 
 - Cart tables.
 - Order tables.
-- Payment table.
 - Public cart APIs.
 - Public checkout API.
-- Payment initialization API.
-- Payment webhook endpoint.
+- Public order confirmation API.
+- Frontend cart migrated from browser memory to backend cart APIs.
 
-### Not Included Yet
+#### Not Included In 06A
 
-- Inventory reservations.
+- Payment provider integration.
+- Payment table.
+- Merchant Paystack keys.
 - Refunds.
+- Inventory reservations.
 - Shipping carrier integrations.
-- Merchant fulfilment dashboard.
 - Multi-currency.
 
-## Database Changes
+### Database Changes
 
-### `carts`
+#### `carts`
 
 | Column | Type | Notes |
 | --- | --- | --- |
@@ -52,7 +58,7 @@ After this step, the backend should be able to:
 | `created_at` | timestamp | Created date |
 | `updated_at` | timestamp | Updated date |
 
-### `cart_items`
+#### `cart_items`
 
 | Column | Type | Notes |
 | --- | --- | --- |
@@ -60,12 +66,12 @@ After this step, the backend should be able to:
 | `cart_id` | UUID/string | FK to `carts.id` |
 | `product_id` | UUID/string | FK to `products.id` |
 | `quantity` | integer | Quantity |
-| `unit_price_amount` | integer | Snapshot price |
+| `unit_price_amount` | integer | Snapshot price in minor units |
 | `currency` | string | Snapshot currency |
 | `created_at` | timestamp | Created date |
 | `updated_at` | timestamp | Updated date |
 
-### `orders`
+#### `orders`
 
 | Column | Type | Notes |
 | --- | --- | --- |
@@ -78,7 +84,7 @@ After this step, the backend should be able to:
 | `customer_phone` | string | Customer phone or WhatsApp number |
 | `shipping_address` | JSON | Address fields |
 | `subtotal_amount` | integer | Minor units |
-| `shipping_amount` | integer | Minor units |
+| `shipping_amount` | integer | Minor units (zero for 06A) |
 | `total_amount` | integer | Minor units |
 | `currency` | string | Example `ZAR` |
 | `status` | string | `pending_payment`, `paid`, `processing`, `fulfilled`, `cancelled` |
@@ -86,7 +92,7 @@ After this step, the backend should be able to:
 | `created_at` | timestamp | Created date |
 | `updated_at` | timestamp | Updated date |
 
-### `order_items`
+#### `order_items`
 
 | Column | Type | Notes |
 | --- | --- | --- |
@@ -100,26 +106,11 @@ After this step, the backend should be able to:
 | `total_amount` | integer | Line total |
 | `currency` | string | Snapshot currency |
 
-### `payments`
+### Public Cart APIs
 
-| Column | Type | Notes |
-| --- | --- | --- |
-| `id` | UUID/string | Primary key |
-| `order_id` | UUID/string | FK to `orders.id` |
-| `provider` | string | Example `paystack` |
-| `provider_reference` | string | Unique provider reference |
-| `amount` | integer | Minor units |
-| `currency` | string | Example `ZAR` |
-| `status` | string | `initialized`, `paid`, `failed`, `refunded` |
-| `raw_response` | JSON nullable | Provider response |
-| `created_at` | timestamp | Created date |
-| `updated_at` | timestamp | Updated date |
+No merchant authentication required.
 
-## Public Cart APIs
-
-These APIs do not require merchant authentication.
-
-### Create Cart
+#### Create Cart
 
 ```http
 POST /public/storefronts/{storeSlug}/carts
@@ -127,15 +118,15 @@ POST /public/storefronts/{storeSlug}/carts
 
 Creates an anonymous cart for a live store.
 
-### Get Cart
+#### Get Cart
 
 ```http
 GET /public/storefronts/{storeSlug}/carts/{cartId}
 ```
 
-Returns cart lines and totals.
+Returns cart lines and totals calculated on the backend.
 
-### Add Cart Item
+#### Add Cart Item
 
 ```http
 POST /public/storefronts/{storeSlug}/carts/{cartId}/items
@@ -150,7 +141,7 @@ Example request:
 }
 ```
 
-### Update Cart Item
+#### Update Cart Item
 
 ```http
 PATCH /public/storefronts/{storeSlug}/carts/{cartId}/items/{itemId}
@@ -164,21 +155,25 @@ Example request:
 }
 ```
 
-### Remove Cart Item
+#### Remove Cart Item
 
 ```http
 DELETE /public/storefronts/{storeSlug}/carts/{cartId}/items/{itemId}
 ```
 
-## Checkout APIs
+### Checkout API
 
-### Create Checkout Order
+#### Create Checkout Order
 
 ```http
 POST /public/storefronts/{storeSlug}/checkout
 ```
 
-Creates an order from the cart.
+Creates an order from the cart. Order status starts as `pending_payment`,
+payment status starts as `unpaid`.
+
+No payment provider is called in Step 06A. Merchants collect payment
+manually and update order status from the merchant dashboard.
 
 Example request:
 
@@ -201,49 +196,23 @@ Example request:
 }
 ```
 
-### Initialize Payment
-
-```http
-POST /public/storefronts/{storeSlug}/checkout/{orderId}/pay
-```
-
-Creates a payment attempt with the provider and returns redirect/authorization
-data.
-
-### Payment Webhook
-
-```http
-POST /payments/paystack/webhook
-```
-
-The webhook must verify the provider signature before updating payment/order
-state.
-
-### Get Order Confirmation
+#### Get Order Confirmation
 
 ```http
 GET /public/storefronts/{storeSlug}/orders/{orderId}
 ```
 
-Returns safe confirmation data for the customer.
+Returns safe confirmation data for the customer after checkout.
 
-## Calculation Rules
+### Calculation Rules
 
 - Totals must be calculated on the backend.
 - Never trust frontend price labels.
-- Cart item unit prices should snapshot the product price when added.
-- Order item prices should snapshot the cart/product prices when order is created.
-- In version one, shipping can be `0` or a flat configured amount.
+- Cart item unit prices snapshot the product price when the item is added.
+- Order item prices snapshot the cart/product prices when the order is created.
+- Shipping amount is `0` in Step 06A.
 
-## Payment Rules
-
-- Create the order before redirecting to payment.
-- Set order status to `pending_payment` initially.
-- Set payment status to `initialized` after provider initialization.
-- Mark order as paid only after verified webhook or verified provider lookup.
-- Store raw provider response for debugging.
-
-## Error Codes
+### Error Codes
 
 - `CART_NOT_FOUND`
 - `CART_ITEM_NOT_FOUND`
@@ -252,36 +221,203 @@ Returns safe confirmation data for the customer.
 - `INVALID_QUANTITY`
 - `CHECKOUT_VALIDATION_ERROR`
 - `ORDER_NOT_FOUND`
-- `PAYMENT_INITIALIZATION_FAILED`
-- `PAYMENT_WEBHOOK_INVALID`
 
-## Acceptance Criteria
+### Acceptance Criteria
 
-Step 06 is complete when:
+Step 06A is complete when:
 
 - Customers can create a cart for a live store.
 - Customers can add active products to cart.
-- Customers can update/remove cart items.
-- Backend returns cart totals.
-- Customers can create an order from cart.
-- Order items snapshot product data and prices.
-- Payment initialization creates a payment record.
-- Payment webhook can mark payment/order as paid.
-- Customers can view order confirmation.
+- Customers can update and remove cart items.
+- Backend returns cart totals (never the frontend price label).
+- Customers can create an order from a cart.
+- Order items snapshot product title, SKU, and price.
+- Customers can view order confirmation by order ID.
+- Orders start with status `pending_payment` and payment status `unpaid`.
+- Frontend cart is backed by backend cart APIs, not browser memory.
 
-## Suggested Implementation Order
+### Suggested Implementation Order
 
-1. Add cart migrations.
-2. Add order migrations.
-3. Add payment migration.
-4. Implement cart create/get/item APIs.
-5. Implement backend total calculation.
-6. Implement checkout order creation.
-7. Integrate first payment provider.
-8. Implement payment webhook verification.
-9. Implement order confirmation API.
-10. Add tests for totals, active product validation, order snapshots, and webhook handling.
+1. Add `carts` and `cart_items` migrations.
+2. Add `orders` and `order_items` migrations.
+3. Implement cart create/get/items APIs.
+4. Implement backend total calculation.
+5. Implement checkout order creation.
+6. Implement order confirmation API.
+7. Add tests for totals, active product validation, and order snapshots.
+8. Migrate frontend cart from memory to backend cart APIs.
+
+### Implementation Status — Complete
+
+Step 06A is fully implemented and compiles clean.
+
+#### Entities And Enums
+
+- `CartStatus` — `ACTIVE`, `CONVERTED`, `ABANDONED`.
+- `OrderStatus` — `PENDING_PAYMENT`, `PAID`, `PROCESSING`, `FULFILLED`, `CANCELLED`.
+- `PaymentStatus` — `UNPAID`, `INITIALIZED`, `PAID`, `FAILED`, `REFUNDED`.
+- `Cart` — anonymous cart per workspace.
+- `CartItem` — snapshots product price at add time, never trusts frontend.
+- `Order` — created at checkout, starts `PENDING_PAYMENT` / `UNPAID`.
+- `OrderItem` — snapshots title, SKU, and price.
+
+#### Repositories
+
+- `CartRepository`, `CartItemRepository`, `OrderRepository`.
+- `ProductRepository.findByWorkspaceIdAndIdAndStatus` — only lets `ACTIVE` products be added to cart.
+
+#### Services
+
+- `CartService` — create cart, get cart (with backend totals), add/update/remove items.
+- `CheckoutService` — converts cart to order (snapshots all prices), returns order confirmation.
+
+#### Controller
+
+`PublicCartController` under `/api/v1/public/storefronts/{storeSlug}/`:
+
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/carts` | Create anonymous cart |
+| GET | `/carts/{cartId}` | Get cart with backend totals |
+| POST | `/carts/{cartId}/items` | Add item to cart |
+| PATCH | `/carts/{cartId}/items/{itemId}` | Update item quantity |
+| DELETE | `/carts/{cartId}/items/{itemId}` | Remove item from cart |
+| POST | `/checkout` | Create order from cart |
+| GET | `/orders/{orderId}` | Get order confirmation |
+
+#### Error Codes
+
+`CART_NOT_FOUND`, `CART_ITEM_NOT_FOUND`, `CART_EMPTY`, `PRODUCT_NOT_AVAILABLE`,
+`INVALID_QUANTITY`, `CHECKOUT_VALIDATION_ERROR`, `ORDER_NOT_FOUND`.
+
+#### Tests
+
+`CartTotalsTest` — 6 pure unit tests covering line totals, subtotals, price
+snapshot independence, zero shipping, and order total formula.
+
+---
+
+## Step 06B: Payments (Later)
+
+This sub-step adds Paystack payment integration. It builds on the orders
+created in Step 06A.
+
+### Goal
+
+After Step 06B the backend should be able to:
+
+- Accept a Paystack secret key per merchant workspace.
+- Initialize a payment for an existing order.
+- Verify payment via a Paystack webhook.
+- Mark the order as paid after confirmed payment.
+
+### Payment Architecture
+
+Each merchant configures their own Paystack account. The merchant copies
+their Paystack secret key and public key into the dashboard Settings page.
+The backend stores these keys per workspace and uses them when initializing
+payments for that store's orders. Money goes directly to the merchant's
+linked bank account via Paystack.
+
+Future improvement: migrate to Paystack Connect or Subaccounts so merchants
+can connect their account with one click instead of copying keys manually.
+
+### Scope
+
+#### Included In 06B
+
+- Merchant Paystack key settings (stored per workspace).
+- Payment table.
+- Payment initialization API.
+- Paystack webhook endpoint.
+- Dashboard Settings page for payment keys.
+
+#### Not Included In 06B
+
+- Refunds.
+- Paystack Connect / OAuth flow.
+- Paystack Subaccounts.
+- Multi-provider support.
+
+### Database Changes
+
+#### `payments`
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | UUID/string | Primary key |
+| `order_id` | UUID/string | FK to `orders.id` |
+| `provider` | string | Example `paystack` |
+| `provider_reference` | string | Unique provider reference |
+| `amount` | integer | Minor units |
+| `currency` | string | Example `ZAR` |
+| `status` | string | `initialized`, `paid`, `failed`, `refunded` |
+| `raw_response` | JSON nullable | Provider response |
+| `created_at` | timestamp | Created date |
+| `updated_at` | timestamp | Updated date |
+
+#### Update `workspaces`
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `paystack_secret_key` | string nullable | Encrypted at rest |
+| `paystack_public_key` | string nullable | Safe to expose to frontend |
+
+### Payment APIs
+
+#### Initialize Payment
+
+```http
+POST /public/storefronts/{storeSlug}/checkout/{orderId}/pay
+```
+
+Uses the workspace Paystack keys to create a payment with Paystack.
+Returns the Paystack authorization URL for redirect.
+
+#### Payment Webhook
+
+```http
+POST /payments/paystack/webhook
+```
+
+Receives Paystack event. Must verify the HMAC signature using the workspace
+secret key before updating payment and order status.
+
+### Payment Rules
+
+- Order must exist and have status `pending_payment` before payment can be initialized.
+- Set payment status to `initialized` after provider initialization.
+- Mark order as `paid` and payment as `paid` only after verified webhook.
+- Store raw provider response for debugging.
+- Never expose the merchant Paystack secret key to the public API or frontend.
+
+### Error Codes
+
+- `PAYMENT_INITIALIZATION_FAILED`
+- `PAYMENT_WEBHOOK_INVALID`
+- `PAYMENT_KEYS_NOT_CONFIGURED`
+
+### Acceptance Criteria
+
+Step 06B is complete when:
+
+- Merchants can save Paystack keys in their dashboard settings.
+- Payment initialization redirects the customer to Paystack.
+- Paystack webhook verifies the signature and marks the order paid.
+- Order confirmation reflects updated payment status after payment.
+
+### Suggested Implementation Order
+
+1. Add Paystack key fields to `workspaces`.
+2. Add `payments` migration.
+3. Add Dashboard Settings page for payment keys.
+4. Implement payment initialization API using workspace Paystack keys.
+5. Implement Paystack webhook with HMAC signature verification.
+6. Add tests for signature verification, initialized/paid status transitions.
+
+---
 
 ## What Comes Next
 
-Step 07 migrates the frontend from local browser storage to these backend APIs.
+Step 07 adds the merchant orders dashboard so merchants can view, manage,
+and fulfil incoming orders.

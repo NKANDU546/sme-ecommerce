@@ -48,6 +48,20 @@ Add:
 Send this after Step 02 or in parallel with Step 02 if another backend developer
 is available.
 
+### Step 03B: Product Merchandising (Sale + New Arrivals)
+
+File: `docs/storefront-backend-step-03b-product-merchandising.md`
+
+Add:
+
+- Optional compare-at (was) price on products
+- Derived `onSale` flag
+- Merchant/public list filters: `onSale`, `sort=newest|price_*`
+- Display labels for compare-at prices
+
+Send this after Step 03 (and ideally after Step 05 public product list exists so
+public filters can ship in the same change).
+
 ### Step 04: Media Uploads
 
 File: `docs/storefront-backend-step-04-media.md`

@@ -15,6 +15,8 @@ export type CatalogProduct = {
   title: string;
   sku: string;
   priceLabel: string;
+  compareAtPriceLabel?: string;
+  onSale?: boolean;
   category: string;
   status: CatalogProductStatus;
   imageUrl: string;

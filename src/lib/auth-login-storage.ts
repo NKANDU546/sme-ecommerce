@@ -51,7 +51,7 @@ export function persistLoginSuccess(email: string, data: LoginSuccessData): void
     }
   }
 
-  if (!data.businessId) return;
+  if (!data.businessId && !data.userId) return;
 
   let prev: StoredWorkspace | null = null;
   try {
@@ -63,19 +63,67 @@ export function persistLoginSuccess(email: string, data: LoginSuccessData): void
 
   const matched =
     prev &&
-    (prev.workspaceId === data.businessId ||
+    ((data.businessId &&
+      (prev.workspaceId === data.businessId ||
+        prev.businessId === data.businessId)) ||
       prev.email.toLowerCase() === email.toLowerCase())
       ? prev
       : null;
 
+  // Prefer an already-resolved backend workspace id; fall back to businessId until
+  // GET /workspaces runs after sign-in.
+  const workspaceId =
+    matched?.workspaceId && matched.workspaceId !== data.businessId
+      ? matched.workspaceId
+      : (data.businessId ?? matched?.workspaceId ?? "");
+
+  if (!workspaceId) return;
+
   const payload: StoredWorkspace = {
-    workspaceId: data.businessId,
+    workspaceId,
     email,
     name: data.fullName ?? (matched ? matched.name : "Merchant"),
     createdAt: matched ? matched.createdAt : Date.now(),
     userId: data.userId ?? matched?.userId,
+    businessId: data.businessId ?? matched?.businessId,
     businessName: data.businessName ?? matched?.businessName,
     publicLink: data.publicLink ?? matched?.publicLink,
+  };
+
+  try {
+    localStorage.setItem(SME_WORKSPACE_STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Store the real backend workspace id after GET /workspaces. */
+export function persistResolvedWorkspace(input: {
+  workspaceId: string;
+  businessId?: string;
+  businessName?: string;
+  email?: string;
+  name?: string;
+}): void {
+  if (typeof window === "undefined") return;
+
+  let prev: StoredWorkspace | null = null;
+  try {
+    const raw = localStorage.getItem(SME_WORKSPACE_STORAGE_KEY);
+    if (raw) prev = JSON.parse(raw) as StoredWorkspace;
+  } catch {
+    /* ignore */
+  }
+
+  const payload: StoredWorkspace = {
+    workspaceId: input.workspaceId,
+    email: input.email ?? prev?.email ?? "",
+    name: input.name ?? prev?.name ?? "Merchant",
+    createdAt: prev?.createdAt ?? Date.now(),
+    userId: prev?.userId,
+    businessId: input.businessId ?? prev?.businessId,
+    businessName: input.businessName ?? prev?.businessName,
+    publicLink: prev?.publicLink,
   };
 
   try {

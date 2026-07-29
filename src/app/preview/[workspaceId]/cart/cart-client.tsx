@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useState } from "react";
 import { usePreviewCartOptional } from "@/contexts/preview-cart-context";
 import {
   StorefrontButton,
@@ -10,9 +10,8 @@ import {
 import { StorefrontThemeRoot } from "@/components/storefront/storefront-theme-root";
 import { ClassicBoutiqueSiteFooter } from "@/components/storefront/templates/classic-boutique-site-footer";
 import { ClassicBoutiqueSiteHeader } from "@/components/storefront/templates/classic-boutique-site-header";
-import { loadStorefront } from "@/lib/storefront-storage";
+import { usePreviewStorefrontConfig } from "@/hooks/use-preview-storefront-config";
 import type { PreviewCartLine } from "@/types/preview-cart";
-import type { StorefrontConfig } from "@/types/storefront";
 
 type CartClientProps = {
   workspaceId: string;
@@ -460,19 +459,10 @@ export function CartClient({
   initialStep = "cart",
 }: CartClientProps) {
   const cart = usePreviewCartOptional();
-  const [config, setConfig] = useState<StorefrontConfig | null>(null);
-  const [ready, setReady] = useState(false);
+  const storefront = usePreviewStorefrontConfig(workspaceId);
   const [activeStep, setActiveStep] = useState<CartStep>(initialStep);
 
-  useEffect(() => {
-    const id = window.setTimeout(() => {
-      setConfig(loadStorefront(workspaceId));
-      setReady(true);
-    }, 0);
-    return () => window.clearTimeout(id);
-  }, [workspaceId]);
-
-  if (!ready) {
+  if (storefront.status === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background font-sans text-sm text-muted-foreground">
         Loading…
@@ -480,15 +470,30 @@ export function CartClient({
     );
   }
 
-  if (!config) {
+  if (storefront.status === "unauthenticated") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background px-6 text-center">
         <h1 className="font-serif text-2xl text-primary-blue">
-          No storefront in this browser
+          Sign in to preview
+        </h1>
+        <Link
+          href="/signin"
+          className="mt-2 font-sans text-sm font-semibold text-primary-blue underline"
+        >
+          Go to sign in
+        </Link>
+      </div>
+    );
+  }
+
+  if (storefront.status === "error") {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background px-6 text-center">
+        <h1 className="font-serif text-2xl text-primary-blue">
+          No storefront draft
         </h1>
         <p className="max-w-md font-sans text-sm text-muted-foreground">
-          Set up a storefront from the dashboard for this workspace, then open
-          the cart again.
+          {storefront.message}
         </p>
         <Link
           href={`/dashboard/${workspaceId}`}
@@ -499,6 +504,8 @@ export function CartClient({
       </div>
     );
   }
+
+  const config = storefront.config;
 
   const lines = cart?.lines ?? [];
   const itemCount = cart?.itemCount ?? 0;
@@ -539,7 +546,7 @@ export function CartClient({
   return (
     <StorefrontThemeRoot config={config}>
       <div className="min-h-screen bg-[color:var(--sf-page-bg)]">
-        <ClassicBoutiqueSiteHeader config={config} />
+        <ClassicBoutiqueSiteHeader config={config} workspaceId={workspaceId} />
 
         <main className="mx-auto max-w-[100%] px-4 py-8 sm:px-8 sm:py-10">
           <h1 className="mb-6 font-sans text-2xl font-bold text-[color:var(--sf-accent)]">

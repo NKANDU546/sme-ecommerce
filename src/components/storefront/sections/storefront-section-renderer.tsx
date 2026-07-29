@@ -2,6 +2,15 @@
 
 import type { PointerEvent, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
+import {
+  InstagramGallerySection,
+  NewsletterSection,
+  TestimonialsSection,
+} from "@/components/storefront/sections/content-sections";
+import { FeaturedProductsSection } from "@/components/storefront/sections/featured-products-section";
+import { NewArrivalsSection } from "@/components/storefront/sections/new-arrivals-section";
+import { SaleSection } from "@/components/storefront/sections/sale-section";
+import { ShopByCategorySection } from "@/components/storefront/sections/shop-by-category-section";
 import { ClassicBoutiqueSmartLink as SmartLink } from "@/components/storefront/templates/classic-boutique-smart-link";
 import { storefrontButtonClassName } from "@/components/storefront/storefront-button";
 import type {
@@ -16,9 +25,15 @@ const SITE_SECTION_LIBRARY: Array<{
 }> = [
   { type: "hero", label: "Hero" },
   { type: "featuredProducts", label: "Products" },
+  { type: "newArrivals", label: "New arrivals" },
+  { type: "sale", label: "Sale" },
+  { type: "shopByCategory", label: "Categories" },
   { type: "promoBanner", label: "Promo" },
   { type: "textImage", label: "Text + image" },
   { type: "features", label: "Benefits" },
+  { type: "testimonials", label: "Testimonials" },
+  { type: "instagramGallery", label: "Instagram" },
+  { type: "newsletter", label: "Newsletter" },
   { type: "faq", label: "FAQ" },
   { type: "contactCta", label: "Contact" },
 ];
@@ -53,6 +68,7 @@ type StorefrontSectionRendererProps = {
   section: StorefrontSection;
   config: StorefrontConfig;
   workspaceId?: string;
+  basePath?: string;
 };
 
 function FeatureIcon({ id }: { id: StorefrontFeatureIconId }) {
@@ -87,40 +103,10 @@ function FeatureIcon({ id }: { id: StorefrontFeatureIconId }) {
   }
 }
 
-function SectionProductCard({
-  title,
-  priceLabel,
-  imageUrl,
-}: {
-  title: string;
-  priceLabel: string;
-  imageUrl: string;
-}) {
-  return (
-    <article className="group flex flex-col">
-      <div className="aspect-square overflow-hidden rounded-xl border border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-card-frame-bg)]">
-        {imageUrl.trim() ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imageUrl}
-            alt=""
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-          />
-        ) : null}
-      </div>
-      <h3 className="mt-4 font-sans text-[15px] font-semibold text-[color:var(--sf-accent)]">
-        {title}
-      </h3>
-      <p className="mt-1 font-sans text-sm text-[color:var(--sf-accent-text-55)]">
-        {priceLabel}
-      </p>
-    </article>
-  );
-}
-
 export function StorefrontSectionRenderer({
   section,
   workspaceId,
+  basePath,
 }: StorefrontSectionRendererProps) {
   switch (section.type) {
     case "hero": {
@@ -155,21 +141,29 @@ export function StorefrontSectionRenderer({
               <p className="mt-5 font-sans text-base leading-relaxed text-white/90 sm:text-lg">
                 {section.subheading}
               </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <SmartLink
-                  link={section.primaryCta}
-                  workspaceId={workspaceId}
-                  className={storefrontButtonClassName({ size: "lg" })}
-                />
-                <SmartLink
-                  link={section.secondaryCta}
-                  workspaceId={workspaceId}
-                  className={storefrontButtonClassName({
-                    variant: "outline",
-                    size: "lg",
-                  })}
-                />
-              </div>
+              {section.primaryCta || section.secondaryCta ? (
+                <div className="mt-8 flex flex-wrap gap-3">
+                  {section.primaryCta ? (
+                    <SmartLink
+                      link={section.primaryCta}
+                      workspaceId={workspaceId}
+                      basePath={basePath}
+                      className={storefrontButtonClassName({ size: "lg" })}
+                    />
+                  ) : null}
+                  {section.secondaryCta ? (
+                    <SmartLink
+                      link={section.secondaryCta}
+                      workspaceId={workspaceId}
+                      basePath={basePath}
+                      className={storefrontButtonClassName({
+                        variant: "outline",
+                        size: "lg",
+                      })}
+                    />
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </div>
         </section>
@@ -177,34 +171,35 @@ export function StorefrontSectionRenderer({
     }
     case "featuredProducts":
       return (
-        <section
-          className="mx-auto max-w-[100%] px-4 py-14 sm:px-8 sm:py-20"
-          aria-labelledby={`${section.id}-heading`}
-        >
-          <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
-            <h2
-              id={`${section.id}-heading`}
-              className="font-serif text-2xl font-light text-[color:var(--sf-accent)] sm:text-3xl"
-            >
-              {section.title}
-            </h2>
-            <SmartLink
-              link={section.viewAll}
-              workspaceId={workspaceId}
-              className={storefrontButtonClassName({ variant: "text" })}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-5 md:grid-cols-4 md:gap-8">
-            {section.products.map((p, i) => (
-              <SectionProductCard
-                key={`${p.title}-${i}`}
-                title={p.title}
-                priceLabel={p.priceLabel}
-                imageUrl={p.imageUrl}
-              />
-            ))}
-          </div>
-        </section>
+        <FeaturedProductsSection
+          section={section}
+          workspaceId={workspaceId}
+          basePath={basePath}
+        />
+      );
+    case "newArrivals":
+      return (
+        <NewArrivalsSection
+          section={section}
+          workspaceId={workspaceId}
+          basePath={basePath}
+        />
+      );
+    case "sale":
+      return (
+        <SaleSection
+          section={section}
+          workspaceId={workspaceId}
+          basePath={basePath}
+        />
+      );
+    case "shopByCategory":
+      return (
+        <ShopByCategorySection
+          section={section}
+          workspaceId={workspaceId}
+          basePath={basePath}
+        />
       );
     case "promoBanner":
       return (
@@ -281,6 +276,7 @@ export function StorefrontSectionRenderer({
               <SmartLink
                 link={section.cta}
                 workspaceId={workspaceId}
+                basePath={basePath}
                 className={storefrontButtonClassName({
                   variant: "text",
                   className: "mt-6",
@@ -338,27 +334,66 @@ export function StorefrontSectionRenderer({
           </div>
         </section>
       );
-    case "contactCta":
+    case "contactCta": {
+      const href = section.href.trim() || "#";
+      const isExternal =
+        /^https?:\/\//i.test(href) || href.startsWith("mailto:");
+      const isWhatsApp = /wa\.me|whatsapp/i.test(href);
+
       return (
-        <section className="bg-[color:var(--sf-promo-section-bg)] px-4 py-14 sm:px-8 sm:py-20">
-          <div className="mx-auto max-w-3xl rounded-2xl border border-[color:var(--sf-accent-border-10)] bg-white p-8 text-center shadow-sm">
-            <h2 className="font-serif text-3xl font-light text-[color:var(--sf-accent)]">
+        <section
+          className="relative overflow-hidden px-4 py-16 sm:px-8 sm:py-24"
+          aria-labelledby={`${section.id}-heading`}
+        >
+          <div className="absolute inset-0 bg-[color:var(--sf-accent)]" />
+          <div className="absolute inset-0 bg-gradient-to-tl from-black/30 via-transparent to-white/10" />
+
+          <div className="relative mx-auto flex max-w-3xl flex-col items-center text-center">
+            <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.22em] text-white/65">
+              {isWhatsApp ? "WhatsApp" : "Contact"}
+            </p>
+            <h2
+              id={`${section.id}-heading`}
+              className="mt-4 font-serif text-4xl font-light text-white sm:text-5xl"
+            >
               {section.title}
             </h2>
-            <p className="mx-auto mt-3 max-w-xl font-sans text-sm leading-relaxed text-[color:var(--sf-accent-text-60)] sm:text-base">
+            <p className="mx-auto mt-4 max-w-xl font-sans text-sm leading-relaxed text-white/75 sm:text-base">
               {section.body}
             </p>
             <a
-              href={section.href || "#"}
-              className={storefrontButtonClassName({
-                className: "mt-6",
-              })}
+              href={href}
+              {...(isExternal
+                ? { target: "_blank", rel: "noopener noreferrer" }
+                : {})}
+              className="mt-10 inline-flex items-center justify-center gap-2 bg-white px-8 py-3.5 font-sans text-sm font-semibold text-[color:var(--sf-accent)] transition-opacity hover:opacity-90"
             >
+              {isWhatsApp ? (
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden
+                  className="h-4 w-4 fill-current"
+                >
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 6.045L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                </svg>
+              ) : null}
               {section.buttonLabel}
             </a>
+            {isWhatsApp ? (
+              <p className="mt-4 font-sans text-xs text-white/55">
+                Usually replies within a few hours
+              </p>
+            ) : null}
           </div>
         </section>
       );
+    }
+    case "testimonials":
+      return <TestimonialsSection section={section} />;
+    case "instagramGallery":
+      return <InstagramGallerySection section={section} />;
+    case "newsletter":
+      return <NewsletterSection section={section} />;
   }
 }
 
@@ -366,18 +401,22 @@ export function StorefrontSections({
   sections,
   config,
   workspaceId,
+  basePath,
   isEditing = false,
   onMoveSection,
   onAddSection,
   onEditSection,
+  onRemoveSection,
 }: {
   sections: StorefrontSection[];
   config: StorefrontConfig;
   workspaceId?: string;
+  basePath?: string;
   isEditing?: boolean;
   onMoveSection?: (from: number, to: number) => void;
   onAddSection?: (type: StorefrontSection["type"], index: number) => void;
   onEditSection?: (sectionId: string) => void;
+  onRemoveSection?: (index: number) => void;
 }) {
   const [dragState, setDragState] = useState<SectionDragState | null>(null);
   const dragStateRef = useRef<SectionDragState | null>(null);
@@ -479,8 +518,16 @@ export function StorefrontSections({
   }
 
   function renderDropZone(index: number) {
-    if (!isEditing || (!onMoveSection && !onAddSection)) return null;
+    if (!isEditing || (!onMoveSection && !onAddSection && !onRemoveSection)) {
+      return null;
+    }
     const isDragging = dragState !== null;
+    const sectionAboveIndex = index - 1;
+    const canRemoveAbove =
+      Boolean(onRemoveSection) &&
+      sectionAboveIndex >= 0 &&
+      sectionAboveIndex < sections.length;
+
     return (
       <div
         key={`section-drop-${index}`}
@@ -514,6 +561,16 @@ export function StorefrontSections({
               ))}
             </>
           ) : null}
+          {canRemoveAbove ? (
+            <button
+              type="button"
+              onClick={() => onRemoveSection?.(sectionAboveIndex)}
+              className="rounded-full border border-red-700/25 bg-white px-2.5 py-1 text-[11px] font-semibold text-red-700 shadow-sm"
+              title="Remove the section above"
+            >
+              − Remove
+            </button>
+          ) : null}
         </div>
       </div>
     );
@@ -524,7 +581,9 @@ export function StorefrontSections({
     index: number,
     children: ReactNode,
   ) {
-    if (!isEditing || (!onMoveSection && !onEditSection)) return children;
+    if (!isEditing || (!onMoveSection && !onEditSection && !onRemoveSection)) {
+      return children;
+    }
     const isDraggingThisSection = dragState?.index === index;
     return (
       <div
@@ -534,7 +593,7 @@ export function StorefrontSections({
         }`}
       >
         <div className="pointer-events-none absolute inset-0 z-20 ring-2 ring-primary-blue/35" />
-        <div className="absolute left-3 top-3 flex flex-wrap items-center gap-1 rounded-full border border-primary-blue/20 bg-white/95 p-1.5 shadow-lg backdrop-blur">
+        <div className="absolute left-3 top-3 z-30 flex flex-wrap items-center gap-1 rounded-full border border-primary-blue/20 bg-white/95 p-1.5 shadow-lg backdrop-blur">
           {onMoveSection ? (
             <button
               type="button"
@@ -547,35 +606,48 @@ export function StorefrontSections({
             </button>
           ) : null}
         </div>
-        {onEditSection ? (
-          <button
-            type="button"
-            onClick={() => onEditSection(section.id)}
-            className="absolute right-3 top-3 z-30 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-primary-blue/20 bg-white/95 text-primary-blue shadow-lg backdrop-blur transition-colors hover:bg-blue-gray/30"
-            aria-label={`Edit section ${index + 1}`}
-            title="Edit this section"
-          >
-            <svg
-              aria-hidden
-              className="h-3.5 w-3.5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
+        <div className="absolute right-3 top-3 z-30 flex items-center gap-1">
+          {onRemoveSection ? (
+            <button
+              type="button"
+              onClick={() => onRemoveSection(index)}
+              className="flex h-8 cursor-pointer items-center justify-center rounded-full border border-red-700/25 bg-white/95 px-2.5 font-sans text-[11px] font-semibold text-red-700 shadow-lg backdrop-blur transition-colors hover:bg-red-50"
+              aria-label={`Remove section ${index + 1}`}
+              title="Remove this section"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M19.5 7.125L16.875 4.5"
-              />
-            </svg>
-          </button>
-        ) : null}
+              Remove
+            </button>
+          ) : null}
+          {onEditSection ? (
+            <button
+              type="button"
+              onClick={() => onEditSection(section.id)}
+              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-primary-blue/20 bg-white/95 text-primary-blue shadow-lg backdrop-blur transition-colors hover:bg-blue-gray/30"
+              aria-label={`Edit section ${index + 1}`}
+              title="Edit this section"
+            >
+              <svg
+                aria-hidden
+                className="h-3.5 w-3.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M19.5 7.125L16.875 4.5"
+                />
+              </svg>
+            </button>
+          ) : null}
+        </div>
         {children}
       </div>
     );
@@ -589,6 +661,7 @@ export function StorefrontSections({
         section={section}
         config={config}
         workspaceId={workspaceId}
+        basePath={basePath}
       />,
     );
   }

@@ -244,6 +244,46 @@ Step 04 is complete when:
 7. Update product create/update to accept `mainImageId`.
 8. Add tests for ownership, file validation, confirm, list, and delete.
 
+### Implementation Status — Complete (Backend Live)
+
+Media upload APIs are live under `/api/v1` and confirmed with a real signed
+upload against workspace `aafbe5b3-97a4-4a90-a0e9-5ae6d5bdcec5`.
+
+#### Endpoints
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| POST | `/workspaces/{workspaceId}/media/upload-url` | Creates pending media + signed S3 PUT URL |
+| POST | `/workspaces/{workspaceId}/media/{mediaId}/confirm` | Marks ready, returns public `url` |
+| GET | `/workspaces/{workspaceId}/media` | `type=image`, default `limit=40` |
+| GET | `/workspaces/{workspaceId}/media/{mediaId}` | Single asset |
+| DELETE | `/workspaces/{workspaceId}/media/{mediaId}` | Soft-delete → `data: null` |
+
+Auth: Bearer JWT + workspace ownership. Envelope matches frontend contract.
+Products accept `mainImageId` / `galleryMediaIds` and still return `imageUrl` /
+`galleryUrls`.
+
+#### Confirmed field notes
+
+- `mediaId` / `id` are UUIDs.
+- Success envelope may also include `timestamp` (frontend ignores extra fields).
+- `createdAt` / `updatedAt` are local timestamps without `Z`; `expiresAt` is Instant with `Z`.
+- Status values are lowercase: `ready`, `pending`, `deleted`.
+- Storage key prefix: `workspaces/...`.
+
+#### Storage / CORS
+
+- S3 CORS allows PUT/GET/HEAD from `http://localhost:3000`, `http://localhost:5173`, `https://sme-operations.netlify.app`.
+- Confirmed media URLs are publicly readable for `<img src>`.
+- Invalid mime → `INVALID_MEDIA_TYPE`. Oversize → `MEDIA_TOO_LARGE`.
+
+#### Frontend wiring already in place
+
+- `src/apis/media.ts` + `src/lib/media-upload.ts` + `src/hooks/use-media.ts`
+- Products: `ProductMediaFields` uploads and saves `mainImageId` / `galleryMediaIds`
+- Storefront editor: `ImageUploadField` uploads and stores returned `url` into config image fields
+
 ## What Comes Next
 
 Step 05 exposes published storefront and product data to public customer routes.
+

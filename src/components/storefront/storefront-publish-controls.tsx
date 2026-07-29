@@ -105,7 +105,7 @@ export function StorefrontPublishControls({
   async function confirmPublish() {
     try {
       await flushDraftSave();
-      const result = await publishMutation.mutateAsync();
+      const result = await publishMutation.mutateAsync({});
       setGoLiveOpen(false);
 
       const [published, workspace] = await Promise.all([

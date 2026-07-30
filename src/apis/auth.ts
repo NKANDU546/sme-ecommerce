@@ -101,12 +101,17 @@ export async function postLogin(
         email: credentials.email,
         password: credentials.password,
       }),
+      signal: AbortSignal.timeout(20_000),
     });
-  } catch {
+  } catch (error) {
+    const timedOut =
+      error instanceof Error &&
+      (error.name === "TimeoutError" || error.name === "AbortError");
     return {
       ok: false,
-      errorMessage:
-        "Could not reach the server. Check your connection and try again.",
+      errorMessage: timedOut
+        ? "The API did not respond in time. Check that the backend is running."
+        : "Could not reach the server. Check your connection and try again.",
     };
   }
 

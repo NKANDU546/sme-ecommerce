@@ -20,7 +20,7 @@ export function usePreviewStorefrontConfig(
   if (!signedIn) {
     return { status: "unauthenticated" };
   }
-  if (draftQuery.isLoading || draftQuery.isFetching) {
+  if (draftQuery.isLoading) {
     return { status: "loading" };
   }
   if (draftQuery.isError || !draftQuery.data) {

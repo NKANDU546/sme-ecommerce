@@ -8,11 +8,11 @@ import {
   productFormToUpdateBody,
   type ProductFormValues,
 } from "@/components/dashboard/product-form-modal";
+import { SetOnSaleModal } from "@/components/dashboard/set-on-sale-modal";
 import { formatDate } from "@/formats/date";
 import {
   useArchiveProduct,
   useCreateProduct,
-  useDraftProduct,
   useProductCategories,
   useProducts,
   usePublishProduct,
@@ -47,7 +47,8 @@ type ProductActionsProps = {
   busy: boolean;
   onEdit: () => void;
   onPublish: () => void;
-  onDraft: () => void;
+  onSale: () => void;
+  onRemoveSale: () => void;
   onDelete: () => void;
   compact?: boolean;
 };
@@ -57,7 +58,8 @@ function ProductActions({
   busy,
   onEdit,
   onPublish,
-  onDraft,
+  onSale,
+  onRemoveSale,
   onDelete,
   compact,
 }: ProductActionsProps) {
@@ -91,14 +93,23 @@ function ProductActions({
           Publish
         </button>
       ) : null}
-      {product.status !== "draft" ? (
+      {product.onSale ? (
         <button
           type="button"
           disabled={busy}
-          onClick={onDraft}
+          onClick={onRemoveSale}
           className={`${link} text-amber-900`}
         >
-          Draft
+          Remove sale
+        </button>
+      ) : product.status !== "archived" ? (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onSale}
+          className={`${link} text-amber-900`}
+        >
+          Sale
         </button>
       ) : null}
       {product.status !== "archived" ? (
@@ -128,6 +139,7 @@ export function ProductsPanel({ workspaceId }: ProductsPanelProps) {
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [editingProduct, setEditingProduct] = useState<ProductApi | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ProductApi | null>(null);
+  const [saleTarget, setSaleTarget] = useState<ProductApi | null>(null);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -152,7 +164,6 @@ export function ProductsPanel({ workspaceId }: ProductsPanelProps) {
   const createMutation = useCreateProduct(workspaceId, accessToken);
   const updateMutation = useUpdateProduct(workspaceId, accessToken);
   const publishMutation = usePublishProduct(workspaceId, accessToken);
-  const draftMutation = useDraftProduct(workspaceId, accessToken);
   const archiveMutation = useArchiveProduct(workspaceId, accessToken);
 
   const apiItems = productsQuery.data?.items ?? [];
@@ -226,23 +237,56 @@ export function ProductsPanel({ workspaceId }: ProductsPanelProps) {
     setEditingProduct(null);
   }
 
-  async function runStatusAction(
-    productId: string,
-    action: "publish" | "draft",
-  ) {
+  async function runPublish(productId: string) {
     setActionError(null);
     setBusyProductId(productId);
     try {
-      if (action === "publish") {
-        await publishMutation.mutateAsync(productId);
-      } else {
-        await draftMutation.mutateAsync(productId);
-      }
+      await publishMutation.mutateAsync(productId);
     } catch (err) {
       setActionError(
         err instanceof Error
           ? err.message
-          : `Could not ${action} the product.`,
+          : "Could not publish the product.",
+      );
+    } finally {
+      setBusyProductId(null);
+    }
+  }
+
+  async function handleConfirmSale(compareAtPriceAmount: number) {
+    if (!saleTarget) return;
+    setActionError(null);
+    setBusyProductId(String(saleTarget.id));
+    try {
+      await updateMutation.mutateAsync({
+        productId: String(saleTarget.id),
+        body: { compareAtPriceAmount },
+      });
+      setSaleTarget(null);
+    } catch (err) {
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : "Could not put the product on sale.",
+      );
+    } finally {
+      setBusyProductId(null);
+    }
+  }
+
+  async function handleRemoveSale(productId: string) {
+    setActionError(null);
+    setBusyProductId(productId);
+    try {
+      await updateMutation.mutateAsync({
+        productId,
+        body: { clearCompareAtPrice: true, compareAtPriceAmount: null },
+      });
+    } catch (err) {
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : "Could not remove the sale price.",
       );
     } finally {
       setBusyProductId(null);
@@ -322,6 +366,15 @@ export function ProductsPanel({ workspaceId }: ProductsPanelProps) {
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => void handleConfirmDelete()}
         isSubmitting={archiveMutation.isPending}
+      />
+      <SetOnSaleModal
+        open={Boolean(saleTarget)}
+        productTitle={saleTarget?.title ?? ""}
+        priceLabel={saleTarget?.priceLabel ?? ""}
+        priceAmount={saleTarget?.priceAmount ?? 0}
+        onClose={() => setSaleTarget(null)}
+        onConfirm={handleConfirmSale}
+        isSubmitting={updateMutation.isPending && Boolean(saleTarget)}
       />
 
       <div className="shrink-0 border-b border-primary-blue/10 bg-white px-5 py-4 sm:px-8">
@@ -535,10 +588,12 @@ export function ProductsPanel({ workspaceId }: ProductsPanelProps) {
                             product={p}
                             busy={busy}
                             onEdit={() => openEdit(p.id)}
-                            onPublish={() =>
-                              void runStatusAction(p.id, "publish")
-                            }
-                            onDraft={() => void runStatusAction(p.id, "draft")}
+                            onPublish={() => void runPublish(p.id)}
+                            onSale={() => {
+                              const api = apiById.get(p.id);
+                              if (api) setSaleTarget(api);
+                            }}
+                            onRemoveSale={() => void handleRemoveSale(p.id)}
                             onDelete={() => {
                               const api = apiById.get(p.id);
                               if (api) setDeleteTarget(api);
@@ -604,10 +659,12 @@ export function ProductsPanel({ workspaceId }: ProductsPanelProps) {
                           busy={busy}
                           compact
                           onEdit={() => openEdit(p.id)}
-                          onPublish={() =>
-                            void runStatusAction(p.id, "publish")
-                          }
-                          onDraft={() => void runStatusAction(p.id, "draft")}
+                          onPublish={() => void runPublish(p.id)}
+                          onSale={() => {
+                            const api = apiById.get(p.id);
+                            if (api) setSaleTarget(api);
+                          }}
+                          onRemoveSale={() => void handleRemoveSale(p.id)}
                           onDelete={() => {
                             const api = apiById.get(p.id);
                             if (api) setDeleteTarget(api);

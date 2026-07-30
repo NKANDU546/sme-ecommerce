@@ -352,23 +352,52 @@ export function ProductFormModal({
         </div>
 
         <div>
-          <label htmlFor="product-form-compare-at" className={labelClass}>
-            Compare-at price (optional)
+          <label className="flex cursor-pointer items-center gap-2 font-sans text-sm text-foreground">
+            <input
+              type="checkbox"
+              checked={form.compareAtPrice.trim().length > 0}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  const price = parsePriceToMinorUnits(form.price);
+                  const suggested =
+                    price != null
+                      ? formatMinorUnits(Math.round(price * 1.2))
+                      : "";
+                  update("compareAtPrice", suggested || "");
+                } else {
+                  update("compareAtPrice", "");
+                }
+              }}
+              disabled={isSubmitting}
+              className="h-4 w-4 rounded border-border text-primary-blue focus:ring-primary-blue/30"
+            />
+            Put on sale
           </label>
-          <input
-            id="product-form-compare-at"
-            type="text"
-            inputMode="decimal"
-            value={form.compareAtPrice}
-            onChange={(e) => update("compareAtPrice", e.target.value)}
-            disabled={isSubmitting}
-            placeholder="299.00"
-            className={fieldClass}
-          />
-          <p className="mt-1.5 font-sans text-[11px] leading-relaxed text-muted-foreground">
-            Was-price shown with strikethrough. Must be higher than Price. Leave
-            empty to remove from Sale.
-          </p>
+          {form.compareAtPrice.trim().length > 0 ? (
+            <div className="mt-3">
+              <label htmlFor="product-form-compare-at" className={labelClass}>
+                Compare-at price (was)
+              </label>
+              <input
+                id="product-form-compare-at"
+                type="text"
+                inputMode="decimal"
+                value={form.compareAtPrice}
+                onChange={(e) => update("compareAtPrice", e.target.value)}
+                disabled={isSubmitting}
+                placeholder="299.00"
+                className={fieldClass}
+              />
+              <p className="mt-1.5 font-sans text-[11px] leading-relaxed text-muted-foreground">
+                Must be higher than Price. Shown with strikethrough on the
+                storefront.
+              </p>
+            </div>
+          ) : (
+            <p className="mt-1.5 font-sans text-[11px] leading-relaxed text-muted-foreground">
+              Enable to set a was-price and show this product in Sale sections.
+            </p>
+          )}
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">

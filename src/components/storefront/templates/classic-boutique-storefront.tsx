@@ -10,6 +10,8 @@ type ClassicBoutiqueStorefrontProps = {
   /** Explicit storefront root, e.g. `/s/my-store`. */
   basePath?: string;
   isEditing?: boolean;
+  /** Force mobile/desktop chrome when previewing inside a fixed-width frame. */
+  forceViewport?: "mobile" | "desktop";
   onMoveSection?: (from: number, to: number) => void;
   onAddSection?: (type: StorefrontSection["type"], index: number) => void;
   onEditSection?: (sectionId: string) => void;
@@ -21,6 +23,7 @@ export function ClassicBoutiqueStorefront({
   workspaceId,
   basePath,
   isEditing,
+  forceViewport,
   onMoveSection,
   onAddSection,
   onEditSection,
@@ -28,7 +31,12 @@ export function ClassicBoutiqueStorefront({
 }: ClassicBoutiqueStorefrontProps) {
   return (
     <div className="min-h-full">
-      <ClassicBoutiqueSiteHeader config={config} basePath={basePath} workspaceId={workspaceId} />
+      <ClassicBoutiqueSiteHeader
+        config={config}
+        basePath={basePath}
+        workspaceId={workspaceId}
+        forceViewport={forceViewport}
+      />
       <StorefrontSections
         sections={config.sections}
         config={config}

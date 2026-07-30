@@ -7,6 +7,7 @@ import { WorkspaceEmptyState } from "@/components/dashboard/workspace-empty-stat
 import { WorkspaceRouteGuard } from "@/components/dashboard/workspace-route-guard";
 import { ProductsPanel } from "@/components/dashboard/products-panel";
 import { StorefrontPanel } from "@/components/storefront/storefront-panel";
+import { StorefrontTemplatesPanel } from "@/components/storefront/storefront-templates-panel";
 import {
   DASHBOARD_NAV_IDS,
   getDashboardSection,
@@ -86,7 +87,7 @@ export function DashboardWorkspaceClient({
                   </svg>
                 </button>
               ) : null}
-              {activeId === "storefront" ? (
+              {activeId === "storefront" || activeId === "templates" ? (
                 <Link
                   href={`/preview/${workspaceId}`}
                   target="_blank"
@@ -109,6 +110,10 @@ export function DashboardWorkspaceClient({
           {activeId === "storefront" ? (
             <div className="flex min-h-0 flex-1 flex-col">
               <StorefrontPanel workspaceId={workspaceId} />
+            </div>
+          ) : activeId === "templates" ? (
+            <div className="flex min-h-0 flex-1 flex-col">
+              <StorefrontTemplatesPanel workspaceId={workspaceId} />
             </div>
           ) : activeId === "products" ? (
             <div className="flex min-h-0 flex-1 flex-col">

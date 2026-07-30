@@ -35,6 +35,12 @@ function NavIcon({ name }: { name: (typeof DASHBOARD_SECTIONS)[number]["icon"] }
           <path d="M4 10V20h16V10M4 10l2-6h12l2 6M4 10h16" />
         </svg>
       );
+    case "layout":
+      return (
+        <svg className={common} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" aria-hidden>
+          <path strokeLinecap="round" d="M4 5h16v14H4V5zM4 10h16M10 10v9" />
+        </svg>
+      );
     case "users":
       return (
         <svg className={common} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" aria-hidden>

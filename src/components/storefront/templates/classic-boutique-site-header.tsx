@@ -52,6 +52,11 @@ type ClassicBoutiqueSiteHeaderProps = {
   /** Storefront root, e.g. `/s/my-store` or `/preview/{id}`. Used to resolve magic hrefs. */
   basePath?: string;
   workspaceId?: string;
+  /**
+   * Force header layout for template previews in a fixed-width frame
+   * (media queries still follow the real browser width otherwise).
+   */
+  forceViewport?: "mobile" | "desktop";
 };
 
 function cartBadgeLabel(
@@ -71,6 +76,7 @@ export function ClassicBoutiqueSiteHeader({
   config,
   basePath,
   workspaceId,
+  forceViewport,
 }: ClassicBoutiqueSiteHeaderProps) {
   const cart = usePreviewCartOptional();
   const pathname = usePathname() ?? "";
@@ -85,6 +91,11 @@ export function ClassicBoutiqueSiteHeader({
     href: resolveStorefrontHref(link, resolvedBase),
   }));
 
+  const showDesktopNav =
+    forceViewport === "desktop" || forceViewport == null;
+  const showMobileNav =
+    forceViewport === "mobile" || forceViewport == null;
+
   return (
     <header className="sticky top-0 z-20 border-b border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-header-surface)] backdrop-blur-md">
       <div className="mx-auto flex max-w-[100%] items-center justify-between gap-4 px-4 py-4 sm:px-8">
@@ -96,19 +107,25 @@ export function ClassicBoutiqueSiteHeader({
             {config.tagline}
           </p>
         </div>
-        <nav
-          className="hidden min-w-0 flex-1 items-center justify-center gap-8 lg:flex"
-          aria-label="Storefront"
-        >
-          {resolvedLinks.map(({ link, href }, i) => (
-            <NavLink
-              key={`${link.label}-${i}`}
-              link={link}
-              resolvedHref={href}
-              pathname={pathname}
-            />
-          ))}
-        </nav>
+        {showDesktopNav ? (
+          <nav
+            className={
+              forceViewport === "desktop"
+                ? "flex min-w-0 flex-1 items-center justify-center gap-8"
+                : "hidden min-w-0 flex-1 items-center justify-center gap-8 lg:flex"
+            }
+            aria-label="Storefront"
+          >
+            {resolvedLinks.map(({ link, href }, i) => (
+              <NavLink
+                key={`${link.label}-${i}`}
+                link={link}
+                resolvedHref={href}
+                pathname={pathname}
+              />
+            ))}
+          </nav>
+        ) : null}
         <div className="flex shrink-0 items-center gap-4 text-[color:var(--sf-accent)]">
           <button
             type="button"
@@ -156,21 +173,29 @@ export function ClassicBoutiqueSiteHeader({
           </button>
         </div>
       </div>
-      <div className="border-t border-[color:var(--sf-accent-border-5)] px-4 py-2 lg:hidden">
-        <nav
-          className="flex flex-wrap justify-center gap-x-5 gap-y-2"
-          aria-label="Storefront mobile"
+      {showMobileNav ? (
+        <div
+          className={
+            forceViewport === "mobile"
+              ? "border-t border-[color:var(--sf-accent-border-5)] px-4 py-2"
+              : "border-t border-[color:var(--sf-accent-border-5)] px-4 py-2 lg:hidden"
+          }
         >
-          {resolvedLinks.map(({ link, href }, i) => (
-            <NavLink
-              key={`m-${link.label}-${i}`}
-              link={link}
-              resolvedHref={href}
-              pathname={pathname}
-            />
-          ))}
-        </nav>
-      </div>
+          <nav
+            className="flex flex-wrap justify-center gap-x-5 gap-y-2"
+            aria-label="Storefront mobile"
+          >
+            {resolvedLinks.map(({ link, href }, i) => (
+              <NavLink
+                key={`m-${link.label}-${i}`}
+                link={link}
+                resolvedHref={href}
+                pathname={pathname}
+              />
+            ))}
+          </nav>
+        </div>
+      ) : null}
     </header>
   );
 }

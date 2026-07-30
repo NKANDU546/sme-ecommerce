@@ -9,6 +9,8 @@ type StorefrontTemplateViewProps = {
   /** Public storefront root, e.g. `/s/my-store`. */
   basePath?: string;
   isEditing?: boolean;
+  /** Force mobile/desktop chrome when previewing inside a fixed-width frame. */
+  forceViewport?: "mobile" | "desktop";
   onMoveSection?: (from: number, to: number) => void;
   onAddSection?: (type: StorefrontSection["type"], index: number) => void;
   onEditSection?: (sectionId: string) => void;
@@ -21,6 +23,7 @@ export function StorefrontTemplateView({
   workspaceId,
   basePath,
   isEditing,
+  forceViewport,
   onMoveSection,
   onAddSection,
   onEditSection,
@@ -32,6 +35,7 @@ export function StorefrontTemplateView({
       workspaceId={workspaceId}
       basePath={basePath}
       isEditing={isEditing}
+      forceViewport={forceViewport}
       onMoveSection={onMoveSection}
       onAddSection={onAddSection}
       onEditSection={onEditSection}

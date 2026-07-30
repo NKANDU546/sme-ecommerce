@@ -1,4 +1,4 @@
-const KEY_PREFIX = "sme_sf_template_setup_v1_";
+const KEY_PREFIX = "sme_sf_template_setup_v2_";
 
 function storageKey(workspaceId: string): string {
   return `${KEY_PREFIX}${workspaceId}`;

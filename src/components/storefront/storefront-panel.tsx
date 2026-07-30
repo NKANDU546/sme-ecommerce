@@ -1,53 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import {
   StorefrontEditor,
   type StorefrontCustomizeMode,
 } from "@/components/storefront/storefront-editor";
+import { StorefrontPublishControls } from "@/components/storefront/storefront-publish-controls";
 import { StorefrontTemplateView } from "@/components/storefront/storefront-template-view";
 import {
-  createInitialStorefrontFromSeed,
-  loadStorefront,
-  saveStorefront,
-} from "@/lib/storefront-storage";
+  useResetStorefrontDraft,
+  useSaveStorefrontDraft,
+  useStorefrontDraft,
+} from "@/hooks/use-storefront-draft";
+import { getStoredAuthSession } from "@/lib/auth-login-storage";
 import type { StorefrontConfig, StorefrontSection } from "@/types/storefront";
 
 type StorefrontPanelProps = {
   workspaceId: string;
 };
 
-type TemplateCard = {
-  name: string;
-  description: string;
-  tag: string;
-  available: boolean;
-};
+type SaveStatus = "idle" | "pending" | "saving" | "saved" | "error";
 
-const STOREFRONT_TEMPLATE_CARDS: TemplateCard[] = [
-  {
-    name: "Classic Boutique",
-    description:
-      "A polished storefront with hero content, featured products, promos, and value props.",
-    tag: "Available now",
-    available: true,
-  },
-  {
-    name: "Minimal Catalogue",
-    description:
-      "A lean product-first layout for stores that want a simple catalogue feel.",
-    tag: "Not yet available",
-    available: false,
-  },
-  {
-    name: "Bold Retail",
-    description:
-      "A high-contrast campaign-style homepage for launches, sales, and seasonal drops.",
-    tag: "Not yet available",
-    available: false,
-  },
-];
+const SAVE_DEBOUNCE_MS = 800;
 
 function createStorefrontSection(type: StorefrontSection["type"]): StorefrontSection {
   const id = `${type}-${Date.now()}`;
@@ -68,7 +44,35 @@ function createStorefrontSection(type: StorefrontSection["type"]): StorefrontSec
         type,
         title: "Featured products",
         viewAll: { label: "View all", href: "@shop" },
-        products: [{ title: "New product", priceLabel: "R 0.00", imageUrl: "" }],
+        limit: 4,
+      };
+    case "newArrivals":
+      return {
+        id,
+        type,
+        eyebrow: "Just landed",
+        title: "New arrivals",
+        viewAll: { label: "Shop all new", href: "@shop" },
+        limit: 4,
+      };
+    case "sale":
+      return {
+        id,
+        type,
+        eyebrow: "Sale",
+        title: "On sale now",
+        description: "Hand-picked deals while stocks last.",
+        viewAll: { label: "Shop all sale", href: "@shop" },
+        imageUrl: "",
+        limit: 4,
+      };
+    case "shopByCategory":
+      return {
+        id,
+        type,
+        title: "Shop by category",
+        viewAll: { label: "View all", href: "@shop" },
+        categories: [],
       };
     case "promoBanner":
       return {
@@ -114,6 +118,43 @@ function createStorefrontSection(type: StorefrontSection["type"]): StorefrontSec
           },
         ],
       };
+    case "testimonials":
+      return {
+        id,
+        type,
+        title: "What customers say",
+        items: [
+          {
+            quote: "Beautiful products and such an easy ordering experience.",
+            name: "Thandi M.",
+            role: "Cape Town",
+            imageUrl: "",
+          },
+        ],
+      };
+    case "instagramGallery":
+      return {
+        id,
+        type,
+        title: "Follow us",
+        handle: "@yourstore",
+        images: [
+          { imageUrl: "", href: "#" },
+          { imageUrl: "", href: "#" },
+          { imageUrl: "", href: "#" },
+          { imageUrl: "", href: "#" },
+        ],
+      };
+    case "newsletter":
+      return {
+        id,
+        type,
+        title: "Stay in the loop",
+        body: "Get new arrivals and offers first. No spam.",
+        placeholder: "you@email.com",
+        buttonLabel: "Subscribe",
+        successMessage: "Thanks — you are on the list.",
+      };
     case "faq":
       return {
         id,
@@ -139,68 +180,279 @@ function createStorefrontSection(type: StorefrontSection["type"]): StorefrontSec
 }
 
 export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
+  const [signedIn, setSignedIn] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => {
+    setSignedIn(Boolean(getStoredAuthSession()?.accessToken));
+    setAuthReady(true);
+  }, []);
+
+  const draftQuery = useStorefrontDraft(workspaceId, signedIn);
+  const saveMutation = useSaveStorefrontDraft(workspaceId);
+  const resetMutation = useResetStorefrontDraft(workspaceId);
+
   const [config, setConfig] = useState<StorefrontConfig | null>(null);
-  const [hydrated, setHydrated] = useState(false);
+  const [templateVersion, setTemplateVersion] = useState(1);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [customizeMode, setCustomizeMode] =
     useState<StorefrontCustomizeMode>("sections");
+  const [previewPageId, setPreviewPageId] = useState<"home" | string>("home");
   const [sectionEditTarget, setSectionEditTarget] = useState<{
     id: string;
+    pageId: "home" | string;
     requestId: number;
   } | null>(null);
 
+  const saveTimerRef = useRef<number | null>(null);
+  const latestConfigRef = useRef<StorefrontConfig | null>(null);
+  const templateVersionRef = useRef(1);
+  const hasHydratedRef = useRef(false);
+  const saveStatusRef = useRef<SaveStatus>("idle");
+
   useEffect(() => {
-    const id = window.setTimeout(() => {
-      setConfig(loadStorefront(workspaceId));
-      setHydrated(true);
-    }, 0);
-    return () => window.clearTimeout(id);
-  }, [workspaceId]);
+    saveStatusRef.current = saveStatus;
+  }, [saveStatus]);
+
+  useEffect(() => {
+    if (!draftQuery.data) return;
+    // Don't overwrite local edits while a debounced/in-flight save is running,
+    // and don't wipe "Draft saved" back to idle when the query cache updates.
+    if (
+      saveStatusRef.current === "pending" ||
+      saveStatusRef.current === "saving"
+    ) {
+      return;
+    }
+
+    const incoming = draftQuery.data.config;
+    const local = latestConfigRef.current;
+    // Keep newer in-progress local edits if the cache updates with an older snapshot.
+    if (
+      hasHydratedRef.current &&
+      local &&
+      local.updatedAt > (incoming.updatedAt ?? 0)
+    ) {
+      return;
+    }
+
+    setConfig(incoming);
+    setTemplateVersion(draftQuery.data.draft.templateVersion);
+    latestConfigRef.current = incoming;
+    templateVersionRef.current = draftQuery.data.draft.templateVersion;
+
+    if (!hasHydratedRef.current) {
+      hasHydratedRef.current = true;
+      setSaveStatus("idle");
+    }
+  }, [draftQuery.data]);
+
+  useEffect(() => {
+    templateVersionRef.current = templateVersion;
+  }, [templateVersion]);
+
+  const flushSave = useCallback(async () => {
+    const next = latestConfigRef.current;
+    if (!next) return;
+    const savedUpdatedAt = next.updatedAt;
+    setSaveStatus("saving");
+    try {
+      const view = await saveMutation.mutateAsync({
+        config: next,
+        templateVersion: templateVersionRef.current,
+      });
+      setTemplateVersion(view.draft.templateVersion);
+      templateVersionRef.current = view.draft.templateVersion;
+
+      // If the user typed while this request was in flight, don't mark saved
+      // (or clobber) — keep pending and save again.
+      if (latestConfigRef.current?.updatedAt !== savedUpdatedAt) {
+        setSaveStatus("pending");
+        if (saveTimerRef.current != null) {
+          window.clearTimeout(saveTimerRef.current);
+        }
+        saveTimerRef.current = window.setTimeout(() => {
+          void flushSave().catch(() => {
+            /* toast already shown in flushSave */
+          });
+        }, SAVE_DEBOUNCE_MS);
+        return;
+      }
+
+      setSaveStatus("saved");
+    } catch (error) {
+      setSaveStatus("error");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not save storefront draft.",
+      );
+      throw error;
+    }
+  }, [saveMutation]);
+
+  const flushDraftBeforePublish = useCallback(async () => {
+    if (saveTimerRef.current != null) {
+      window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    await flushSave();
+  }, [flushSave]);
 
   const persist = useCallback(
     (next: StorefrontConfig) => {
       const stamped = { ...next, updatedAt: Date.now() };
       setConfig(stamped);
-      saveStorefront(workspaceId, stamped);
+      latestConfigRef.current = stamped;
+      setSaveStatus("pending");
+      if (saveTimerRef.current != null) {
+        window.clearTimeout(saveTimerRef.current);
+      }
+      saveTimerRef.current = window.setTimeout(() => {
+        void flushSave().catch(() => {
+          /* toast already shown in flushSave */
+        });
+      }, SAVE_DEBOUNCE_MS);
     },
-    [workspaceId],
+    [flushSave],
   );
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current != null) {
+        window.clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, []);
 
   const moveHomepageSection = useCallback(
     (from: number, to: number) => {
-      if (!config || to < 0 || to >= config.sections.length || from === to) {
+      if (!config) return;
+      const pageSections =
+        previewPageId === "home"
+          ? config.sections
+          : config.pages.find((p) => p.id === previewPageId)?.sections;
+      if (!pageSections || to < 0 || to >= pageSections.length || from === to) {
         return;
       }
-      const sections = [...config.sections];
+      const sections = [...pageSections];
       const [section] = sections.splice(from, 1);
       sections.splice(to, 0, section);
-      persist({ ...config, sections });
+      if (previewPageId === "home") {
+        persist({ ...config, sections });
+        return;
+      }
+      persist({
+        ...config,
+        pages: config.pages.map((page) =>
+          page.id === previewPageId ? { ...page, sections } : page,
+        ),
+      });
     },
-    [config, persist],
+    [config, persist, previewPageId],
   );
 
   const addHomepageSection = useCallback(
     (type: StorefrontSection["type"], index: number) => {
       if (!config) return;
-      const sections = [...config.sections];
-      sections.splice(index, 0, createStorefrontSection(type));
-      persist({ ...config, sections });
+      if (previewPageId === "home") {
+        const sections = [...config.sections];
+        sections.splice(index, 0, createStorefrontSection(type));
+        persist({ ...config, sections });
+        return;
+      }
+      persist({
+        ...config,
+        pages: config.pages.map((page) => {
+          if (page.id !== previewPageId) return page;
+          const sections = [...page.sections];
+          sections.splice(index, 0, createStorefrontSection(type));
+          return { ...page, sections };
+        }),
+      });
     },
-    [config, persist],
+    [config, persist, previewPageId],
   );
 
-  const editHomepageSection = useCallback((sectionId: string) => {
-    setSectionEditTarget((current) => ({
-      id: sectionId,
-      requestId: (current?.requestId ?? 0) + 1,
-    }));
+  const editHomepageSection = useCallback(
+    (sectionId: string) => {
+      setSectionEditTarget((current) => ({
+        id: sectionId,
+        pageId: previewPageId,
+        requestId: (current?.requestId ?? 0) + 1,
+      }));
+    },
+    [previewPageId],
+  );
+
+  const removeHomepageSection = useCallback(
+    (index: number) => {
+      if (!config) return;
+      if (previewPageId === "home") {
+        persist({
+          ...config,
+          sections: config.sections.filter((_, i) => i !== index),
+        });
+        return;
+      }
+      persist({
+        ...config,
+        pages: config.pages.map((page) => {
+          if (page.id !== previewPageId) return page;
+          return {
+            ...page,
+            sections: page.sections.filter((_, i) => i !== index),
+          };
+        }),
+      });
+    },
+    [config, persist, previewPageId],
+  );
+
+  const handleSelectedPageChange = useCallback((pageId: "home" | string) => {
+    setPreviewPageId(pageId);
   }, []);
 
-  function startFromTemplate() {
-    const initial = createInitialStorefrontFromSeed();
-    persist(initial);
+  const previewPage =
+    config && previewPageId !== "home"
+      ? config.pages.find((page) => page.id === previewPageId) ?? null
+      : null;
+
+  const previewConfig = useMemo(() => {
+    if (!config) return null;
+    if (!previewPage) return config;
+    return {
+      ...config,
+      sections: previewPage.sections,
+    };
+  }, [config, previewPage]);
+
+  async function handleResetTemplate() {
+    if (saveTimerRef.current != null) {
+      window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    try {
+      const view = await resetMutation.mutateAsync({
+        templateId: "classic-boutique",
+        templateVersion: 1,
+      });
+      setConfig(view.config);
+      latestConfigRef.current = view.config;
+      setTemplateVersion(view.draft.templateVersion);
+      templateVersionRef.current = view.draft.templateVersion;
+      setSaveStatus("saved");
+      toast.success("Storefront reset to Classic Boutique");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not reset storefront draft.",
+      );
+    }
   }
 
-  if (!hydrated) {
+  if (!authReady) {
     return (
       <div className="flex flex-1 items-center justify-center px-6 py-16 font-sans text-sm text-muted-foreground">
         Loading storefront…
@@ -208,112 +460,149 @@ export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
     );
   }
 
-  if (!config) {
+  if (!signedIn) {
     return (
-      <div className="flex flex-1 flex-col px-6 py-10 sm:px-8 sm:py-14">
-        <div className="mx-auto w-full max-w-6xl">
-          <div className="max-w-2xl">
-            <p className="font-sans text-xs font-semibold uppercase tracking-[0.18em] text-primary-blue/55">
-              Storefront templates
-            </p>
-            <h2 className="mt-3 font-serif text-3xl font-light text-primary-blue sm:text-4xl">
-              Choose a template
-            </h2>
-            <p className="mt-4 font-sans text-sm leading-relaxed text-muted-foreground sm:text-base">
-              Start with a storefront layout, then edit copy, colours, WhatsApp
-              details, and products from the dashboard. More templates are
-              coming soon.
-            </p>
-          </div>
-
-          <ul className="mt-8 grid gap-5 md:grid-cols-3">
-            {STOREFRONT_TEMPLATE_CARDS.map((template) => (
-              <li
-                key={template.name}
-                className={`flex min-h-80 flex-col overflow-hidden rounded-xl border bg-white shadow-sm ${
-                  template.available
-                    ? "border-primary-blue/15"
-                    : "border-primary-blue/10 opacity-75"
-                }`}
-              >
-                <div className="border-b border-primary-blue/10 bg-blue-gray/25 p-4">
-                  <div className="overflow-hidden rounded-lg border border-primary-blue/10 bg-white p-3">
-                    <div className="h-28 rounded-md bg-gradient-to-br from-primary-blue via-primary-blue/80 to-blue-gray" />
-                    <div className="mt-3 h-2 w-2/3 rounded-full bg-primary-blue/20" />
-                    <div className="mt-2 h-2 w-1/2 rounded-full bg-primary-blue/10" />
-                  </div>
-                </div>
-
-                <div className="flex flex-1 flex-col p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="font-sans text-base font-bold text-primary-blue">
-                      {template.name}
-                    </h3>
-                    <span
-                      className={`shrink-0 rounded-full px-2.5 py-1 font-sans text-[10px] font-bold uppercase tracking-wide ${
-                        template.available
-                          ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-700/15"
-                          : "bg-blue-gray/50 text-primary-blue/55 ring-1 ring-primary-blue/10"
-                      }`}
-                    >
-                      {template.tag}
-                    </span>
-                  </div>
-                  <p className="mt-3 flex-1 font-sans text-sm leading-relaxed text-muted-foreground">
-                    {template.description}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={template.available ? startFromTemplate : undefined}
-                    disabled={!template.available}
-                    className={`mt-5 inline-flex items-center justify-center rounded-md px-4 py-2.5 font-sans text-sm font-semibold transition-colors ${
-                      template.available
-                        ? "bg-primary-blue text-white hover:bg-primary-blue/90"
-                        : "cursor-not-allowed border border-primary-blue/10 bg-blue-gray/30 text-primary-blue/45"
-                    }`}
-                  >
-                    {template.available
-                      ? "Choose this template"
-                      : "Not yet available"}
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+        <h2 className="font-serif text-2xl font-light text-primary-blue">
+          Sign in required
+        </h2>
+        <p className="max-w-md font-sans text-sm text-muted-foreground">
+          Storefront drafts are loaded from the backend. Sign in to edit your
+          workspace storefront.
+        </p>
+        <Link
+          href="/signin"
+          className="mt-2 font-sans text-sm font-semibold text-primary-blue underline"
+        >
+          Go to sign in
+        </Link>
       </div>
     );
   }
+
+  if (draftQuery.isLoading || (!config && draftQuery.isFetching)) {
+    return (
+      <div className="flex flex-1 items-center justify-center px-6 py-16 font-sans text-sm text-muted-foreground">
+        Loading storefront draft…
+      </div>
+    );
+  }
+
+  if (draftQuery.isError) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+        <h2 className="font-serif text-2xl font-light text-primary-blue">
+          Could not load storefront
+        </h2>
+        <p className="max-w-md font-sans text-sm text-muted-foreground">
+          {draftQuery.error instanceof Error
+            ? draftQuery.error.message
+            : "The storefront draft could not be loaded."}
+        </p>
+        <button
+          type="button"
+          onClick={() => void draftQuery.refetch()}
+          className="mt-2 bg-primary-blue px-4 py-2 font-sans text-sm font-semibold text-white"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  if (!config || !previewConfig) {
+    return (
+      <div className="flex flex-1 items-center justify-center px-6 py-16 font-sans text-sm text-muted-foreground">
+        Loading storefront draft…
+      </div>
+    );
+  }
+
+  const saveLabel =
+    saveStatus === "saving"
+      ? "Saving…"
+      : saveStatus === "pending"
+        ? "Unsaved changes…"
+        : saveStatus === "saved"
+          ? "Draft saved"
+          : saveStatus === "error"
+            ? "Save failed"
+            : "All changes saved";
+
+  const saveTone =
+    saveStatus === "error"
+      ? "text-red-700"
+      : saveStatus === "pending" || saveStatus === "saving"
+        ? "text-amber-800"
+        : saveStatus === "saved"
+          ? "text-emerald-800"
+          : "text-primary-blue/55";
 
   const asideMobileHeightClass =
     customizeMode === "section"
       ? "max-lg:min-h-0 max-lg:max-h-[calc(100dvh-6rem)] max-lg:flex-1"
       : "max-lg:max-h-[min(60dvh,28rem)]";
 
+  const previewLabel =
+    previewPageId === "home"
+      ? "Homepage"
+      : previewPage?.title.trim() || "Custom page";
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <StorefrontPublishControls
+        workspaceId={workspaceId}
+        flushDraftSave={flushDraftBeforePublish}
+        hasUnsavedDraft={
+          saveStatus === "pending" || saveStatus === "saving"
+        }
+      />
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
       <aside
         className={`flex min-h-0 w-full shrink-0 flex-col overflow-hidden border-b border-primary-blue/10 bg-white ${asideMobileHeightClass} lg:sticky lg:top-0 lg:z-20 lg:max-h-[calc(100dvh-6rem)] lg:w-[min(100%,22rem)] lg:self-start lg:border-b-0 lg:border-r`}
       >
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-primary-blue/10 px-5 py-4">
-          <p className="font-sans text-xs font-semibold uppercase tracking-[0.18em] text-primary-blue/55">
-            Customize
-          </p>
-          <Link
-            href={`/preview/${workspaceId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden font-sans text-xs font-medium text-primary-blue underline decoration-primary-blue/30 underline-offset-2 hover:decoration-primary-blue lg:inline"
+        <div className="flex shrink-0 flex-col gap-2 border-b border-primary-blue/10 px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="font-sans text-xs font-semibold uppercase tracking-[0.18em] text-primary-blue/55">
+              Customize
+            </p>
+            <Link
+              href={`/preview/${workspaceId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden font-sans text-xs font-medium text-primary-blue underline decoration-primary-blue/30 underline-offset-2 hover:decoration-primary-blue lg:inline"
+            >
+              Open customer preview
+            </Link>
+          </div>
+          <p
+            className={`inline-flex items-center gap-1.5 font-sans text-xs font-semibold ${saveTone}`}
+            role="status"
+            aria-live="polite"
           >
-            Open customer preview
-          </Link>
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                saveStatus === "error"
+                  ? "bg-red-600"
+                  : saveStatus === "pending" || saveStatus === "saving"
+                    ? "animate-pulse bg-amber-500"
+                    : saveStatus === "saved"
+                      ? "bg-emerald-600"
+                      : "bg-primary-blue/40"
+              }`}
+              aria-hidden
+            />
+            {saveLabel}
+          </p>
         </div>
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-5 pt-2">
           <StorefrontEditor
+            workspaceId={workspaceId}
             config={config}
             onChange={persist}
             previewHref={`/preview/${workspaceId}`}
             onCustomizeModeChange={setCustomizeMode}
+            onSelectedPageChange={handleSelectedPageChange}
             sectionEditTarget={sectionEditTarget}
           />
         </div>
@@ -322,9 +611,19 @@ export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
             customizeMode === "section" ? "max-lg:hidden" : ""
           }`}
         >
-          <p className="font-sans text-[11px] leading-relaxed text-muted-foreground">
-            Edits save automatically in this browser until your API is ready.
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className={`font-sans text-[11px] leading-relaxed ${saveTone}`}>
+              Autosave · {saveLabel}
+            </p>
+            <button
+              type="button"
+              onClick={() => void handleResetTemplate()}
+              disabled={resetMutation.isPending}
+              className="font-sans text-[11px] font-semibold text-primary-blue underline decoration-primary-blue/30 underline-offset-2 hover:decoration-primary-blue disabled:opacity-50"
+            >
+              {resetMutation.isPending ? "Resetting…" : "Reset template"}
+            </button>
+          </div>
           <Link
             href={`/preview/${workspaceId}`}
             target="_blank"
@@ -341,16 +640,17 @@ export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
         }`}
       >
         <p className="sticky top-0 z-10 shrink-0 border-b border-primary-blue/10 bg-white/90 px-4 py-2 text-center font-sans text-[11px] uppercase tracking-[0.14em] text-primary-blue/50 backdrop-blur supports-[backdrop-filter]:bg-white/75">
-          Live preview · template: {config.templateId}
+          Live preview · {previewLabel} · {saveLabel}
         </p>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <StorefrontTemplateView
-            config={config}
+            config={previewConfig}
             workspaceId={workspaceId}
             isEditing
             onMoveSection={moveHomepageSection}
             onAddSection={addHomepageSection}
             onEditSection={editHomepageSection}
+            onRemoveSection={removeHomepageSection}
           />
         </div>
         <footer className="shrink-0 border-t border-primary-blue/10 bg-white px-4 py-2.5 text-center font-sans text-[11px] leading-snug text-primary-blue/55">
@@ -362,6 +662,7 @@ export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
           </span>
           <span>{config.copyrightLine}</span>
         </footer>
+      </div>
       </div>
     </div>
   );

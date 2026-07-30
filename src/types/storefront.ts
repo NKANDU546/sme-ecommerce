@@ -45,15 +45,22 @@ export type StorefrontHeroSection = StorefrontSectionBase & {
   imageUrl: string;
   heading: string;
   subheading: string;
-  primaryCta: StorefrontLink;
-  secondaryCta: StorefrontLink;
+  /** `null` hides the button on the storefront. */
+  primaryCta: StorefrontLink | null;
+  /** `null` hides the button on the storefront. */
+  secondaryCta: StorefrontLink | null;
 };
 
 export type StorefrontFeaturedProductsSection = StorefrontSectionBase & {
   type: "featuredProducts";
   title: string;
-  viewAll: StorefrontLink;
-  products: StorefrontProductPlaceholder[];
+  /** `null` hides the View all button. */
+  viewAll: StorefrontLink | null;
+  /**
+   * How many catalogue products to show (default 4).
+   * `null` = show all matching products.
+   */
+  limit?: number | null;
 };
 
 export type StorefrontPromoBannerSection = StorefrontSectionBase & {
@@ -95,6 +102,87 @@ export type StorefrontContactCtaSection = StorefrontSectionBase & {
   href: string;
 };
 
+export type StorefrontTestimonial = {
+  quote: string;
+  name: string;
+  role: string;
+  imageUrl: string;
+};
+
+export type StorefrontTestimonialsSection = StorefrontSectionBase & {
+  type: "testimonials";
+  title: string;
+  items: StorefrontTestimonial[];
+};
+
+export type StorefrontInstagramImage = {
+  imageUrl: string;
+  href: string;
+};
+
+export type StorefrontInstagramGallerySection = StorefrontSectionBase & {
+  type: "instagramGallery";
+  title: string;
+  handle: string;
+  images: StorefrontInstagramImage[];
+};
+
+export type StorefrontNewsletterSection = StorefrontSectionBase & {
+  type: "newsletter";
+  title: string;
+  body: string;
+  placeholder: string;
+  buttonLabel: string;
+  successMessage: string;
+};
+
+export type StorefrontCategoryCard = {
+  name: string;
+  imageUrl: string;
+  href: string;
+};
+
+export type StorefrontShopByCategorySection = StorefrontSectionBase & {
+  type: "shopByCategory";
+  title: string;
+  viewAll: StorefrontLink;
+  /** Manual cards. If empty, categories are derived from active products. */
+  categories: StorefrontCategoryCard[];
+};
+
+export type StorefrontNewArrivalsSection = StorefrontSectionBase & {
+  type: "newArrivals";
+  /** Empty string hides the heading. */
+  title: string;
+  /** Small label above the title (e.g. "Just landed"). Empty hides it. */
+  eyebrow: string;
+  /** `null` hides the View all button. */
+  viewAll: StorefrontLink | null;
+  /**
+   * How many products to show (teaser ~4, full page ~48).
+   * `null` = show all new arrivals.
+   */
+  limit?: number | null;
+};
+
+export type StorefrontSaleSection = StorefrontSectionBase & {
+  type: "sale";
+  /** Empty string hides the eyebrow. */
+  eyebrow: string;
+  /** Empty string hides the heading. */
+  title: string;
+  /** Empty string hides the description. */
+  description: string;
+  /** `null` hides the View all button. */
+  viewAll: StorefrontLink | null;
+  imageUrl: string;
+  /**
+   * How many on-sale products to show (teaser ~4, full page ~48).
+   * `null` = show all sale products.
+   */
+  limit?: number | null;
+};
+
 export type StorefrontSection =
   | StorefrontHeroSection
   | StorefrontFeaturedProductsSection
@@ -102,7 +190,13 @@ export type StorefrontSection =
   | StorefrontTextImageSection
   | StorefrontFeaturesSection
   | StorefrontFaqSection
-  | StorefrontContactCtaSection;
+  | StorefrontContactCtaSection
+  | StorefrontTestimonialsSection
+  | StorefrontInstagramGallerySection
+  | StorefrontNewsletterSection
+  | StorefrontShopByCategorySection
+  | StorefrontNewArrivalsSection
+  | StorefrontSaleSection;
 
 export type StorefrontCustomPage = {
   id: string;

@@ -34,7 +34,7 @@ export default function RootLayout({
         <NuqsAdapter>
           <QueryProvider>
             <AppToaster />
-            <div className="flex min-h-full flex-1 flex-col pb-[calc(3.25rem+env(safe-area-inset-bottom))]">
+            <div className="flex min-h-full flex-1 flex-col">
               <div className="flex-1">{children}</div>
               <ConditionalSiteFooter />
             </div>

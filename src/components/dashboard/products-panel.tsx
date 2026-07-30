@@ -1,12 +1,27 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { DeleteProductModal } from "@/components/dashboard/delete-product-modal";
+import {
+  ProductFormModal,
+  productFormToCreateBody,
+  productFormToUpdateBody,
+  type ProductFormValues,
+} from "@/components/dashboard/product-form-modal";
+import { SetOnSaleModal } from "@/components/dashboard/set-on-sale-modal";
 import { formatDate } from "@/formats/date";
 import {
-  loadCatalogProducts,
-  saveCatalogProducts,
-} from "@/lib/catalog-storage";
+  useArchiveProduct,
+  useCreateProduct,
+  useProductCategories,
+  useProducts,
+  usePublishProduct,
+  useUpdateProduct,
+} from "@/hooks/use-products";
+import { getStoredAuthSession } from "@/lib/auth-login-storage";
+import { productApiToCatalog } from "@/lib/product-mapper";
 import type { CatalogProduct, CatalogProductStatus } from "@/types/catalog-product";
+import type { ProductApi } from "@/types/product";
 
 type ProductsPanelProps = {
   workspaceId: string;
@@ -27,52 +42,147 @@ function statusClasses(status: CatalogProductStatus): string {
   }
 }
 
+type ProductActionsProps = {
+  product: CatalogProduct;
+  busy: boolean;
+  onEdit: () => void;
+  onPublish: () => void;
+  onSale: () => void;
+  onRemoveSale: () => void;
+  onDelete: () => void;
+  compact?: boolean;
+};
+
+function ProductActions({
+  product,
+  busy,
+  onEdit,
+  onPublish,
+  onSale,
+  onRemoveSale,
+  onDelete,
+  compact,
+}: ProductActionsProps) {
+  const link = compact
+    ? "font-sans text-xs font-semibold"
+    : "font-sans text-xs font-semibold underline-offset-2 hover:underline disabled:opacity-50";
+
+  return (
+    <div
+      className={
+        compact
+          ? "mt-3 flex flex-wrap gap-3"
+          : "flex flex-wrap justify-end gap-2"
+      }
+    >
+      <button
+        type="button"
+        disabled={busy}
+        onClick={onEdit}
+        className={`${link} text-primary-blue`}
+      >
+        Edit
+      </button>
+      {product.status !== "active" ? (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onPublish}
+          className={`${link} text-emerald-800`}
+        >
+          Publish
+        </button>
+      ) : null}
+      {product.onSale ? (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onRemoveSale}
+          className={`${link} text-amber-900`}
+        >
+          Remove sale
+        </button>
+      ) : product.status !== "archived" ? (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onSale}
+          className={`${link} text-amber-900`}
+        >
+          Sale
+        </button>
+      ) : null}
+      {product.status !== "archived" ? (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onDelete}
+          className={`${link} text-red-700`}
+        >
+          Delete
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 export function ProductsPanel({ workspaceId }: ProductsPanelProps) {
-  const [products, setProducts] = useState<CatalogProduct[]>([]);
-  const [hydrated, setHydrated] = useState(false);
+  const accessToken = getStoredAuthSession()?.accessToken ?? null;
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<string>("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [categoryId, setCategoryId] = useState("");
   const [status, setStatus] = useState<CatalogProductStatus | "">("");
   const [sort, setSort] = useState<SortKey>("newest");
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [busyProductId, setBusyProductId] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState<"create" | "edit">("create");
+  const [editingProduct, setEditingProduct] = useState<ProductApi | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ProductApi | null>(null);
+  const [saleTarget, setSaleTarget] = useState<ProductApi | null>(null);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
-      setProducts(loadCatalogProducts(workspaceId));
-      setHydrated(true);
-    }, 0);
+      setDebouncedSearch(query.trim());
+    }, 300);
     return () => window.clearTimeout(id);
-  }, [workspaceId]);
+  }, [query]);
 
-  const persist = useCallback(
-    (next: CatalogProduct[]) => {
-      setProducts(next);
-      saveCatalogProducts(workspaceId, next);
-    },
-    [workspaceId],
+  const listParams = useMemo(
+    () => ({
+      search: debouncedSearch || undefined,
+      status: status || undefined,
+      categoryId: categoryId || undefined,
+      page: 0,
+      limit: 100,
+    }),
+    [debouncedSearch, status, categoryId],
   );
 
-  const categories = useMemo(() => {
-    const set = new Set<string>();
-    for (const p of products) {
-      if (p.category.trim()) set.add(p.category);
-    }
-    return [...set].sort((a, b) => a.localeCompare(b));
-  }, [products]);
+  const productsQuery = useProducts(workspaceId, accessToken, listParams);
+  const categoriesQuery = useProductCategories(workspaceId, accessToken);
+  const createMutation = useCreateProduct(workspaceId, accessToken);
+  const updateMutation = useUpdateProduct(workspaceId, accessToken);
+  const publishMutation = usePublishProduct(workspaceId, accessToken);
+  const archiveMutation = useArchiveProduct(workspaceId, accessToken);
+
+  const apiItems = productsQuery.data?.items ?? [];
+
+  const products: CatalogProduct[] = useMemo(
+    () => apiItems.map(productApiToCatalog),
+    [apiItems],
+  );
+
+  const apiById = useMemo(() => {
+    const map = new Map<string, ProductApi>();
+    for (const item of apiItems) map.set(String(item.id), item);
+    return map;
+  }, [apiItems]);
+
+  const categories = categoriesQuery.data ?? [];
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    let rows = products.filter((p) => {
-      if (category && p.category !== category) return false;
-      if (status && p.status !== status) return false;
-      if (!q) return true;
-      return (
-        p.title.toLowerCase().includes(q) ||
-        p.sku.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q)
-      );
-    });
-
-    rows = [...rows];
+    const rows = [...products];
     switch (sort) {
       case "name-asc":
         rows.sort((a, b) => a.title.localeCompare(b.title));
@@ -86,20 +196,122 @@ export function ProductsPanel({ workspaceId }: ProductsPanelProps) {
         break;
     }
     return rows;
-  }, [products, query, category, status, sort]);
+  }, [products, sort]);
 
   const hasActiveFilters = Boolean(
-    query.trim() || category || status || sort !== "newest",
+    query.trim() || categoryId || status || sort !== "newest",
   );
 
   function clearFilters() {
     setQuery("");
-    setCategory("");
+    setCategoryId("");
     setStatus("");
     setSort("newest");
   }
 
-  if (!hydrated) {
+  function openCreate() {
+    setFormMode("create");
+    setEditingProduct(null);
+    setFormOpen(true);
+  }
+
+  function openEdit(productId: string) {
+    const product = apiById.get(productId);
+    if (!product) return;
+    setFormMode("edit");
+    setEditingProduct(product);
+    setFormOpen(true);
+  }
+
+  async function handleFormSubmit(values: ProductFormValues) {
+    setActionError(null);
+    if (formMode === "edit" && editingProduct) {
+      await updateMutation.mutateAsync({
+        productId: String(editingProduct.id),
+        body: productFormToUpdateBody(values),
+      });
+    } else {
+      await createMutation.mutateAsync(productFormToCreateBody(values));
+    }
+    setFormOpen(false);
+    setEditingProduct(null);
+  }
+
+  async function runPublish(productId: string) {
+    setActionError(null);
+    setBusyProductId(productId);
+    try {
+      await publishMutation.mutateAsync(productId);
+    } catch (err) {
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : "Could not publish the product.",
+      );
+    } finally {
+      setBusyProductId(null);
+    }
+  }
+
+  async function handleConfirmSale(compareAtPriceAmount: number) {
+    if (!saleTarget) return;
+    setActionError(null);
+    setBusyProductId(String(saleTarget.id));
+    try {
+      await updateMutation.mutateAsync({
+        productId: String(saleTarget.id),
+        body: { compareAtPriceAmount },
+      });
+      setSaleTarget(null);
+    } catch (err) {
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : "Could not put the product on sale.",
+      );
+    } finally {
+      setBusyProductId(null);
+    }
+  }
+
+  async function handleRemoveSale(productId: string) {
+    setActionError(null);
+    setBusyProductId(productId);
+    try {
+      await updateMutation.mutateAsync({
+        productId,
+        body: { clearCompareAtPrice: true, compareAtPriceAmount: null },
+      });
+    } catch (err) {
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : "Could not remove the sale price.",
+      );
+    } finally {
+      setBusyProductId(null);
+    }
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    setActionError(null);
+    setBusyProductId(String(deleteTarget.id));
+    try {
+      await archiveMutation.mutateAsync(String(deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err) {
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : "Could not delete the product.",
+      );
+    } finally {
+      setBusyProductId(null);
+    }
+  }
+
+  if (productsQuery.isLoading) {
     return (
       <div className="flex flex-1 items-center justify-center px-6 py-16 font-sans text-sm text-muted-foreground">
         Loading products…
@@ -107,8 +319,64 @@ export function ProductsPanel({ workspaceId }: ProductsPanelProps) {
     );
   }
 
+  if (productsQuery.isError) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+        <p className="font-serif text-xl text-primary-blue">
+          Could not load products
+        </p>
+        <p className="max-w-md font-sans text-sm text-muted-foreground">
+          {productsQuery.error instanceof Error
+            ? productsQuery.error.message
+            : "Please try again."}
+        </p>
+        <button
+          type="button"
+          onClick={() => productsQuery.refetch()}
+          className="mt-2 font-sans text-sm font-semibold text-primary-blue underline"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const totalItems = productsQuery.data?.totalItems ?? products.length;
+  const formSubmitting =
+    createMutation.isPending || updateMutation.isPending;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-blue-gray/20">
+      <ProductFormModal
+        open={formOpen}
+        mode={formMode}
+        workspaceId={workspaceId}
+        product={editingProduct}
+        onClose={() => {
+          setFormOpen(false);
+          setEditingProduct(null);
+        }}
+        onSubmit={handleFormSubmit}
+        categories={categories}
+        isSubmitting={formSubmitting}
+      />
+      <DeleteProductModal
+        open={Boolean(deleteTarget)}
+        productTitle={deleteTarget?.title ?? ""}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => void handleConfirmDelete()}
+        isSubmitting={archiveMutation.isPending}
+      />
+      <SetOnSaleModal
+        open={Boolean(saleTarget)}
+        productTitle={saleTarget?.title ?? ""}
+        priceLabel={saleTarget?.priceLabel ?? ""}
+        priceAmount={saleTarget?.priceAmount ?? 0}
+        onClose={() => setSaleTarget(null)}
+        onConfirm={handleConfirmSale}
+        isSubmitting={updateMutation.isPending && Boolean(saleTarget)}
+      />
+
       <div className="shrink-0 border-b border-primary-blue/10 bg-white px-5 py-4 sm:px-8">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
@@ -137,14 +405,14 @@ export function ProductsPanel({ workspaceId }: ProductsPanelProps) {
               </label>
               <select
                 id="catalog-category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
                 className="w-full border border-primary-blue/15 bg-white px-3 py-2 font-sans text-sm outline-none focus-visible:border-primary-blue/35 focus-visible:ring-2 focus-visible:ring-primary-blue/15"
               >
                 <option value="">All categories</option>
                 {categories.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
+                  <option key={c.id} value={c.id}>
+                    {c.name}
                   </option>
                 ))}
               </select>
@@ -201,23 +469,9 @@ export function ProductsPanel({ workspaceId }: ProductsPanelProps) {
             ) : null}
             <button
               type="button"
-              onClick={() => {
-                const id = `p-${Date.now()}`;
-                persist([
-                  {
-                    id,
-                    title: "New product",
-                    sku: `SKU-NEW-${String(products.length + 1).padStart(3, "0")}`,
-                    priceLabel: "R 0.00",
-                    category: categories[0] ?? "Home",
-                    status: "draft",
-                    imageUrl: "",
-                    updatedAt: Date.now(),
-                  },
-                  ...products,
-                ]);
-              }}
-              className="bg-primary-blue px-4 py-2 font-sans text-sm font-semibold text-white transition-colors hover:bg-primary-blue/90"
+              disabled={!accessToken}
+              onClick={openCreate}
+              className="bg-primary-blue px-4 py-2 font-sans text-sm font-semibold text-white transition-colors hover:bg-primary-blue/90 disabled:opacity-60"
             >
               Add product
             </button>
@@ -228,9 +482,13 @@ export function ProductsPanel({ workspaceId }: ProductsPanelProps) {
           <span className="font-semibold text-primary-blue/80">
             {filtered.length}
           </span>{" "}
-          of {products.length} products · stored in this browser until your API
-          is ready.
+          of {totalItems} products · synced with your workspace.
         </p>
+        {actionError ? (
+          <p className="mt-2 font-sans text-xs text-red-700" role="alert">
+            {actionError}
+          </p>
+        ) : null}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-6 sm:px-8">
@@ -240,7 +498,7 @@ export function ProductsPanel({ workspaceId }: ProductsPanelProps) {
               No matches
             </p>
             <p className="mt-2 font-sans text-sm text-muted-foreground">
-              Try another search or clear filters to see the full catalogue.
+              Try another search, clear filters, or add your first product.
             </p>
           </div>
         ) : (
@@ -261,103 +519,162 @@ export function ProductsPanel({ workspaceId }: ProductsPanelProps) {
                     <th className="hidden px-4 py-3 font-medium 2xl:table-cell">
                       Updated
                     </th>
+                    <th className="px-4 py-3 text-right font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((p) => (
-                    <tr
-                      key={p.id}
-                      className="border-b border-primary-blue/5 transition-colors last:border-0 hover:bg-blue-gray/15"
-                    >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="h-11 w-11 shrink-0 overflow-hidden rounded-md border border-primary-blue/10 bg-blue-gray/30">
-                            {p.imageUrl.trim() ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={p.imageUrl}
-                                alt=""
-                                className="h-full w-full object-cover"
-                              />
+                  {filtered.map((p) => {
+                    const busy = busyProductId === p.id;
+                    return (
+                      <tr
+                        key={p.id}
+                        className="border-b border-primary-blue/5 transition-colors last:border-0 hover:bg-blue-gray/15"
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="h-11 w-11 shrink-0 overflow-hidden rounded-md border border-primary-blue/10 bg-blue-gray/30">
+                              {p.imageUrl.trim() ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={p.imageUrl}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : null}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate font-medium text-primary-blue">
+                                {p.title}
+                              </p>
+                              <p className="truncate font-mono text-[11px] text-primary-blue/45 lg:hidden">
+                                {p.sku}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="hidden px-4 py-3 font-mono text-xs text-primary-blue/70 lg:table-cell">
+                          {p.sku}
+                        </td>
+                        <td className="hidden px-4 py-3 text-primary-blue/75 xl:table-cell">
+                          {p.category || "—"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-inset ${statusClasses(p.status)}`}
+                          >
+                            {p.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right font-medium tabular-nums text-primary-blue">
+                          <span className="inline-flex flex-col items-end gap-0.5">
+                            <span>{p.priceLabel}</span>
+                            {p.onSale && p.compareAtPriceLabel ? (
+                              <span className="text-[11px] font-normal text-primary-blue/45 line-through">
+                                {p.compareAtPriceLabel}
+                              </span>
                             ) : null}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="truncate font-medium text-primary-blue">
-                              {p.title}
-                            </p>
-                            <p className="truncate font-mono text-[11px] text-primary-blue/45 lg:hidden">
-                              {p.sku}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="hidden px-4 py-3 font-mono text-xs text-primary-blue/70 lg:table-cell">
-                        {p.sku}
-                      </td>
-                      <td className="hidden px-4 py-3 text-primary-blue/75 xl:table-cell">
-                        {p.category}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-inset ${statusClasses(p.status)}`}
-                        >
-                          {p.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right font-medium tabular-nums text-primary-blue">
-                        {p.priceLabel}
-                      </td>
-                      <td className="hidden px-4 py-3 text-xs text-muted-foreground 2xl:table-cell">
-                        {formatDate(p.updatedAt)}
-                      </td>
-                    </tr>
-                  ))}
+                            {p.onSale ? (
+                              <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                                Sale
+                              </span>
+                            ) : null}
+                          </span>
+                        </td>
+                        <td className="hidden px-4 py-3 text-xs text-muted-foreground 2xl:table-cell">
+                          {formatDate(p.updatedAt)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <ProductActions
+                            product={p}
+                            busy={busy}
+                            onEdit={() => openEdit(p.id)}
+                            onPublish={() => void runPublish(p.id)}
+                            onSale={() => {
+                              const api = apiById.get(p.id);
+                              if (api) setSaleTarget(api);
+                            }}
+                            onRemoveSale={() => void handleRemoveSale(p.id)}
+                            onDelete={() => {
+                              const api = apiById.get(p.id);
+                              if (api) setDeleteTarget(api);
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
             <ul className="space-y-3 md:hidden">
-              {filtered.map((p) => (
-                <li
-                  key={p.id}
-                  className="rounded-lg border border-primary-blue/10 bg-white p-4 shadow-sm"
-                >
-                  <div className="flex gap-3">
-                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-primary-blue/10 bg-blue-gray/30">
-                      {p.imageUrl.trim() ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={p.imageUrl}
-                          alt=""
-                          className="h-full w-full object-cover"
-                        />
-                      ) : null}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-primary-blue">{p.title}</p>
-                      <p className="mt-0.5 font-mono text-[11px] text-primary-blue/50">
-                        {p.sku}
-                      </p>
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-inset ${statusClasses(p.status)}`}
-                        >
-                          {p.status}
-                        </span>
-                        <span className="text-xs text-primary-blue/60">
-                          {p.category}
-                        </span>
-                        <span className="ml-auto font-semibold tabular-nums text-primary-blue">
-                          {p.priceLabel}
-                        </span>
+              {filtered.map((p) => {
+                const busy = busyProductId === p.id;
+                return (
+                  <li
+                    key={p.id}
+                    className="rounded-lg border border-primary-blue/10 bg-white p-4 shadow-sm"
+                  >
+                    <div className="flex gap-3">
+                      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-primary-blue/10 bg-blue-gray/30">
+                        {p.imageUrl.trim() ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={p.imageUrl}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        ) : null}
                       </div>
-                      <p className="mt-2 text-[11px] text-muted-foreground">
-                        Updated {formatDate(p.updatedAt)}
-                      </p>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-primary-blue">
+                          {p.title}
+                        </p>
+                        <p className="mt-0.5 font-mono text-[11px] text-primary-blue/50">
+                          {p.sku}
+                        </p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <span
+                            className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-inset ${statusClasses(p.status)}`}
+                          >
+                            {p.status}
+                          </span>
+                          <span className="text-xs text-primary-blue/60">
+                            {p.category || "—"}
+                          </span>
+                          <span className="ml-auto inline-flex flex-col items-end font-semibold tabular-nums text-primary-blue">
+                            <span>{p.priceLabel}</span>
+                            {p.onSale && p.compareAtPriceLabel ? (
+                              <span className="text-[10px] font-normal text-primary-blue/45 line-through">
+                                {p.compareAtPriceLabel}
+                              </span>
+                            ) : null}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-[11px] text-muted-foreground">
+                          Updated {formatDate(p.updatedAt)}
+                        </p>
+                        <ProductActions
+                          product={p}
+                          busy={busy}
+                          compact
+                          onEdit={() => openEdit(p.id)}
+                          onPublish={() => void runPublish(p.id)}
+                          onSale={() => {
+                            const api = apiById.get(p.id);
+                            if (api) setSaleTarget(api);
+                          }}
+                          onRemoveSale={() => void handleRemoveSale(p.id)}
+                          onDelete={() => {
+                            const api = apiById.get(p.id);
+                            if (api) setDeleteTarget(api);
+                          }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           </>
         )}

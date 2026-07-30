@@ -34,6 +34,33 @@ function mergeLink(
   };
 }
 
+/** `null` = intentionally hidden; `undefined` = legacy missing → use seed. */
+function mergeOptionalLink(
+  raw: StorefrontLink | null | undefined,
+  seed: StorefrontLink,
+): StorefrontLink | null {
+  if (raw === null) return null;
+  return mergeLink(raw, seed);
+}
+
+/**
+ * Persists section product limits.
+ * `null` means "show all"; omit / invalid falls back to `fallback`.
+ */
+function clampSectionProductLimit(
+  raw: unknown,
+  fallback: number | null | undefined,
+): number | null | undefined {
+  if (raw === null) return null;
+  if (raw === undefined || raw === "") return fallback;
+  if (typeof raw === "string" && raw.trim().toLowerCase() === "all") {
+    return null;
+  }
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 1) return fallback;
+  return Math.min(48, Math.max(1, Math.floor(n)));
+}
+
 function mergeLinkList(
   raw: StorefrontLink[] | undefined,
   seed: StorefrontLink[],
@@ -53,9 +80,9 @@ function mergeProducts(
   const mapped = raw.map((p, i) => {
     const s = base[Math.min(i, base.length - 1)];
     return {
-      title: String(p.title || s.title),
-      priceLabel: String(p.priceLabel || s.priceLabel),
-      imageUrl: String(p.imageUrl || s.imageUrl),
+      title: String(p.title ?? s.title),
+      priceLabel: String(p.priceLabel ?? s.priceLabel),
+      imageUrl: String(p.imageUrl ?? s.imageUrl),
     };
   });
   while (mapped.length < base.length) {
@@ -72,11 +99,11 @@ function mergePromos(
   return raw.map((card, i) => {
     const s = seed[i];
     return {
-      title: String(card.title || s.title),
-      description: String(card.description || s.description),
-      buttonLabel: String(card.buttonLabel || s.buttonLabel),
-      imageUrl: String(card.imageUrl || s.imageUrl),
-      href: String(card.href || s.href),
+      title: String(card.title ?? s.title),
+      description: String(card.description ?? s.description),
+      buttonLabel: String(card.buttonLabel ?? s.buttonLabel),
+      imageUrl: String(card.imageUrl ?? s.imageUrl),
+      href: String(card.href ?? s.href),
     };
   }) as [StorefrontPromoCard, StorefrontPromoCard];
 }
@@ -90,6 +117,12 @@ const VALID_SECTION_TYPES = new Set<StorefrontSection["type"]>([
   "features",
   "faq",
   "contactCta",
+  "testimonials",
+  "instagramGallery",
+  "newsletter",
+  "shopByCategory",
+  "newArrivals",
+  "sale",
 ]);
 const VALID_DESKTOP_LAYOUTS = new Set(["full", "half"]);
 
@@ -105,8 +138,8 @@ function mergeFeatures(
       ? (ic as StorefrontFeature["icon"])
       : s.icon;
     return {
-      title: String(f.title || s.title),
-      description: String(f.description || s.description),
+      title: String(f.title ?? s.title),
+      description: String(f.description ?? s.description),
       icon,
     };
   }) as [StorefrontFeature, StorefrontFeature, StorefrontFeature];
@@ -125,8 +158,8 @@ function mergeFeatureItems(
       ? (ic as StorefrontFeature["icon"])
       : s.icon;
     return {
-      title: String(f.title || s.title),
-      description: String(f.description || s.description),
+      title: String(f.title ?? s.title),
+      description: String(f.description ?? s.description),
       icon,
     };
   });
@@ -161,7 +194,7 @@ function defaultHomeSections(config: StorefrontConfig): StorefrontSection[] {
         label: "View all",
         href: "@shop",
       }),
-      products: mergeProducts(config.products, config.products),
+      limit: 4,
     },
     ...config.promos.map((promo, index) => ({
       id: `home-promo-${index + 1}`,
@@ -203,8 +236,8 @@ function mergeFaqItems(raw: StorefrontFaqItem[] | undefined): StorefrontFaqItem[
     ];
   }
   return raw.map((item) => ({
-    question: String(item.question || "Question"),
-    answer: String(item.answer || "Answer"),
+    question: String(item.question ?? "Question"),
+    answer: String(item.answer ?? "Answer"),
   }));
 }
 
@@ -226,14 +259,14 @@ function mergeSection(
         ...raw,
         id,
         desktopLayout,
-        imageUrl: String(raw.imageUrl || ""),
-        heading: String(raw.heading || "Welcome to our store"),
-        subheading: String(raw.subheading || ""),
-        primaryCta: mergeLink(raw.primaryCta, {
+        imageUrl: String(raw.imageUrl ?? ""),
+        heading: String(raw.heading ?? "Welcome to our store"),
+        subheading: String(raw.subheading ?? ""),
+        primaryCta: mergeOptionalLink(raw.primaryCta, {
           label: "Shop collection",
           href: "@shop",
         }),
-        secondaryCta: mergeLink(raw.secondaryCta, {
+        secondaryCta: mergeOptionalLink(raw.secondaryCta, {
           label: "Learn more",
           href: "#",
         }),
@@ -243,30 +276,36 @@ function mergeSection(
         ...raw,
         id,
         desktopLayout,
-        title: String(raw.title || "Featured products"),
-        viewAll: mergeLink(raw.viewAll, { label: "View all", href: "@shop" }),
-        products: mergeProducts(raw.products, fallback.type === "featuredProducts" ? fallback.products : []),
+        title: String(raw.title ?? "Featured products"),
+        viewAll: mergeOptionalLink(raw.viewAll, {
+          label: "View all",
+          href: "@shop",
+        }),
+        limit: clampSectionProductLimit(
+          (raw as { limit?: unknown }).limit,
+          undefined,
+        ),
       };
     case "promoBanner":
       return {
         ...raw,
         id,
         desktopLayout,
-        title: String(raw.title || "Promotion"),
-        description: String(raw.description || ""),
-        buttonLabel: String(raw.buttonLabel || "Shop now"),
-        imageUrl: String(raw.imageUrl || ""),
-        href: String(raw.href || "#"),
+        title: String(raw.title ?? "Promotion"),
+        description: String(raw.description ?? ""),
+        buttonLabel: String(raw.buttonLabel ?? "Shop now"),
+        imageUrl: String(raw.imageUrl ?? ""),
+        href: String(raw.href ?? "#"),
       };
     case "textImage":
       return {
         ...raw,
         id,
         desktopLayout,
-        eyebrow: String(raw.eyebrow || "Our story"),
-        title: String(raw.title || "Tell customers what makes you different"),
-        body: String(raw.body || ""),
-        imageUrl: String(raw.imageUrl || ""),
+        eyebrow: String(raw.eyebrow ?? "Our story"),
+        title: String(raw.title ?? "Tell customers what makes you different"),
+        body: String(raw.body ?? ""),
+        imageUrl: String(raw.imageUrl ?? ""),
         imagePosition: raw.imagePosition === "left" ? "left" : "right",
         cta: mergeLink(raw.cta, { label: "Learn more", href: "#" }),
       };
@@ -275,7 +314,7 @@ function mergeSection(
         ...raw,
         id,
         desktopLayout,
-        title: String(raw.title || "Why shop with us"),
+        title: String(raw.title ?? "Why shop with us"),
         items: mergeFeatureItems(
           raw.items,
           fallback.type === "features"
@@ -288,7 +327,7 @@ function mergeSection(
         ...raw,
         id,
         desktopLayout,
-        title: String(raw.title || "Frequently asked questions"),
+        title: String(raw.title ?? "Frequently asked questions"),
         items: mergeFaqItems(raw.items),
       };
     case "contactCta":
@@ -296,11 +335,137 @@ function mergeSection(
         ...raw,
         id,
         desktopLayout,
-        title: String(raw.title || "Contact us"),
-        body: String(raw.body || ""),
-        buttonLabel: String(raw.buttonLabel || "Contact us"),
-        href: String(raw.href || "#"),
+        title: String(raw.title ?? "Contact us"),
+        body: String(raw.body ?? ""),
+        buttonLabel: String(raw.buttonLabel ?? "Contact us"),
+        href: String(raw.href ?? "#"),
       };
+    case "testimonials":
+      return {
+        ...raw,
+        id,
+        desktopLayout,
+        title: String(raw.title ?? "What customers say"),
+        items: Array.isArray(raw.items)
+          ? raw.items.map((item) => ({
+              quote: String(item.quote ?? ""),
+              name: String(item.name ?? "Customer"),
+              role: String(item.role ?? ""),
+              imageUrl: String(item.imageUrl ?? ""),
+            }))
+          : [
+              {
+                quote: "Beautiful products and such an easy ordering experience.",
+                name: "Thandi M.",
+                role: "Cape Town",
+                imageUrl: "",
+              },
+            ],
+      };
+    case "instagramGallery":
+      return {
+        ...raw,
+        id,
+        desktopLayout,
+        title: String(raw.title ?? "Follow us"),
+        handle: String(raw.handle ?? "@yourstore"),
+        images: Array.isArray(raw.images)
+          ? raw.images.map((item) => ({
+              imageUrl: String(item.imageUrl ?? ""),
+              href: String(item.href ?? "#"),
+            }))
+          : [
+              { imageUrl: "", href: "#" },
+              { imageUrl: "", href: "#" },
+              { imageUrl: "", href: "#" },
+              { imageUrl: "", href: "#" },
+            ],
+      };
+    case "newsletter":
+      return {
+        ...raw,
+        id,
+        desktopLayout,
+        title: String(raw.title ?? "Stay in the loop"),
+        body: String(
+          raw.body ?? "Get new arrivals and offers first. No spam.",
+        ),
+        placeholder: String(raw.placeholder ?? "you@email.com"),
+        buttonLabel: String(raw.buttonLabel ?? "Subscribe"),
+        successMessage: String(
+          raw.successMessage ?? "Thanks — you are on the list.",
+        ),
+      };
+    case "shopByCategory":
+      return {
+        ...raw,
+        id,
+        desktopLayout,
+        title: String(raw.title ?? "Shop by category"),
+        viewAll: mergeLink(raw.viewAll, { label: "View all", href: "@shop" }),
+        categories: Array.isArray(raw.categories)
+          ? raw.categories.map((item) => ({
+              name: String(item.name ?? "Category"),
+              imageUrl: String(item.imageUrl ?? ""),
+              href: String(item.href ?? "@shop"),
+            }))
+          : [],
+      };
+    case "newArrivals": {
+      const na = raw as StorefrontSection & {
+        type: "newArrivals";
+        eyebrow?: string;
+        viewAll?: StorefrontLink | null;
+        limit?: unknown;
+      };
+      return {
+        ...raw,
+        id,
+        desktopLayout,
+        title: String(raw.title ?? "New arrivals"),
+        eyebrow:
+          typeof na.eyebrow === "string" ? na.eyebrow : "Just landed",
+        viewAll: mergeOptionalLink(na.viewAll, {
+          label: "Shop all new",
+          href: "@shop",
+        }),
+        limit: clampSectionProductLimit(na.limit, undefined),
+      };
+    }
+    case "sale": {
+      const sale = raw as StorefrontSection & {
+        type: "sale";
+        viewAll?: StorefrontLink | null;
+        buttonLabel?: string;
+        href?: string;
+        limit?: unknown;
+      };
+      const legacyViewAll: StorefrontLink | null | undefined =
+        sale.viewAll !== undefined
+          ? sale.viewAll
+          : sale.buttonLabel != null || sale.href != null
+            ? {
+                label: String(sale.buttonLabel ?? "Shop the sale"),
+                href: String(sale.href ?? "@shop"),
+              }
+            : undefined;
+      return {
+        ...raw,
+        id,
+        desktopLayout,
+        eyebrow: String(raw.eyebrow ?? "Sale"),
+        title: String(raw.title ?? "Limited-time offers"),
+        description: String(
+          raw.description ?? "Save on selected pieces while stocks last.",
+        ),
+        viewAll: mergeOptionalLink(legacyViewAll, {
+          label: "Shop the sale",
+          href: "@shop",
+        }),
+        imageUrl: String(raw.imageUrl ?? ""),
+        limit: clampSectionProductLimit(sale.limit, undefined),
+      };
+    }
   }
 }
 
@@ -308,8 +473,12 @@ function mergeSections(
   raw: StorefrontSection[] | undefined,
   fallback: StorefrontSection[],
 ): StorefrontSection[] {
-  const source = raw?.length ? raw : fallback;
-  return source.map((section, index) =>
+  // Preserve intentional empty arrays (e.g. a new custom page with no sections).
+  if (raw === undefined || raw === null) return fallback.map((section, index) =>
+    mergeSection(section, fallback[Math.min(index, fallback.length - 1)], index),
+  );
+  if (raw.length === 0) return [];
+  return raw.map((section, index) =>
     mergeSection(section, fallback[Math.min(index, fallback.length - 1)], index),
   );
 }
@@ -330,7 +499,7 @@ function mergePages(
   if (!raw?.length) return [];
   return raw.map((page, index) => ({
     id: String(page.id || sectionId("page", index)),
-    title: String(page.title || `Page ${index + 1}`),
+    title: typeof page.title === "string" ? page.title : `Page ${index + 1}`,
     slug: slugify(page.slug || page.title, `page-${index + 1}`),
     sections: mergeSections(page.sections, fallbackSections.slice(0, 1)),
   }));
@@ -395,12 +564,12 @@ export function upgradeStorefrontConfig(raw: StorefrontConfig): StorefrontConfig
     footerBlurb: String(legacy.footerBlurb ?? seed.footerBlurb),
     copyrightLine: String(legacy.copyrightLine ?? seed.copyrightLine),
     cartCountLabel: String(legacy.cartCountLabel ?? seed.cartCountLabel),
-    shopName: String(legacy.shopName || seed.shopName),
-    tagline: String(legacy.tagline || seed.tagline),
-    featuredTitle: String(legacy.featuredTitle || seed.featuredTitle),
-    heroHeading: String(legacy.heroHeading || seed.heroHeading),
-    heroSubheading: String(legacy.heroSubheading || seed.heroSubheading),
-    whatsappNumber: String(legacy.whatsappNumber || seed.whatsappNumber),
+    shopName: String(legacy.shopName ?? seed.shopName),
+    tagline: String(legacy.tagline ?? seed.tagline),
+    featuredTitle: String(legacy.featuredTitle ?? seed.featuredTitle),
+    heroHeading: String(legacy.heroHeading ?? seed.heroHeading),
+    heroSubheading: String(legacy.heroSubheading ?? seed.heroSubheading),
+    whatsappNumber: String(legacy.whatsappNumber ?? seed.whatsappNumber),
     accentColor,
     templateId: (legacy.templateId ||
       seed.templateId) as StorefrontTemplateId,

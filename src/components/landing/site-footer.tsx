@@ -25,7 +25,7 @@ export function SiteFooter() {
 
         <div className="mt-16 flex flex-col gap-6 border-t border-white/10 pt-10 sm:mt-20 sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:pt-12">
           <p className="text-[11px] font-medium uppercase leading-normal tracking-[0.18em] text-white/35">
-            © {new Date().getFullYear()} SME Operations. All rights reserved.
+            © 2026 SME Operations. All rights reserved.
           </p>
           <nav
             className="flex flex-wrap items-center gap-x-8 gap-y-3 text-sm text-white/65"

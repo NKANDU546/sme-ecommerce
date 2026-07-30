@@ -2,16 +2,15 @@
 
 import { usePathname } from "next/navigation";
 import { SiteFooter } from "@/components/landing/site-footer";
-import { ViewportSiteFooterBar } from "@/components/landing/viewport-site-footer-bar";
 
+/**
+ * Landing SiteFooter only — never on dashboard, preview, or merchant storefronts
+ * (`/s/...`), where stores render their own ClassicBoutiqueSiteFooter.
+ */
 export function ConditionalSiteFooter() {
   const pathname = usePathname();
   if (pathname?.startsWith("/dashboard")) return null;
   if (pathname?.startsWith("/preview")) return null;
-  return (
-    <>
-      <SiteFooter />
-      <ViewportSiteFooterBar />
-    </>
-  );
+  if (pathname?.startsWith("/s/")) return null;
+  return <SiteFooter />;
 }

@@ -6,40 +6,37 @@ type StorefrontTemplateViewProps = {
   config: StorefrontConfig;
   /** Pass in preview contexts so `@shop` links resolve to `/preview/{id}/shop`. */
   workspaceId?: string;
+  /** Public storefront root, e.g. `/s/my-store`. */
+  basePath?: string;
   isEditing?: boolean;
   onMoveSection?: (from: number, to: number) => void;
   onAddSection?: (type: StorefrontSection["type"], index: number) => void;
   onEditSection?: (sectionId: string) => void;
+  onRemoveSection?: (index: number) => void;
 };
 
 /** Registry: add cases when new `templateId` values ship from the backend. */
 export function StorefrontTemplateView({
   config,
   workspaceId,
+  basePath,
   isEditing,
   onMoveSection,
   onAddSection,
   onEditSection,
+  onRemoveSection,
 }: StorefrontTemplateViewProps) {
-  const body =
-    config.templateId === "classic-boutique" ? (
-      <ClassicBoutiqueStorefront
-        config={config}
-        workspaceId={workspaceId}
-        isEditing={isEditing}
-        onMoveSection={onMoveSection}
-        onAddSection={onAddSection}
-        onEditSection={onEditSection}
-      />
-    ) : (
-      <ClassicBoutiqueStorefront
-        config={config}
-        workspaceId={workspaceId}
-        isEditing={isEditing}
-        onMoveSection={onMoveSection}
-        onAddSection={onAddSection}
-        onEditSection={onEditSection}
-      />
-    );
+  const body = (
+    <ClassicBoutiqueStorefront
+      config={config}
+      workspaceId={workspaceId}
+      basePath={basePath}
+      isEditing={isEditing}
+      onMoveSection={onMoveSection}
+      onAddSection={onAddSection}
+      onEditSection={onEditSection}
+      onRemoveSection={onRemoveSection}
+    />
+  );
   return <StorefrontThemeRoot config={config}>{body}</StorefrontThemeRoot>;
 }

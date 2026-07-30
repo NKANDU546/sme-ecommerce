@@ -3,14 +3,15 @@
 import Link from "next/link";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { useEffect, useState } from "react";
+import { ImageUploadField } from "@/components/storefront/image-upload-field";
 import { STOREFRONT_THEME_DEFINITIONS } from "@/lib/storefront-themes";
+import { isReservedStorefrontPageSlug } from "@/lib/storefront-reserved-slugs";
 import type {
   StorefrontConfig,
   StorefrontCustomPage,
   StorefrontFeature,
   StorefrontFeatureIconId,
   StorefrontLink,
-  StorefrontProductPlaceholder,
   StorefrontPromoCard,
   StorefrontSection,
   StorefrontThemeId,
@@ -38,13 +39,20 @@ const EDITOR_SECTIONS: { id: StorefrontEditorSectionId; label: string }[] = [
 export type StorefrontCustomizeMode = "sections" | "section";
 
 type StorefrontEditorProps = {
+  workspaceId: string;
   config: StorefrontConfig;
   onChange: (next: StorefrontConfig) => void;
   /** Lets the parent resize the shell (e.g. hide preview) when a section is open vs. the list. */
   onCustomizeModeChange?: (mode: StorefrontCustomizeMode) => void;
+  /** Notify parent when Homepage vs a custom page is selected (for live preview). */
+  onSelectedPageChange?: (pageId: "home" | string) => void;
   /** Shown next to Return on small screens while the preview column is hidden. */
   previewHref?: string;
-  sectionEditTarget?: { id: string; requestId: number } | null;
+  sectionEditTarget?: {
+    id: string;
+    pageId: "home" | string;
+    requestId: number;
+  } | null;
 };
 
 function Field({
@@ -96,18 +104,31 @@ function LinkPairEditor({
   label,
   link,
   onChange,
+  onRemove,
   idPrefix,
 }: {
   label: string;
   link: StorefrontLink;
   onChange: (next: StorefrontLink) => void;
+  onRemove?: () => void;
   idPrefix: string;
 }) {
   return (
     <div className="rounded border border-primary-blue/10 bg-blue-gray/15 p-3">
-      <p className="mb-2 font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-primary-blue/55">
-        {label}
-      </p>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-primary-blue/55">
+          {label}
+        </p>
+        {onRemove ? (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="font-sans text-[11px] font-medium text-red-700/90"
+          >
+            Remove
+          </button>
+        ) : null}
+      </div>
       <div className="grid gap-2 sm:grid-cols-2">
         <Field
           label="Label"
@@ -126,11 +147,92 @@ function LinkPairEditor({
   );
 }
 
-const EMPTY_PRODUCT: StorefrontProductPlaceholder = {
-  title: "New product",
-  priceLabel: "R 0.00",
-  imageUrl: "",
-};
+function OptionalHeroCtaEditor({
+  label,
+  link,
+  defaultLink,
+  idPrefix,
+  onChange,
+}: {
+  label: string;
+  link: StorefrontLink | null;
+  defaultLink: StorefrontLink;
+  idPrefix: string;
+  onChange: (next: StorefrontLink | null) => void;
+}) {
+  if (!link) {
+    return (
+      <button
+        type="button"
+        onClick={() => onChange({ ...defaultLink })}
+        className="w-full rounded border border-dashed border-primary-blue/25 bg-white px-3 py-2.5 font-sans text-xs font-semibold text-primary-blue"
+      >
+        + Add {label.toLowerCase()}
+      </button>
+    );
+  }
+
+  return (
+    <LinkPairEditor
+      label={label}
+      link={link}
+      idPrefix={idPrefix}
+      onChange={onChange}
+      onRemove={() => onChange(null)}
+    />
+  );
+}
+
+/** Limit picker for Featured / New arrivals / Sale: custom count or show all. */
+function ProductLimitField({
+  id,
+  limit,
+  onChange,
+  hint,
+}: {
+  id: string;
+  limit: number | null | undefined;
+  onChange: (next: number | null) => void;
+  hint?: string;
+}) {
+  const showAll = limit === null;
+  return (
+    <div className="space-y-2">
+      <label className="flex cursor-pointer items-center gap-2 font-sans text-sm text-foreground">
+        <input
+          type="checkbox"
+          checked={showAll}
+          onChange={(e) => onChange(e.target.checked ? null : 4)}
+          className="h-4 w-4 rounded border-border text-primary-blue focus:ring-primary-blue/30"
+        />
+        Show all products
+      </label>
+      {!showAll ? (
+        <Field
+          label="Products to show"
+          id={id}
+          type="number"
+          min={1}
+          max={48}
+          value={limit ?? 4}
+          onChange={(e) => {
+            const n = Number(e.target.value);
+            onChange(
+              Number.isFinite(n)
+                ? Math.min(48, Math.max(1, Math.floor(n)))
+                : 4,
+            );
+          }}
+        />
+      ) : null}
+      {hint ? (
+        <p className="font-sans text-[11px] leading-relaxed text-muted-foreground">
+          {hint}
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 const SECTION_LIBRARY: Array<{
   type: StorefrontSection["type"];
@@ -140,12 +242,29 @@ const SECTION_LIBRARY: Array<{
   {
     type: "hero",
     label: "Hero banner",
-    description: "Large image-led intro with two buttons.",
+    description: "Large image-led intro with optional buttons.",
   },
   {
     type: "featuredProducts",
     label: "Featured products",
-    description: "A simple grid of highlighted products.",
+    description: "Active products from your catalogue.",
+  },
+  {
+    type: "newArrivals",
+    label: "New arrivals",
+    description:
+      "Newest active products. Use Show all on a dedicated page.",
+  },
+  {
+    type: "sale",
+    label: "Sale",
+    description:
+      "On-sale catalogue products (compare-at price). Use Show all for a full sale page.",
+  },
+  {
+    type: "shopByCategory",
+    label: "Shop by category",
+    description: "Category cards from products or manual cards.",
   },
   {
     type: "promoBanner",
@@ -161,6 +280,21 @@ const SECTION_LIBRARY: Array<{
     type: "features",
     label: "Benefits",
     description: "Three feature columns with icons.",
+  },
+  {
+    type: "testimonials",
+    label: "Testimonials",
+    description: "Customer quotes with optional photos.",
+  },
+  {
+    type: "instagramGallery",
+    label: "Instagram gallery",
+    description: "Grid of lifestyle images and links.",
+  },
+  {
+    type: "newsletter",
+    label: "Newsletter",
+    description: "Email capture form (UI only for now).",
   },
   {
     type: "faq",
@@ -180,7 +314,11 @@ function slugifyPageTitle(title: string, fallback: string): string {
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-  return slug || fallback;
+  const next = slug || fallback;
+  if (isReservedStorefrontPageSlug(next)) {
+    return `${next}-page`;
+  }
+  return next;
 }
 
 function newSection(type: StorefrontSection["type"]): StorefrontSection {
@@ -202,7 +340,35 @@ function newSection(type: StorefrontSection["type"]): StorefrontSection {
         type,
         title: "Featured products",
         viewAll: { label: "View all", href: "@shop" },
-        products: [{ ...EMPTY_PRODUCT }],
+        limit: 4,
+      };
+    case "newArrivals":
+      return {
+        id,
+        type,
+        eyebrow: "Just landed",
+        title: "New arrivals",
+        viewAll: { label: "Shop all new", href: "@shop" },
+        limit: 4,
+      };
+    case "sale":
+      return {
+        id,
+        type,
+        eyebrow: "Sale",
+        title: "On sale now",
+        description: "Hand-picked deals while stocks last.",
+        viewAll: { label: "Shop all sale", href: "@shop" },
+        imageUrl: "",
+        limit: 4,
+      };
+    case "shopByCategory":
+      return {
+        id,
+        type,
+        title: "Shop by category",
+        viewAll: { label: "View all", href: "@shop" },
+        categories: [],
       };
     case "promoBanner":
       return {
@@ -248,6 +414,55 @@ function newSection(type: StorefrontSection["type"]): StorefrontSection {
           },
         ],
       };
+    case "testimonials":
+      return {
+        id,
+        type,
+        title: "What customers say",
+        items: [
+          {
+            quote: "Beautiful products and such an easy ordering experience.",
+            name: "Thandi M.",
+            role: "Cape Town",
+            imageUrl: "",
+          },
+          {
+            quote: "The quality exceeded my expectations. Will order again.",
+            name: "James K.",
+            role: "Johannesburg",
+            imageUrl: "",
+          },
+          {
+            quote: "Friendly support and fast delivery. Highly recommend.",
+            name: "Lerato P.",
+            role: "Durban",
+            imageUrl: "",
+          },
+        ],
+      };
+    case "instagramGallery":
+      return {
+        id,
+        type,
+        title: "Follow us",
+        handle: "@yourstore",
+        images: [
+          { imageUrl: "", href: "#" },
+          { imageUrl: "", href: "#" },
+          { imageUrl: "", href: "#" },
+          { imageUrl: "", href: "#" },
+        ],
+      };
+    case "newsletter":
+      return {
+        id,
+        type,
+        title: "Stay in the loop",
+        body: "Get new arrivals and offers first. No spam.",
+        placeholder: "you@email.com",
+        buttonLabel: "Subscribe",
+        successMessage: "Thanks — you are on the list.",
+      };
     case "faq":
       return {
         id,
@@ -277,9 +492,11 @@ function newSection(type: StorefrontSection["type"]): StorefrontSection {
 }
 
 export function StorefrontEditor({
+  workspaceId,
   config,
   onChange,
   onCustomizeModeChange,
+  onSelectedPageChange,
   previewHref,
   sectionEditTarget,
 }: StorefrontEditorProps) {
@@ -297,11 +514,15 @@ export function StorefrontEditor({
   }, [showSectionPicker, onCustomizeModeChange]);
 
   useEffect(() => {
+    onSelectedPageChange?.(selectedPageId);
+  }, [selectedPageId, onSelectedPageChange]);
+
+  useEffect(() => {
     if (!sectionEditTarget) return;
     const timeoutId = window.setTimeout(() => {
       setSection("pages");
       setShowSectionPicker(false);
-      setSelectedPageId("home");
+      setSelectedPageId(sectionEditTarget.pageId);
       setFocusedSectionId(sectionEditTarget.id);
       window.requestAnimationFrame(() => {
         document
@@ -322,31 +543,20 @@ export function StorefrontEditor({
     patch({ navLinks });
   }
 
-  function patchProduct(
-    index: number,
-    partial: Partial<StorefrontProductPlaceholder>,
-  ) {
-    const products = config.products.map((p, j) =>
-      j === index ? { ...p, ...partial } : p,
-    );
-    patch({ products });
+  function addNavLink() {
+    patch({ navLinks: [...config.navLinks, { label: "New link", href: "/" }] });
   }
 
-  function moveProduct(from: number, to: number) {
-    if (to < 0 || to >= config.products.length) return;
-    const products = [...config.products];
-    const [row] = products.splice(from, 1);
-    products.splice(to, 0, row);
-    patch({ products });
+  function removeNavLink(i: number) {
+    patch({ navLinks: config.navLinks.filter((_, j) => j !== i) });
   }
 
-  function addProduct() {
-    patch({ products: [...config.products, { ...EMPTY_PRODUCT }] });
-  }
-
-  function removeProduct(index: number) {
-    if (config.products.length <= 1) return;
-    patch({ products: config.products.filter((_, i) => i !== index) });
+  function moveNavLink(i: number, dir: -1 | 1) {
+    const links = [...config.navLinks];
+    const j = i + dir;
+    if (j < 0 || j >= links.length) return;
+    [links[i], links[j]] = [links[j], links[i]];
+    patch({ navLinks: links });
   }
 
   function patchPromo(index: 0 | 1, partial: Partial<StorefrontPromoCard>) {
@@ -411,7 +621,7 @@ export function StorefrontEditor({
       id: `page-${Date.now()}`,
       title,
       slug: slugifyPageTitle(title, `page-${n}`),
-      sections: [newSection("hero")],
+      sections: [],
     };
     patch({ pages: [...config.pages, page] });
     setSelectedPageId(page.id);
@@ -428,7 +638,6 @@ export function StorefrontEditor({
   }
 
   function removeSection(index: number) {
-    if (editableSections.length <= 1) return;
     patchSections(editableSections.filter((_, i) => i !== index));
   }
 
@@ -519,25 +728,27 @@ export function StorefrontEditor({
                 patchSectionAt(index, { ...item, subheading: e.target.value })
               }
             />
-            <Field
-              label="Background image URL"
-              id={`sec-${item.id}-image`}
+            <ImageUploadField
+              workspaceId={workspaceId}
+              label="Background image"
               value={item.imageUrl}
-              onChange={(e) =>
-                patchSectionAt(index, { ...item, imageUrl: e.target.value })
+              onChange={(url) =>
+                patchSectionAt(index, { ...item, imageUrl: url })
               }
             />
-            <LinkPairEditor
+            <OptionalHeroCtaEditor
               label="Primary button"
               link={item.primaryCta}
+              defaultLink={{ label: "Shop collection", href: "@shop" }}
               idPrefix={`sec-${item.id}-primary`}
               onChange={(next) =>
                 patchSectionAt(index, { ...item, primaryCta: next })
               }
             />
-            <LinkPairEditor
+            <OptionalHeroCtaEditor
               label="Secondary button"
               link={item.secondaryCta}
+              defaultLink={{ label: "Learn more", href: "#" }}
               idPrefix={`sec-${item.id}-secondary`}
               onChange={(next) =>
                 patchSectionAt(index, { ...item, secondaryCta: next })
@@ -556,107 +767,29 @@ export function StorefrontEditor({
                 patchSectionAt(index, { ...item, title: e.target.value })
               }
             />
-            <LinkPairEditor
-              label="View all link"
+            <ProductLimitField
+              id={`sec-${item.id}-limit`}
+              limit={item.limit}
+              onChange={(next) =>
+                patchSectionAt(index, { ...item, limit: next })
+              }
+              hint="Use Show all on a full catalogue page; keep a small number for homepage teasers."
+            />
+            <OptionalHeroCtaEditor
+              label="View all button"
               link={item.viewAll}
+              defaultLink={{ label: "View all", href: "@shop" }}
               idPrefix={`sec-${item.id}-view-all`}
               onChange={(next) =>
                 patchSectionAt(index, { ...item, viewAll: next })
               }
             />
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-primary-blue/55">
-                  Products
-                </p>
-                <button
-                  type="button"
-                  onClick={() =>
-                    patchSectionAt(index, {
-                      ...item,
-                      products: [...item.products, { ...EMPTY_PRODUCT }],
-                    })
-                  }
-                  className="font-sans text-xs font-semibold text-primary-blue underline decoration-primary-blue/30 underline-offset-2"
-                >
-                  Add product
-                </button>
-              </div>
-              {item.products.map((product, productIndex) => (
-                <div
-                  key={`${item.id}-product-${productIndex}`}
-                  className="rounded border border-primary-blue/10 bg-white p-3"
-                >
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.14em] text-primary-blue/45">
-                      Product {productIndex + 1}
-                    </p>
-                    <button
-                      type="button"
-                      disabled={item.products.length <= 1}
-                      onClick={() =>
-                        patchSectionAt(index, {
-                          ...item,
-                          products: item.products.filter(
-                            (_, i) => i !== productIndex,
-                          ),
-                        })
-                      }
-                      className="font-sans text-xs font-semibold text-red-700/90 disabled:opacity-30"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                  <div className="grid gap-2">
-                    <Field
-                      label="Title"
-                      id={`sec-${item.id}-product-${productIndex}-title`}
-                      value={product.title}
-                      onChange={(e) =>
-                        patchSectionAt(index, {
-                          ...item,
-                          products: item.products.map((p, i) =>
-                            i === productIndex
-                              ? { ...p, title: e.target.value }
-                              : p,
-                          ),
-                        })
-                      }
-                    />
-                    <Field
-                      label="Price"
-                      id={`sec-${item.id}-product-${productIndex}-price`}
-                      value={product.priceLabel}
-                      onChange={(e) =>
-                        patchSectionAt(index, {
-                          ...item,
-                          products: item.products.map((p, i) =>
-                            i === productIndex
-                              ? { ...p, priceLabel: e.target.value }
-                              : p,
-                          ),
-                        })
-                      }
-                    />
-                    <Field
-                      label="Image URL"
-                      id={`sec-${item.id}-product-${productIndex}-image`}
-                      value={product.imageUrl}
-                      onChange={(e) =>
-                        patchSectionAt(index, {
-                          ...item,
-                          products: item.products.map((p, i) =>
-                            i === productIndex
-                              ? { ...p, imageUrl: e.target.value }
-                              : p,
-                          ),
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+            <p className="font-sans text-[11px] leading-relaxed text-muted-foreground">
+              Shows active products from your{" "}
+              <span className="font-medium text-primary-blue/80">Products</span>{" "}
+              catalogue (not local placeholders). Manage titles, prices, and
+              images in the Products dashboard.
+            </p>
           </div>
         );
       case "promoBanner":
@@ -700,12 +833,12 @@ export function StorefrontEditor({
                 patchSectionAt(index, { ...item, href: e.target.value })
               }
             />
-            <Field
-              label="Image URL"
-              id={`sec-${item.id}-image`}
+            <ImageUploadField
+              workspaceId={workspaceId}
+              label="Image"
               value={item.imageUrl}
-              onChange={(e) =>
-                patchSectionAt(index, { ...item, imageUrl: e.target.value })
+              onChange={(url) =>
+                patchSectionAt(index, { ...item, imageUrl: url })
               }
             />
           </div>
@@ -737,12 +870,12 @@ export function StorefrontEditor({
                 patchSectionAt(index, { ...item, body: e.target.value })
               }
             />
-            <Field
-              label="Image URL"
-              id={`sec-${item.id}-image`}
+            <ImageUploadField
+              workspaceId={workspaceId}
+              label="Image"
               value={item.imageUrl}
-              onChange={(e) =>
-                patchSectionAt(index, { ...item, imageUrl: e.target.value })
+              onChange={(url) =>
+                patchSectionAt(index, { ...item, imageUrl: url })
               }
             />
             <label
@@ -947,6 +1080,501 @@ export function StorefrontEditor({
             />
           </div>
         );
+      case "newArrivals":
+        return (
+          <div className="space-y-3">
+            <Field
+              label="Eyebrow (optional)"
+              id={`sec-${item.id}-eyebrow`}
+              value={item.eyebrow}
+              placeholder="Just landed"
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, eyebrow: e.target.value })
+              }
+            />
+            <Field
+              label="Title (optional)"
+              id={`sec-${item.id}-title`}
+              value={item.title}
+              placeholder="New arrivals"
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, title: e.target.value })
+              }
+            />
+            <ProductLimitField
+              id={`sec-${item.id}-limit`}
+              limit={item.limit}
+              onChange={(next) =>
+                patchSectionAt(index, { ...item, limit: next })
+              }
+              hint="On a dedicated New arrivals page, enable Show all and hide the labels above."
+            />
+            <OptionalHeroCtaEditor
+              label="View all button"
+              link={item.viewAll}
+              defaultLink={{ label: "Shop all new", href: "@shop" }}
+              idPrefix={`sec-${item.id}-view-all`}
+              onChange={(next) =>
+                patchSectionAt(index, { ...item, viewAll: next })
+              }
+            />
+            <button
+              type="button"
+              onClick={() =>
+                patchSectionAt(index, {
+                  ...item,
+                  eyebrow: "",
+                  title: "",
+                  viewAll: null,
+                })
+              }
+              className="font-sans text-xs font-semibold text-primary-blue underline decoration-primary-blue/30 underline-offset-2"
+            >
+              Products only (hide eyebrow, title &amp; button)
+            </button>
+            <p className="font-sans text-[11px] leading-relaxed text-muted-foreground">
+              On a dedicated New arrivals page: enable Show all, hide the labels
+              above, and keep titles on a Hero instead. Homepage teasers usually
+              keep title + View all linking to{" "}
+              <code className="rounded bg-blue-gray/50 px-1">@page:new-arrivals</code>.
+            </p>
+          </div>
+        );
+      case "sale":
+        return (
+          <div className="space-y-3">
+            <Field
+              label="Eyebrow (optional)"
+              id={`sec-${item.id}-eyebrow`}
+              value={item.eyebrow}
+              placeholder="Sale"
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, eyebrow: e.target.value })
+              }
+            />
+            <Field
+              label="Title (optional)"
+              id={`sec-${item.id}-title`}
+              value={item.title}
+              placeholder="On sale now"
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, title: e.target.value })
+              }
+            />
+            <TextAreaField
+              label="Description (optional)"
+              id={`sec-${item.id}-description`}
+              value={item.description}
+              onChange={(e) =>
+                patchSectionAt(index, {
+                  ...item,
+                  description: e.target.value,
+                })
+              }
+            />
+            <ProductLimitField
+              id={`sec-${item.id}-limit`}
+              limit={item.limit}
+              onChange={(next) =>
+                patchSectionAt(index, { ...item, limit: next })
+              }
+              hint="On a dedicated Sale page, enable Show all and hide the labels above."
+            />
+            <OptionalHeroCtaEditor
+              label="View all button"
+              link={item.viewAll}
+              defaultLink={{ label: "Shop all sale", href: "@shop" }}
+              idPrefix={`sec-${item.id}-view-all`}
+              onChange={(next) =>
+                patchSectionAt(index, { ...item, viewAll: next })
+              }
+            />
+            <button
+              type="button"
+              onClick={() =>
+                patchSectionAt(index, {
+                  ...item,
+                  eyebrow: "",
+                  title: "",
+                  description: "",
+                  viewAll: null,
+                })
+              }
+              className="font-sans text-xs font-semibold text-primary-blue underline decoration-primary-blue/30 underline-offset-2"
+            >
+              Products only (hide eyebrow, title, description &amp; button)
+            </button>
+            <p className="font-sans text-[11px] leading-relaxed text-muted-foreground">
+              Loads active products that have a compare-at price set in the
+              Products panel. Homepage teasers keep title + View all; a dedicated
+              Sale page can use Show all + Products only.
+            </p>
+          </div>
+        );
+      case "shopByCategory":
+        return (
+          <div className="space-y-3">
+            <Field
+              label="Title"
+              id={`sec-${item.id}-title`}
+              value={item.title}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, title: e.target.value })
+              }
+            />
+            <LinkPairEditor
+              label="View all link"
+              link={item.viewAll}
+              idPrefix={`sec-${item.id}-view-all`}
+              onChange={(next) =>
+                patchSectionAt(index, { ...item, viewAll: next })
+              }
+            />
+            <p className="font-sans text-[11px] leading-relaxed text-muted-foreground">
+              Leave cards empty to auto-detect categories from products. Or add
+              manual cards below.
+            </p>
+            {item.categories.map((cat, catIndex) => (
+              <div
+                key={`${item.id}-cat-${catIndex}`}
+                className="rounded border border-primary-blue/10 bg-white p-3"
+              >
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.14em] text-primary-blue/45">
+                    Category {catIndex + 1}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      patchSectionAt(index, {
+                        ...item,
+                        categories: item.categories.filter(
+                          (_, i) => i !== catIndex,
+                        ),
+                      })
+                    }
+                    className="font-sans text-xs font-semibold text-red-700/90"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <div className="grid gap-2">
+                  <Field
+                    label="Name"
+                    id={`sec-${item.id}-cat-${catIndex}-name`}
+                    value={cat.name}
+                    onChange={(e) =>
+                      patchSectionAt(index, {
+                        ...item,
+                        categories: item.categories.map((c, i) =>
+                          i === catIndex ? { ...c, name: e.target.value } : c,
+                        ),
+                      })
+                    }
+                  />
+                  <ImageUploadField
+                    workspaceId={workspaceId}
+                    label="Image"
+                    value={cat.imageUrl}
+                    onChange={(url) =>
+                      patchSectionAt(index, {
+                        ...item,
+                        categories: item.categories.map((c, i) =>
+                          i === catIndex ? { ...c, imageUrl: url } : c,
+                        ),
+                      })
+                    }
+                  />
+                  <Field
+                    label="Link"
+                    id={`sec-${item.id}-cat-${catIndex}-href`}
+                    value={cat.href}
+                    onChange={(e) =>
+                      patchSectionAt(index, {
+                        ...item,
+                        categories: item.categories.map((c, i) =>
+                          i === catIndex ? { ...c, href: e.target.value } : c,
+                        ),
+                      })
+                    }
+                  />
+                </div>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() =>
+                patchSectionAt(index, {
+                  ...item,
+                  categories: [
+                    ...item.categories,
+                    { name: "New category", imageUrl: "", href: "@shop" },
+                  ],
+                })
+              }
+              className="font-sans text-xs font-semibold text-primary-blue underline decoration-primary-blue/30 underline-offset-2"
+            >
+              Add category card
+            </button>
+          </div>
+        );
+      case "testimonials":
+        return (
+          <div className="space-y-3">
+            <Field
+              label="Title"
+              id={`sec-${item.id}-title`}
+              value={item.title}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, title: e.target.value })
+              }
+            />
+            {item.items.map((testimonial, tIndex) => (
+              <div
+                key={`${item.id}-t-${tIndex}`}
+                className="rounded border border-primary-blue/10 bg-white p-3"
+              >
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.14em] text-primary-blue/45">
+                    Quote {tIndex + 1}
+                  </p>
+                  <button
+                    type="button"
+                    disabled={item.items.length <= 1}
+                    onClick={() =>
+                      patchSectionAt(index, {
+                        ...item,
+                        items: item.items.filter((_, i) => i !== tIndex),
+                      })
+                    }
+                    className="font-sans text-xs font-semibold text-red-700/90 disabled:opacity-30"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <div className="grid gap-2">
+                  <TextAreaField
+                    label="Quote"
+                    id={`sec-${item.id}-t-${tIndex}-quote`}
+                    value={testimonial.quote}
+                    onChange={(e) =>
+                      patchSectionAt(index, {
+                        ...item,
+                        items: item.items.map((t, i) =>
+                          i === tIndex ? { ...t, quote: e.target.value } : t,
+                        ),
+                      })
+                    }
+                  />
+                  <Field
+                    label="Name"
+                    id={`sec-${item.id}-t-${tIndex}-name`}
+                    value={testimonial.name}
+                    onChange={(e) =>
+                      patchSectionAt(index, {
+                        ...item,
+                        items: item.items.map((t, i) =>
+                          i === tIndex ? { ...t, name: e.target.value } : t,
+                        ),
+                      })
+                    }
+                  />
+                  <Field
+                    label="Role / location"
+                    id={`sec-${item.id}-t-${tIndex}-role`}
+                    value={testimonial.role}
+                    onChange={(e) =>
+                      patchSectionAt(index, {
+                        ...item,
+                        items: item.items.map((t, i) =>
+                          i === tIndex ? { ...t, role: e.target.value } : t,
+                        ),
+                      })
+                    }
+                  />
+                  <ImageUploadField
+                    workspaceId={workspaceId}
+                    label="Photo"
+                    value={testimonial.imageUrl}
+                    onChange={(url) =>
+                      patchSectionAt(index, {
+                        ...item,
+                        items: item.items.map((t, i) =>
+                          i === tIndex ? { ...t, imageUrl: url } : t,
+                        ),
+                      })
+                    }
+                  />
+                </div>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() =>
+                patchSectionAt(index, {
+                  ...item,
+                  items: [
+                    ...item.items,
+                    {
+                      quote: "Add a customer quote.",
+                      name: "Customer",
+                      role: "",
+                      imageUrl: "",
+                    },
+                  ],
+                })
+              }
+              className="font-sans text-xs font-semibold text-primary-blue underline decoration-primary-blue/30 underline-offset-2"
+            >
+              Add testimonial
+            </button>
+          </div>
+        );
+      case "instagramGallery":
+        return (
+          <div className="space-y-3">
+            <Field
+              label="Title"
+              id={`sec-${item.id}-title`}
+              value={item.title}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, title: e.target.value })
+              }
+            />
+            <Field
+              label="Handle"
+              id={`sec-${item.id}-handle`}
+              value={item.handle}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, handle: e.target.value })
+              }
+            />
+            {item.images.map((image, imageIndex) => (
+              <div
+                key={`${item.id}-ig-${imageIndex}`}
+                className="rounded border border-primary-blue/10 bg-white p-3"
+              >
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.14em] text-primary-blue/45">
+                    Image {imageIndex + 1}
+                  </p>
+                  <button
+                    type="button"
+                    disabled={item.images.length <= 1}
+                    onClick={() =>
+                      patchSectionAt(index, {
+                        ...item,
+                        images: item.images.filter((_, i) => i !== imageIndex),
+                      })
+                    }
+                    className="font-sans text-xs font-semibold text-red-700/90 disabled:opacity-30"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <ImageUploadField
+                  workspaceId={workspaceId}
+                  label="Image"
+                  value={image.imageUrl}
+                  onChange={(url) =>
+                    patchSectionAt(index, {
+                      ...item,
+                      images: item.images.map((img, i) =>
+                        i === imageIndex ? { ...img, imageUrl: url } : img,
+                      ),
+                    })
+                  }
+                />
+                <div className="mt-2">
+                  <Field
+                    label="Link"
+                    id={`sec-${item.id}-ig-${imageIndex}-href`}
+                    value={image.href}
+                    onChange={(e) =>
+                      patchSectionAt(index, {
+                        ...item,
+                        images: item.images.map((img, i) =>
+                          i === imageIndex
+                            ? { ...img, href: e.target.value }
+                            : img,
+                        ),
+                      })
+                    }
+                  />
+                </div>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() =>
+                patchSectionAt(index, {
+                  ...item,
+                  images: [...item.images, { imageUrl: "", href: "#" }],
+                })
+              }
+              className="font-sans text-xs font-semibold text-primary-blue underline decoration-primary-blue/30 underline-offset-2"
+            >
+              Add image
+            </button>
+          </div>
+        );
+      case "newsletter":
+        return (
+          <div className="space-y-3">
+            <Field
+              label="Title"
+              id={`sec-${item.id}-title`}
+              value={item.title}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, title: e.target.value })
+              }
+            />
+            <TextAreaField
+              label="Body"
+              id={`sec-${item.id}-body`}
+              value={item.body}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, body: e.target.value })
+              }
+            />
+            <Field
+              label="Email placeholder"
+              id={`sec-${item.id}-placeholder`}
+              value={item.placeholder}
+              onChange={(e) =>
+                patchSectionAt(index, {
+                  ...item,
+                  placeholder: e.target.value,
+                })
+              }
+            />
+            <Field
+              label="Button label"
+              id={`sec-${item.id}-button`}
+              value={item.buttonLabel}
+              onChange={(e) =>
+                patchSectionAt(index, {
+                  ...item,
+                  buttonLabel: e.target.value,
+                })
+              }
+            />
+            <Field
+              label="Success message"
+              id={`sec-${item.id}-success`}
+              value={item.successMessage}
+              onChange={(e) =>
+                patchSectionAt(index, {
+                  ...item,
+                  successMessage: e.target.value,
+                })
+              }
+            />
+            <p className="font-sans text-[11px] leading-relaxed text-muted-foreground">
+              UI only for now — emails are not sent to a backend yet.
+            </p>
+          </div>
+        );
     }
   }
 
@@ -1045,18 +1673,16 @@ export function StorefrontEditor({
                   label="Page title"
                   id={`page-${selectedPage.id}-title`}
                   value={selectedPage.title}
+                  placeholder="e.g. Contact us"
                   onChange={(e) => {
-                    const title = e.target.value;
-                    patchSelectedPage({
-                      title,
-                      slug: slugifyPageTitle(title, selectedPage.slug),
-                    });
+                    patchSelectedPage({ title: e.target.value });
                   }}
                 />
                 <Field
                   label="Page slug"
                   id={`page-${selectedPage.id}-slug`}
                   value={selectedPage.slug}
+                  placeholder="contact-us"
                   onChange={(e) =>
                     patchSelectedPage({
                       slug: slugifyPageTitle(e.target.value, selectedPage.slug),
@@ -1064,9 +1690,25 @@ export function StorefrontEditor({
                   }
                 />
               </div>
+              <p className="mt-2 font-sans text-[11px] leading-relaxed text-muted-foreground">
+                Live preview on the right shows this page. Public URL:{" "}
+                <span className="font-medium text-primary-blue/80">
+                  /{selectedPage.slug || "…"}
+                </span>
+              </p>
+              <p className="mt-2 font-sans text-[11px] leading-relaxed text-muted-foreground">
+                Tip: for a New arrivals or Sale page, add that section, raise
+                <span className="font-medium text-primary-blue/80"> Products to show </span>
+                (e.g. 48), and use{" "}
+                <span className="font-medium text-primary-blue/80">
+                  Products only
+                </span>{" "}
+                to hide section titles/buttons. Put products on sale via
+                compare-at price in Products.
+              </p>
               {previewHref ? (
                 <Link
-                  href={`${previewHref}/page/${selectedPage.slug}`}
+                  href={`${previewHref}/${selectedPage.slug}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-3 inline-flex font-sans text-xs font-semibold text-primary-blue underline decoration-primary-blue/30 underline-offset-2"
@@ -1140,6 +1782,12 @@ export function StorefrontEditor({
               </p>
             </div>
             <div className="mt-4 space-y-3">
+              {visibleSectionEntries.length === 0 ? (
+                <p className="rounded border border-dashed border-primary-blue/20 bg-white px-3 py-4 font-sans text-xs leading-relaxed text-muted-foreground">
+                  No sections yet. Add one from the section library above, or use
+                  the + buttons on the live preview.
+                </p>
+              ) : null}
               {visibleSectionEntries.map(({ item, index }) => (
                 <div
                   id={`storefront-editor-section-${item.id}`}
@@ -1162,9 +1810,8 @@ export function StorefrontEditor({
                     </div>
                     <button
                       type="button"
-                      disabled={editableSections.length <= 1}
                       onClick={() => removeSection(index)}
-                      className="rounded border border-primary-blue/15 bg-white px-2 py-1 font-sans text-[11px] font-medium text-red-700/90 disabled:opacity-30"
+                      className="rounded border border-primary-blue/15 bg-white px-2 py-1 font-sans text-[11px] font-medium text-red-700/90"
                     >
                       Remove
                     </button>
@@ -1208,29 +1855,77 @@ export function StorefrontEditor({
     case "navbar":
       body = (
         <div className="space-y-5">
-          <Field
-            label="Active nav item (0 = first link)"
-            id="sf-nav-active"
-            type="number"
-            min={0}
-            max={Math.max(0, config.navLinks.length - 1)}
-            value={config.activeNavIndex}
-            onChange={(e) =>
-              patch({ activeNavIndex: Number(e.target.value) || 0 })
-            }
-          />
-          <ul className="space-y-3">
-            {config.navLinks.map((link, i) => (
-              <li key={i}>
-                <LinkPairEditor
-                  label={`Nav link ${i + 1}`}
-                  link={link}
-                  idPrefix={`nav-${i}`}
-                  onChange={(next) => patchNav(i, next)}
-                />
-              </li>
-            ))}
-          </ul>
+          <div>
+            <p className="mb-1 font-sans text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Nav links
+            </p>
+            <p className="mb-3 font-sans text-xs text-muted-foreground">
+              The active link is highlighted automatically based on the current
+              page URL.
+            </p>
+            <ul className="space-y-3">
+              {config.navLinks.map((link, i) => (
+                <li key={i}>
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <span className="font-sans text-xs font-semibold text-foreground">
+                      Nav link {i + 1}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        disabled={i === 0}
+                        onClick={() => moveNavLink(i, -1)}
+                        className="rounded p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                        title="Move up"
+                      >
+                        <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+                          <path d="M8 3l5 6H3l5-6z" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={i === config.navLinks.length - 1}
+                        onClick={() => moveNavLink(i, 1)}
+                        className="rounded p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                        title="Move down"
+                      >
+                        <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+                          <path d="M8 13l-5-6h10l-5 6z" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={config.navLinks.length <= 1}
+                        onClick={() => removeNavLink(i)}
+                        className="rounded p-1 text-red-500 hover:text-red-600 disabled:opacity-30"
+                        title="Remove link"
+                      >
+                        <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
+                          <path strokeLinecap="round" d="M4 4l8 8M12 4l-8 8" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <LinkPairEditor
+                    label=""
+                    link={link}
+                    idPrefix={`nav-${i}`}
+                    onChange={(next) => patchNav(i, next)}
+                  />
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              onClick={addNavLink}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border py-2 font-sans text-sm text-muted-foreground transition-colors hover:border-primary-blue hover:text-primary-blue"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
+                <path strokeLinecap="round" d="M8 3v10M3 8h10" />
+              </svg>
+              Add link
+            </button>
+          </div>
           <Field
             label="Cart badge (e.g. 0)"
             id="sf-cart"
@@ -1243,14 +1938,11 @@ export function StorefrontEditor({
     case "hero":
       body = (
         <div className="space-y-4">
-          <Field
-            label="Hero background image URL (HTTPS)"
-            id="sf-hero-bg"
-            placeholder="https://…"
+          <ImageUploadField
+            workspaceId={workspaceId}
+            label="Hero background image"
             value={config.heroBackgroundImageUrl}
-            onChange={(e) =>
-              patch({ heroBackgroundImageUrl: e.target.value })
-            }
+            onChange={(url) => patch({ heroBackgroundImageUrl: url })}
           />
           <Field
             label="Hero heading"
@@ -1281,117 +1973,19 @@ export function StorefrontEditor({
       break;
     case "products":
       body = (
-        <div className="space-y-6">
-          <div className="space-y-3">
-            <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
-              Featured block
-            </p>
-            <Field
-              label="Section title"
-              id="sf-featured-title"
-              value={config.featuredTitle}
-              onChange={(e) => patch({ featuredTitle: e.target.value })}
-            />
-            <LinkPairEditor
-              label="“View all” link"
-              link={config.featuredViewAll}
-              idPrefix="feat-all"
-              onChange={(next) => patch({ featuredViewAll: next })}
-            />
-          </div>
-          <div className="border-t border-primary-blue/10 pt-5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
-                Product grid
-              </p>
-              <button
-                type="button"
-                onClick={addProduct}
-                className="font-sans text-xs font-semibold text-primary-blue underline decoration-primary-blue/30 underline-offset-2 hover:decoration-primary-blue"
-              >
-                Add product
-              </button>
-            </div>
-            <ul className="mt-3 space-y-4">
-              {config.products.map((p, i) => (
-                <li
-                  key={`${i}-${p.title}`}
-                  className="rounded border border-primary-blue/10 bg-blue-gray/20 p-3"
-                >
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-sans text-[10px] font-semibold uppercase tracking-[0.14em] text-primary-blue/45">
-                      #{i + 1}
-                    </span>
-                    <div className="flex flex-wrap gap-1">
-                      <button
-                        type="button"
-                        disabled={i === 0}
-                        onClick={() => moveProduct(i, i - 1)}
-                        className="rounded border border-primary-blue/15 bg-white px-2 py-1 font-sans text-[11px] font-medium text-primary-blue disabled:opacity-30"
-                      >
-                        Up
-                      </button>
-                      <button
-                        type="button"
-                        disabled={i === config.products.length - 1}
-                        onClick={() => moveProduct(i, i + 1)}
-                        className="rounded border border-primary-blue/15 bg-white px-2 py-1 font-sans text-[11px] font-medium text-primary-blue disabled:opacity-30"
-                      >
-                        Down
-                      </button>
-                      <button
-                        type="button"
-                        disabled={config.products.length <= 1}
-                        onClick={() => removeProduct(i)}
-                        className="rounded border border-primary-blue/15 bg-white px-2 py-1 font-sans text-[11px] font-medium text-red-700/90 disabled:opacity-30"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                  <Field
-                    label="Image URL (HTTPS)"
-                    id={`sf-p-${i}-img`}
-                    placeholder="https://…"
-                    value={p.imageUrl}
-                    onChange={(e) =>
-                      patchProduct(i, { imageUrl: e.target.value })
-                    }
-                  />
-                  {p.imageUrl.trim() ? (
-                    <div className="mt-2 overflow-hidden rounded border border-primary-blue/10">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={p.imageUrl}
-                        alt=""
-                        className="h-24 w-full object-cover"
-                      />
-                    </div>
-                  ) : null}
-                  <div className="mt-3">
-                    <Field
-                      label="Title"
-                      id={`sf-p-${i}-t`}
-                      value={p.title}
-                      onChange={(e) =>
-                        patchProduct(i, { title: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="mt-2">
-                    <Field
-                      label="Price label"
-                      id={`sf-p-${i}-p`}
-                      value={p.priceLabel}
-                      onChange={(e) =>
-                        patchProduct(i, { priceLabel: e.target.value })
-                      }
-                    />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
+        <div className="space-y-3">
+          <p className="font-sans text-sm leading-relaxed text-muted-foreground">
+            Featured product grids now load from your real catalogue. Manage
+            products in the{" "}
+            <Link
+              href={`/dashboard/${workspaceId}?section=products`}
+              className="font-semibold text-primary-blue underline decoration-primary-blue/30 underline-offset-2"
+            >
+              Products
+            </Link>{" "}
+            panel. Edit a Featured products section under Pages &amp; sections
+            to change its title, limit, and View all link.
+          </p>
         </div>
       );
       break;
@@ -1429,13 +2023,11 @@ export function StorefrontEditor({
                     patchPromo(idx, { buttonLabel: e.target.value })
                   }
                 />
-                <Field
-                  label="Background image URL"
-                  id={`promo-${idx}-i`}
+                <ImageUploadField
+                  workspaceId={workspaceId}
+                  label="Background image"
                   value={config.promos[idx].imageUrl}
-                  onChange={(e) =>
-                    patchPromo(idx, { imageUrl: e.target.value })
-                  }
+                  onChange={(url) => patchPromo(idx, { imageUrl: url })}
                 />
                 <Field
                   label="Link"

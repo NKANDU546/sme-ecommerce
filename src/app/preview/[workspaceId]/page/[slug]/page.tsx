@@ -1,21 +1,13 @@
-import type { Metadata } from "next";
-import { CustomPageClient } from "@/app/preview/[workspaceId]/page/[slug]/custom-page-client";
+import { redirect } from "next/navigation";
 
 type PageProps = {
   params: Promise<{ workspaceId: string; slug: string }>;
 };
 
-export async function generateMetadata({
+/** Legacy `/page/{slug}` preview URLs redirect to `/{slug}`. */
+export default async function LegacyCustomPreviewPageRedirect({
   params,
-}: PageProps): Promise<Metadata> {
+}: PageProps) {
   const { workspaceId, slug } = await params;
-  return {
-    title: `${slug} · ${workspaceId.slice(0, 8)}…`,
-    robots: { index: false, follow: false },
-  };
-}
-
-export default async function CustomPreviewPage({ params }: PageProps) {
-  const { workspaceId, slug } = await params;
-  return <CustomPageClient workspaceId={workspaceId} slug={slug} />;
+  redirect(`/preview/${workspaceId}/${slug}`);
 }

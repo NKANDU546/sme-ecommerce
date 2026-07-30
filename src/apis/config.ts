@@ -5,5 +5,5 @@ export function getSmeApiBaseUrl(): string {
     "",
   );
   if (fromEnv) return fromEnv;
-  return "https://innovators-d2b3gycthabmdnhj.southafricanorth-01.azurewebsites.net/api/v1";
+  return "https://sme-operations-gpgudcaud8bddgdu.canadacentral-01.azurewebsites.net/api/v1";
 }

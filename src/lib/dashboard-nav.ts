@@ -104,7 +104,7 @@ export const DASHBOARD_SECTIONS: readonly DashboardSectionConfig[] = [
     empty: {
       title: "No storefront published",
       description:
-        "The Storefront tab hosts a default template you can customize. Until the API ships, settings are saved in this browser only.",
+        "Open Storefront to customize your draft, then use Go Live to publish a snapshot customers will eventually see.",
     },
   },
   {

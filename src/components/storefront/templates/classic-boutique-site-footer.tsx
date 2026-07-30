@@ -4,11 +4,13 @@ import type { StorefrontConfig } from "@/types/storefront";
 type ClassicBoutiqueSiteFooterProps = {
   config: StorefrontConfig;
   workspaceId?: string;
+  basePath?: string;
 };
 
 export function ClassicBoutiqueSiteFooter({
   config,
   workspaceId,
+  basePath,
 }: ClassicBoutiqueSiteFooterProps) {
   return (
     <footer className="border-t border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-footer-bg)] py-14 text-[color:var(--sf-accent)]">
@@ -29,6 +31,7 @@ export function ClassicBoutiqueSiteFooter({
                 <ClassicBoutiqueSmartLink
                   link={l}
                   workspaceId={workspaceId}
+                  basePath={basePath}
                   className="text-[color:var(--sf-accent-text-70)] underline-offset-2 transition-colors hover:text-[color:var(--sf-accent)]"
                 />
               </li>
@@ -45,6 +48,7 @@ export function ClassicBoutiqueSiteFooter({
                 <ClassicBoutiqueSmartLink
                   link={l}
                   workspaceId={workspaceId}
+                  basePath={basePath}
                   className="text-[color:var(--sf-accent-text-70)] underline-offset-2 transition-colors hover:text-[color:var(--sf-accent)]"
                 />
               </li>
@@ -61,6 +65,7 @@ export function ClassicBoutiqueSiteFooter({
                 <ClassicBoutiqueSmartLink
                   link={l}
                   workspaceId={workspaceId}
+                  basePath={basePath}
                   className="text-[color:var(--sf-accent-text-70)] underline-offset-2 transition-colors hover:text-[color:var(--sf-accent)]"
                 />
               </li>

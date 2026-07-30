@@ -1,22 +1,47 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { usePreviewCartOptional } from "@/contexts/preview-cart-context";
+import { resolveStorefrontHref } from "@/lib/preview-shop-href";
 import type { StorefrontConfig, StorefrontLink } from "@/types/storefront";
+
+/**
+ * Determine whether a nav link is "active" based on the current pathname.
+ * - Exact match on resolved href wins.
+ * - For non-root hrefs, also activates when pathname starts with that href
+ *   (so /s/store/shop/product marks Shop as active).
+ */
+function isNavLinkActive(
+  link: StorefrontLink,
+  resolvedHref: string,
+  pathname: string,
+): boolean {
+  if (!pathname) return false;
+  const href = resolvedHref.split("?")[0].replace(/\/$/, "") || "/";
+  const current = pathname.replace(/\/$/, "") || "/";
+  if (current === href) return true;
+  // Prefix match only for non-root paths
+  if (href !== "/" && current.startsWith(href + "/")) return true;
+  return false;
+}
 
 function NavLink({
   link,
-  active,
+  resolvedHref,
+  pathname,
 }: {
   link: StorefrontLink;
-  active: boolean;
+  resolvedHref: string;
+  pathname: string;
 }) {
+  const active = isNavLinkActive(link, resolvedHref, pathname);
   const cls = `text-sm font-medium transition-colors ${
     active
       ? "border-b-2 border-[color:var(--sf-accent)] pb-0.5 text-[color:var(--sf-accent)]"
       : "text-[color:var(--sf-accent-text-65)] hover:text-[color:var(--sf-accent)]"
   }`;
   return (
-    <a href={link.href} className={cls}>
+    <a href={resolvedHref} className={cls}>
       {link.label}
     </a>
   );
@@ -24,6 +49,9 @@ function NavLink({
 
 type ClassicBoutiqueSiteHeaderProps = {
   config: StorefrontConfig;
+  /** Storefront root, e.g. `/s/my-store` or `/preview/{id}`. Used to resolve magic hrefs. */
+  basePath?: string;
+  workspaceId?: string;
 };
 
 function cartBadgeLabel(
@@ -39,10 +67,23 @@ function cartBadgeLabel(
 }
 
 /** Same top bar as the classic boutique home preview (logo row, desktop nav, mobile nav strip). */
-export function ClassicBoutiqueSiteHeader({ config }: ClassicBoutiqueSiteHeaderProps) {
+export function ClassicBoutiqueSiteHeader({
+  config,
+  basePath,
+  workspaceId,
+}: ClassicBoutiqueSiteHeaderProps) {
   const cart = usePreviewCartOptional();
+  const pathname = usePathname() ?? "";
+
+  const resolvedBase =
+    basePath ?? (workspaceId ? `/preview/${workspaceId}` : undefined);
 
   const badge = cartBadgeLabel(cart, config.cartCountLabel);
+
+  const resolvedLinks = config.navLinks.map((link) => ({
+    link,
+    href: resolveStorefrontHref(link, resolvedBase),
+  }));
 
   return (
     <header className="sticky top-0 z-20 border-b border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-header-surface)] backdrop-blur-md">
@@ -59,11 +100,12 @@ export function ClassicBoutiqueSiteHeader({ config }: ClassicBoutiqueSiteHeaderP
           className="hidden min-w-0 flex-1 items-center justify-center gap-8 lg:flex"
           aria-label="Storefront"
         >
-          {config.navLinks.map((link, i) => (
+          {resolvedLinks.map(({ link, href }, i) => (
             <NavLink
               key={`${link.label}-${i}`}
               link={link}
-              active={i === config.activeNavIndex}
+              resolvedHref={href}
+              pathname={pathname}
             />
           ))}
         </nav>
@@ -119,11 +161,12 @@ export function ClassicBoutiqueSiteHeader({ config }: ClassicBoutiqueSiteHeaderP
           className="flex flex-wrap justify-center gap-x-5 gap-y-2"
           aria-label="Storefront mobile"
         >
-          {config.navLinks.map((link, i) => (
+          {resolvedLinks.map(({ link, href }, i) => (
             <NavLink
               key={`m-${link.label}-${i}`}
               link={link}
-              active={i === config.activeNavIndex}
+              resolvedHref={href}
+              pathname={pathname}
             />
           ))}
         </nav>

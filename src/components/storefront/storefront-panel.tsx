@@ -8,6 +8,7 @@ import {
   type StorefrontCustomizeMode,
 } from "@/components/storefront/storefront-editor";
 import { StorefrontPublishControls } from "@/components/storefront/storefront-publish-controls";
+import { StorefrontTemplatePicker } from "@/components/storefront/storefront-template-picker";
 import { StorefrontTemplateView } from "@/components/storefront/storefront-template-view";
 import {
   useResetStorefrontDraft,
@@ -15,6 +16,10 @@ import {
   useStorefrontDraft,
 } from "@/hooks/use-storefront-draft";
 import { getStoredAuthSession } from "@/lib/auth-login-storage";
+import {
+  hasChosenStorefrontTemplate,
+  markStorefrontTemplateChosen,
+} from "@/lib/storefront-template-setup";
 import type { StorefrontConfig, StorefrontSection } from "@/types/storefront";
 
 type StorefrontPanelProps = {
@@ -203,6 +208,9 @@ export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
     pageId: "home" | string;
     requestId: number;
   } | null>(null);
+  const [setupGateReady, setSetupGateReady] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [replacingTemplate, setReplacingTemplate] = useState(false);
 
   const saveTimerRef = useRef<number | null>(null);
   const latestConfigRef = useRef<StorefrontConfig | null>(null);
@@ -213,6 +221,13 @@ export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
   useEffect(() => {
     saveStatusRef.current = saveStatus;
   }, [saveStatus]);
+
+  useEffect(() => {
+    const chosen = hasChosenStorefrontTemplate(workspaceId);
+    setShowTemplatePicker(!chosen);
+    setReplacingTemplate(false);
+    setSetupGateReady(true);
+  }, [workspaceId]);
 
   useEffect(() => {
     if (!draftQuery.data) return;
@@ -427,32 +442,46 @@ export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
     };
   }, [config, previewPage]);
 
-  async function handleResetTemplate() {
+  async function handleApplyTemplate(input: {
+    templateId: string;
+    templateVersion: number;
+  }) {
     if (saveTimerRef.current != null) {
       window.clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
     try {
       const view = await resetMutation.mutateAsync({
-        templateId: "classic-boutique",
-        templateVersion: 1,
+        templateId: input.templateId,
+        templateVersion: input.templateVersion,
       });
       setConfig(view.config);
       latestConfigRef.current = view.config;
       setTemplateVersion(view.draft.templateVersion);
       templateVersionRef.current = view.draft.templateVersion;
       setSaveStatus("saved");
-      toast.success("Storefront reset to Classic Boutique");
+      setPreviewPageId("home");
+      markStorefrontTemplateChosen(workspaceId, input.templateId);
+      setShowTemplatePicker(false);
+      setReplacingTemplate(false);
+      toast.success("Template applied", {
+        description: "Customize the copy, then add your products.",
+      });
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Could not reset storefront draft.",
+          : "Could not apply the storefront template.",
       );
     }
   }
 
-  if (!authReady) {
+  function openTemplatePicker(replacing: boolean) {
+    setReplacingTemplate(replacing);
+    setShowTemplatePicker(true);
+  }
+
+  if (!authReady || !setupGateReady) {
     return (
       <div className="flex flex-1 items-center justify-center px-6 py-16 font-sans text-sm text-muted-foreground">
         Loading storefront…
@@ -507,6 +536,35 @@ export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
           Try again
         </button>
       </div>
+    );
+  }
+
+  if (showTemplatePicker) {
+    return (
+      <StorefrontTemplatePicker
+        workspaceId={workspaceId}
+        replacingExisting={replacingTemplate}
+        allowKeepCurrent={!replacingTemplate}
+        isApplying={resetMutation.isPending}
+        onCancel={
+          replacingTemplate
+            ? () => {
+                setShowTemplatePicker(false);
+                setReplacingTemplate(false);
+              }
+            : undefined
+        }
+        onKeepCurrent={() => {
+          markStorefrontTemplateChosen(
+            workspaceId,
+            config?.templateId ?? "classic-boutique",
+          );
+          setShowTemplatePicker(false);
+          setReplacingTemplate(false);
+          toast.success("Continuing with your current draft");
+        }}
+        onApply={handleApplyTemplate}
+      />
     );
   }
 
@@ -617,11 +675,11 @@ export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
             </p>
             <button
               type="button"
-              onClick={() => void handleResetTemplate()}
+              onClick={() => openTemplatePicker(true)}
               disabled={resetMutation.isPending}
               className="font-sans text-[11px] font-semibold text-primary-blue underline decoration-primary-blue/30 underline-offset-2 hover:decoration-primary-blue disabled:opacity-50"
             >
-              {resetMutation.isPending ? "Resetting…" : "Reset template"}
+              Change template
             </button>
           </div>
           <Link

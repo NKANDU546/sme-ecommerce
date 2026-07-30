@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { DeleteProductModal } from "@/components/dashboard/delete-product-modal";
 import {
   ProductFormModal,
@@ -225,13 +226,20 @@ export function ProductsPanel({ workspaceId }: ProductsPanelProps) {
 
   async function handleFormSubmit(values: ProductFormValues) {
     setActionError(null);
-    if (formMode === "edit" && editingProduct) {
+    const isEdit = formMode === "edit" && editingProduct;
+    if (isEdit && editingProduct) {
       await updateMutation.mutateAsync({
         productId: String(editingProduct.id),
         body: productFormToUpdateBody(values),
       });
+      toast.success("Product updated", {
+        description: values.title,
+      });
     } else {
       await createMutation.mutateAsync(productFormToCreateBody(values));
+      toast.success("Product added", {
+        description: values.title,
+      });
     }
     setFormOpen(false);
     setEditingProduct(null);
@@ -295,17 +303,22 @@ export function ProductsPanel({ workspaceId }: ProductsPanelProps) {
 
   async function handleConfirmDelete() {
     if (!deleteTarget) return;
+    const title = deleteTarget.title;
     setActionError(null);
     setBusyProductId(String(deleteTarget.id));
     try {
       await archiveMutation.mutateAsync(String(deleteTarget.id));
       setDeleteTarget(null);
+      toast.success("Product deleted", {
+        description: title,
+      });
     } catch (err) {
-      setActionError(
+      const message =
         err instanceof Error
           ? err.message
-          : "Could not delete the product.",
-      );
+          : "Could not delete the product.";
+      setActionError(message);
+      toast.error(message);
     } finally {
       setBusyProductId(null);
     }

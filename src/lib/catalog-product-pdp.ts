@@ -112,6 +112,10 @@ export function enrichCatalogProductForPdp(
       "Lead with what makes this SKU worth the price—materials, craft, and the story only you can tell.",
     hardwareSpecs,
     sidebarSections,
-    inStock: product.status !== "archived",
+    inStock:
+      typeof product.inStock === "boolean"
+        ? product.inStock
+        : product.status !== "archived" &&
+          (product.quantityAvailable == null || product.quantityAvailable > 0),
   };
 }

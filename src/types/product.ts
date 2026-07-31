@@ -20,6 +20,10 @@ export type ProductApi = {
   compareAtPriceLabel: string | null;
   /** Derived: compare-at set and greater than selling price. */
   onSale: boolean;
+  /** Units left to sell (hard stock). */
+  quantityAvailable: number;
+  /** Derived: quantityAvailable > 0. */
+  inStock: boolean;
   category: ProductCategory | null;
   status: CatalogProductStatus | string;
   mainImageId: string | null;
@@ -48,6 +52,8 @@ export type CreateProductBody = {
   sku: string;
   slug?: string;
   priceAmount: number;
+  /** Required hard stock count (≥ 0). */
+  quantityAvailable: number;
   compareAtPriceAmount?: number | null;
   currency?: string;
   categoryId?: string;
@@ -69,6 +75,7 @@ export type UpdateProductBody = {
   sku?: string;
   slug?: string;
   priceAmount?: number;
+  quantityAvailable?: number;
   compareAtPriceAmount?: number | null;
   clearCompareAtPrice?: boolean;
   currency?: string;
@@ -101,6 +108,8 @@ export type ListProductsParams = {
   page?: number;
   limit?: number;
   onSale?: boolean;
+  /** Filter by derived in-stock flag. */
+  inStock?: boolean;
   sort?: ProductListSort;
 };
 

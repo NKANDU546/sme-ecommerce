@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { StorefrontImagePlaceholder } from "@/components/storefront/storefront-image-placeholder";
 
-export type StorefrontProductBadge = "Sale" | "New";
+export type StorefrontProductBadge = "Sale" | "New" | "Sold out";
 
 type StorefrontProductCardProps = {
   title: string;
@@ -20,11 +20,15 @@ type StorefrontProductCardProps = {
 };
 
 function badgeClassName(kind: string): string {
-  if (kind.toLowerCase() === "sale") {
+  const key = kind.toLowerCase();
+  if (key === "sale") {
     return "bg-[color:var(--sf-accent)] text-white";
   }
-  if (kind.toLowerCase() === "new") {
+  if (key === "new") {
     return "bg-white text-[color:var(--sf-accent)] ring-1 ring-[color:var(--sf-accent)]/25";
+  }
+  if (key === "sold out") {
+    return "bg-[color:var(--sf-accent-text-55)] text-white";
   }
   return "bg-[color:var(--sf-accent)] text-white";
 }
@@ -58,6 +62,10 @@ export function StorefrontProductCard({
     resolvedBadges.push(badge.trim());
   }
 
+  const soldOut = resolvedBadges.some(
+    (label) => label.toLowerCase() === "sold out",
+  );
+
   const card = (
     <article className="group flex flex-col">
       <div
@@ -68,7 +76,9 @@ export function StorefrontProductCard({
           <img
             src={imageUrl}
             alt=""
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+            className={`h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04] ${
+              soldOut ? "opacity-55" : ""
+            }`}
           />
         ) : (
           <StorefrontImagePlaceholder
@@ -93,7 +103,7 @@ export function StorefrontProductCard({
             className="pointer-events-none absolute inset-x-3 bottom-3 z-[1] translate-y-2 bg-[color:var(--sf-accent)] px-3 py-2 text-center font-sans text-[11px] font-bold uppercase tracking-[0.16em] text-white opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100"
             aria-hidden
           >
-            {ctaLabel}
+            {soldOut ? "View" : ctaLabel}
           </span>
         ) : null}
       </div>
@@ -135,13 +145,17 @@ export function StorefrontProductCard({
   );
 }
 
-/** Resolve Sale / New badges for shop grids. */
+/** Resolve Sale / New / Sold out badges for shop grids. */
 export function shopProductBadges(options: {
   collection: "all" | "sale" | "new";
   onSale?: boolean;
   compareAtPriceLabel?: string | null;
+  inStock?: boolean;
 }): StorefrontProductBadge[] {
   const badges: StorefrontProductBadge[] = [];
+  if (options.inStock === false) {
+    badges.push("Sold out");
+  }
   const isSale =
     options.onSale === true || Boolean(options.compareAtPriceLabel?.trim());
   if (options.collection === "sale" || isSale) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { DeleteProductModal } from "@/components/dashboard/delete-product-modal";
 import {
   ProductFormModal,
@@ -230,11 +231,50 @@ export function ProductsPanel({ workspaceId }: ProductsPanelProps) {
         productId: String(editingProduct.id),
         body: productFormToUpdateBody(values),
       });
+      toast.success("Product updated");
     } else {
       await createMutation.mutateAsync(productFormToCreateBody(values));
+      toast.success("Product added");
     }
     setFormOpen(false);
     setEditingProduct(null);
+  }
+
+  async function adjustStock(productId: string, delta: number) {
+    const api = apiById.get(productId);
+    if (!api || !accessToken) return;
+    const current = Math.max(0, Math.floor(Number(api.quantityAvailable ?? 0)));
+    const next = Math.max(0, current + delta);
+    if (next === current) return;
+    setActionError(null);
+    setBusyProductId(productId);
+    try {
+      const updated = await updateMutation.mutateAsync({
+        productId,
+        body: { quantityAvailable: next },
+      });
+      const saved = Math.max(
+        0,
+        Math.floor(Number(updated.quantityAvailable ?? NaN)),
+      );
+      if (!Number.isFinite(saved) || saved !== next) {
+        toast.error("Stock was not saved", {
+          description:
+            "The API accepted the request but did not return quantityAvailable. Restart/redeploy the backend with Step 03C inventory fields.",
+        });
+        return;
+      }
+      toast.success(saved === 0 ? "Marked sold out" : "Stock updated", {
+        description: `${updated.title} · ${saved} in stock`,
+      });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Could not update stock.";
+      setActionError(message);
+      toast.error("Could not update stock", { description: message });
+    } finally {
+      setBusyProductId(null);
+    }
   }
 
   async function runPublish(productId: string) {
@@ -515,6 +555,7 @@ export function ProductsPanel({ workspaceId }: ProductsPanelProps) {
                       Category
                     </th>
                     <th className="px-4 py-3 font-medium">Status</th>
+                    <th className="px-4 py-3 font-medium">Stock</th>
                     <th className="px-4 py-3 text-right font-medium">Price</th>
                     <th className="hidden px-4 py-3 font-medium 2xl:table-cell">
                       Updated
@@ -564,6 +605,42 @@ export function ProductsPanel({ workspaceId }: ProductsPanelProps) {
                           >
                             {p.status}
                           </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="inline-flex items-center rounded-md border border-primary-blue/15 bg-white">
+                            <button
+                              type="button"
+                              disabled={busy || (p.quantityAvailable ?? 0) <= 0}
+                              onClick={() => void adjustStock(p.id, -1)}
+                              className="px-2 py-1 font-sans text-sm text-primary-blue hover:bg-blue-gray/30 disabled:opacity-40"
+                              aria-label={`Decrease stock for ${p.title}`}
+                            >
+                              −
+                            </button>
+                            <span
+                              className={`min-w-[2.25rem] text-center font-sans text-xs font-semibold tabular-nums ${
+                                p.inStock === false
+                                  ? "text-red-700"
+                                  : "text-primary-blue"
+                              }`}
+                            >
+                              {p.quantityAvailable ?? 0}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => void adjustStock(p.id, 1)}
+                              className="px-2 py-1 font-sans text-sm text-primary-blue hover:bg-blue-gray/30 disabled:opacity-40"
+                              aria-label={`Increase stock for ${p.title}`}
+                            >
+                              +
+                            </button>
+                          </div>
+                          {p.inStock === false ? (
+                            <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-red-700">
+                              Sold out
+                            </p>
+                          ) : null}
                         </td>
                         <td className="px-4 py-3 text-right font-medium tabular-nums text-primary-blue">
                           <span className="inline-flex flex-col items-end gap-0.5">
@@ -639,6 +716,17 @@ export function ProductsPanel({ workspaceId }: ProductsPanelProps) {
                           >
                             {p.status}
                           </span>
+                          <span
+                            className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-inset ${
+                              p.inStock === false
+                                ? "bg-red-50 text-red-800 ring-red-600/15"
+                                : "bg-emerald-50 text-emerald-800 ring-emerald-600/15"
+                            }`}
+                          >
+                            {p.inStock === false
+                              ? "Sold out"
+                              : `${p.quantityAvailable ?? 0} in stock`}
+                          </span>
                           <span className="text-xs text-primary-blue/60">
                             {p.category || "—"}
                           </span>
@@ -650,6 +738,29 @@ export function ProductsPanel({ workspaceId }: ProductsPanelProps) {
                               </span>
                             ) : null}
                           </span>
+                        </div>
+                        <div className="mt-3 inline-flex items-center rounded-md border border-primary-blue/15 bg-white">
+                          <button
+                            type="button"
+                            disabled={busy || (p.quantityAvailable ?? 0) <= 0}
+                            onClick={() => void adjustStock(p.id, -1)}
+                            className="px-2.5 py-1 font-sans text-sm text-primary-blue disabled:opacity-40"
+                            aria-label={`Decrease stock for ${p.title}`}
+                          >
+                            −
+                          </button>
+                          <span className="min-w-[2.5rem] text-center font-sans text-xs font-semibold tabular-nums text-primary-blue">
+                            {p.quantityAvailable ?? 0}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => void adjustStock(p.id, 1)}
+                            className="px-2.5 py-1 font-sans text-sm text-primary-blue disabled:opacity-40"
+                            aria-label={`Increase stock for ${p.title}`}
+                          >
+                            +
+                          </button>
                         </div>
                         <p className="mt-2 text-[11px] text-muted-foreground">
                           Updated {formatDate(p.updatedAt)}

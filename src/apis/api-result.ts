@@ -1,13 +1,19 @@
 type ApiEnvelope<T> = {
   success: boolean;
   data: T | null;
-  error: { code?: string; message?: string } | null;
+  error: {
+    code?: string;
+    message?: string;
+    availableQuantity?: number;
+  } | null;
 };
 
 export type ParsedApiFailure = {
   ok: false;
   errorMessage: string;
   errorCode?: string;
+  /** Present on some INSUFFICIENT_STOCK responses. */
+  availableQuantity?: number;
   status: number;
 };
 
@@ -31,12 +37,22 @@ export async function parseApiEnvelope<T>(
     return { ok: true, data: json.data as T };
   }
 
+  const availableRaw = json.error?.availableQuantity;
+  const availableQuantity =
+    availableRaw == null || availableRaw === ("" as unknown)
+      ? undefined
+      : Number(availableRaw);
+
   return {
     ok: false,
     errorMessage:
       json.error?.message ??
       (res.ok ? fallbackMessage : `Request failed (${res.status}).`),
     errorCode: json.error?.code,
+    availableQuantity:
+      availableQuantity != null && Number.isFinite(availableQuantity)
+        ? availableQuantity
+        : undefined,
     status: res.status,
   };
 }

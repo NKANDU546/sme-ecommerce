@@ -93,6 +93,11 @@ function asOrder(raw: Order): Order {
   };
 }
 
+/** Normalize API order payloads (public + merchant). */
+export function normalizeOrder(raw: Order): Order {
+  return asOrder(raw);
+}
+
 function unwrapOrders(raw: unknown): Order[] {
   if (Array.isArray(raw)) return raw as Order[];
   if (raw && typeof raw === "object") {
@@ -152,6 +157,43 @@ export async function getWorkspaceOrder(
   const parsed = await parseApiEnvelope<Order>(
     res,
     "Order could not be loaded.",
+  );
+  if (!parsed.ok) return parsed;
+  return { ok: true, data: asOrder(parsed.data) };
+}
+
+export type UpdateMerchantOrderStatusBody = {
+  status: Extract<OrderStatus, "processing" | "fulfilled" | "cancelled">;
+};
+
+/** PATCH /workspaces/{workspaceId}/orders/{orderId} */
+export async function updateMerchantOrderStatus(
+  workspaceId: string,
+  orderId: string,
+  accessToken: string,
+  body: UpdateMerchantOrderStatusBody,
+): Promise<MerchantOrderResult> {
+  const url = `${getSmeApiBaseUrl()}/workspaces/${encodeURIComponent(workspaceId)}/orders/${encodeURIComponent(orderId)}`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "PATCH",
+      headers: {
+        ...authHeaders(accessToken),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+  } catch {
+    return networkFailure(
+      "Could not update this order. Check your connection and try again.",
+    );
+  }
+
+  const parsed = await parseApiEnvelope<Order>(
+    res,
+    "Order status could not be updated.",
   );
   if (!parsed.ok) return parsed;
   return { ok: true, data: asOrder(parsed.data) };

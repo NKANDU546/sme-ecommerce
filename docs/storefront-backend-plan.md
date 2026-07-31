@@ -669,7 +669,8 @@ Before enabling them, add:
 - Which backend stack owns database migrations.
 - Which object storage provider will host media.
 - Whether carts should be anonymous backend carts or browser-local until checkout.
-- Whether product inventory is required for version one.
+- Product inventory: **hard stock** for v1 — see Step 03C
+  (`docs/storefront-backend-step-03c-inventory.md`).
 - Whether Paystack is the first payment provider.
 
 ## Suggested Build Order

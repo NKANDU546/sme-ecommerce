@@ -9,6 +9,7 @@ export const PREVIEW_SHOP_SALE_HREF = "@shop/sale";
 export const PREVIEW_SHOP_NEW_HREF = "@shop/new";
 export const PREVIEW_SHOP_CATEGORY_HREF_PREFIX = "@shop/category:";
 export const PREVIEW_CUSTOM_PAGE_HREF_PREFIX = "@page:";
+export const PREVIEW_ORDERS_TRACK_HREF = "@orders/track";
 
 /** Default hero label that pairs with legacy `#` hrefs from older drafts. */
 const SHOP_COLLECTION_LABEL = "shop collection";
@@ -76,6 +77,9 @@ export function resolveStorefrontHref(
   if (href.startsWith(PREVIEW_CUSTOM_PAGE_HREF_PREFIX)) {
     const slug = href.slice(PREVIEW_CUSTOM_PAGE_HREF_PREFIX.length);
     if (slug.trim()) return `${root}/${slug}`;
+  }
+  if (href === PREVIEW_ORDERS_TRACK_HREF) {
+    return `${root}/orders/track`;
   }
   return link.href;
 }

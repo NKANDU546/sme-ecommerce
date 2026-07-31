@@ -17,6 +17,10 @@ export type CatalogProduct = {
   priceLabel: string;
   compareAtPriceLabel?: string;
   onSale?: boolean;
+  /** Units left to sell when hard stock is enabled. */
+  quantityAvailable?: number;
+  /** Derived from quantity; false when sold out. */
+  inStock?: boolean;
   category: string;
   status: CatalogProductStatus;
   imageUrl: string;

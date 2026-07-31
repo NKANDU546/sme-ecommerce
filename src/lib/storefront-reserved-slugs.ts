@@ -4,6 +4,7 @@ export const STOREFRONT_RESERVED_PAGE_SLUGS = new Set([
   "cart",
   "checkout",
   "order",
+  "orders",
   "page",
 ]);
 

@@ -3,9 +3,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getOrderConfirmation,
+  lookupPublicOrder,
   postCheckout,
   verifyOrderPayment,
 } from "@/apis/checkout";
+import { stockFailureMessage } from "@/lib/stock";
 import type { CheckoutBody, Order } from "@/types/cart";
 
 export const checkoutKeys = {
@@ -41,6 +43,23 @@ export function useOrderConfirmation(
   });
 }
 
+export function useLookupPublicOrder(storeSlug: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { orderNumber: string; email: string }) => {
+      const result = await lookupPublicOrder(storeSlug, input);
+      if (!result.ok) throw new Error(result.errorMessage);
+      return result.data;
+    },
+    onSuccess: (order) => {
+      queryClient.setQueryData(
+        checkoutKeys.order(storeSlug, order.id),
+        order,
+      );
+    },
+  });
+}
+
 export function useVerifyOrderPayment(storeSlug: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -66,7 +85,15 @@ export function useCheckout(storeSlug: string) {
   return useMutation({
     mutationFn: async (body: CheckoutBody) => {
       const result = await postCheckout(storeSlug, body);
-      if (!result.ok) throw new Error(result.errorMessage);
+      if (!result.ok) {
+        throw new Error(
+          stockFailureMessage(
+            result.errorCode,
+            result.errorMessage,
+            result.availableQuantity,
+          ),
+        );
+      }
       return result.data;
     },
   });

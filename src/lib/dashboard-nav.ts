@@ -153,11 +153,11 @@ export const DASHBOARD_SECTIONS: readonly DashboardSectionConfig[] = [
     label: "Inventory",
     icon: "inventory",
     panelTitle: "Inventory",
-    panelSubtitle: "Stock levels tied to what you sell and what is on order.",
+    panelSubtitle: "Stock levels for active products — adjust counts anytime.",
     empty: {
       title: "No stock records yet",
       description:
-        "Connect counts to products so low-stock nudges and fulfilment stay honest as orders pick up.",
+        "Publish products first, then set quantities here so sold-out states stay honest.",
     },
   },
   {

@@ -115,11 +115,12 @@ export function FeaturedProductsSection({
                 compareAtPriceLabel={p.compareAtPriceLabel}
                 imageUrl={p.imageUrl}
                 href={productHref}
-                badges={
-                  p.onSale || p.compareAtPriceLabel?.trim()
-                    ? ["Sale"]
-                    : undefined
-                }
+                badges={(() => {
+                  const list: Array<"Sold out" | "Sale"> = [];
+                  if (p.inStock === false) list.push("Sold out");
+                  if (p.onSale || p.compareAtPriceLabel?.trim()) list.push("Sale");
+                  return list.length ? list : undefined;
+                })()}
                 showUploadHint={!isPublicStorefrontContext(basePath)}
                 ctaLabel="View product"
               />

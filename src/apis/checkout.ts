@@ -1,5 +1,6 @@
 import { getSmeApiBaseUrl } from "@/apis/config";
 import { networkFailure, parseApiEnvelope } from "@/apis/api-result";
+import { normalizeOrder } from "@/apis/orders";
 import type { CheckoutBody, Order, OrderResult } from "@/types/cart";
 
 function publicHeaders(json = false): HeadersInit {
@@ -38,7 +39,7 @@ export async function postCheckout(
     "Checkout could not be completed.",
   );
   if (!parsed.ok) return parsed;
-  return { ok: true, data: parsed.data };
+  return { ok: true, data: normalizeOrder(parsed.data) };
 }
 
 /** GET /public/storefronts/{storeSlug}/orders/{orderId} */
@@ -64,25 +65,60 @@ export async function getOrderConfirmation(
     "Order confirmation could not be loaded.",
   );
   if (!parsed.ok) return parsed;
-  return { ok: true, data: parsed.data };
+  return { ok: true, data: normalizeOrder(parsed.data) };
 }
 
-/**
- * POST /public/storefronts/{storeSlug}/orders/{orderId}/payment/verify
- * Asks backend to confirm Paystack transaction (backup when webhook is slow/missed).
- */
-export async function verifyOrderPayment(
+export type LookupPublicOrderBody = {
+  orderNumber: string;
+  email: string;
+};
+
+/** POST /public/storefronts/{storeSlug}/orders/lookup */
+export async function lookupPublicOrder(
   storeSlug: string,
-  orderId: string,
-  reference?: string,
+  body: LookupPublicOrderBody,
 ): Promise<OrderResult> {
-  const url = `${storeBase(storeSlug)}/orders/${encodeURIComponent(orderId)}/payment/verify`;
+  const url = `${storeBase(storeSlug)}/orders/lookup`;
   let res: Response;
   try {
     res = await fetch(url, {
       method: "POST",
       headers: publicHeaders(true),
-      body: JSON.stringify(reference ? { reference } : {}),
+      body: JSON.stringify({
+        orderNumber: body.orderNumber.trim(),
+        email: body.email.trim(),
+      }),
+      cache: "no-store",
+    });
+  } catch {
+    return networkFailure(
+      "Could not look up this order. Check your connection and try again.",
+    );
+  }
+
+  const parsed = await parseApiEnvelope<Order>(
+    res,
+    "We couldn’t find an order with those details.",
+  );
+  if (!parsed.ok) return parsed;
+  return { ok: true, data: normalizeOrder(parsed.data) };
+}
+
+/**
+ * GET /public/storefronts/{storeSlug}/orders/{orderId}/payment/verify
+ * Asks backend to confirm Paystack transaction (backup when webhook is slow/missed).
+ */
+export async function verifyOrderPayment(
+  storeSlug: string,
+  orderId: string,
+  _reference?: string,
+): Promise<OrderResult> {
+  const url = `${storeBase(storeSlug)}/orders/${encodeURIComponent(orderId)}/payment/verify`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "GET",
+      headers: publicHeaders(),
       cache: "no-store",
     });
   } catch {
@@ -96,5 +132,5 @@ export async function verifyOrderPayment(
     "Payment could not be verified.",
   );
   if (!parsed.ok) return parsed;
-  return { ok: true, data: parsed.data };
+  return { ok: true, data: normalizeOrder(parsed.data) };
 }

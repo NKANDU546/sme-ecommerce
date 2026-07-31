@@ -43,6 +43,8 @@ export async function listProducts(
   if (params.search?.trim()) qs.set("search", params.search.trim());
   if (params.onSale === true) qs.set("onSale", "true");
   if (params.onSale === false) qs.set("onSale", "false");
+  if (params.inStock === true) qs.set("inStock", "true");
+  if (params.inStock === false) qs.set("inStock", "false");
   if (params.sort) qs.set("sort", params.sort);
   qs.set("page", String(params.page ?? 0));
   qs.set("limit", String(params.limit ?? 50));

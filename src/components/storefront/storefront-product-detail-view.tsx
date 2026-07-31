@@ -72,6 +72,17 @@ export function StorefrontProductDetailView({
     (workspaceId ? `/preview/${workspaceId}` : "");
   const images = product.gallery.filter((u) => u.trim());
   const mainSrc = images[activeImage] ?? "";
+  const maxQty =
+    typeof product.quantityAvailable === "number" && product.quantityAvailable > 0
+      ? product.quantityAvailable
+      : product.inStock
+        ? 99
+        : 0;
+  const canAdd =
+    Boolean(cart) &&
+    product.status !== "archived" &&
+    product.inStock &&
+    maxQty >= 1;
 
   return (
     <div className="@container/storefront min-h-full">
@@ -163,14 +174,23 @@ export function StorefrontProductDetailView({
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-emerald-800 ring-1 ring-emerald-700/15">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
                   In stock
+                  {typeof product.quantityAvailable === "number" &&
+                  product.quantityAvailable > 0 &&
+                  product.quantityAvailable <= 5
+                    ? ` · ${product.quantityAvailable} left`
+                    : null}
                 </span>
               ) : product.status === "draft" ? (
                 <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-amber-900 ring-1 ring-amber-700/20">
                   Draft
                 </span>
-              ) : (
+              ) : product.status === "archived" ? (
                 <span className="inline-flex rounded-full bg-blue-gray/50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-primary-blue/70 ring-1 ring-primary-blue/15">
                   Unavailable
+                </span>
+              ) : (
+                <span className="inline-flex rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-stone-700 ring-1 ring-stone-400/25">
+                  Sold out
                 </span>
               )}
             </div>
@@ -194,19 +214,22 @@ export function StorefrontProductDetailView({
                 <button
                   type="button"
                   className="px-3 py-2 font-sans text-lg text-[color:var(--sf-accent)] transition-colors hover:bg-[color:var(--sf-nav-hover-wash)] disabled:opacity-40"
-                  disabled={qty <= 1}
+                  disabled={!canAdd || qty <= 1}
                   onClick={() => setQty((q) => Math.max(1, q - 1))}
                   aria-label="Decrease quantity"
                 >
                   −
                 </button>
                 <span className="min-w-[2.5rem] text-center font-sans text-sm font-semibold tabular-nums text-[color:var(--sf-accent)]">
-                  {qty}
+                  {canAdd ? Math.min(qty, maxQty) : 0}
                 </span>
                 <button
                   type="button"
-                  className="px-3 py-2 font-sans text-lg text-[color:var(--sf-accent)] transition-colors hover:bg-[color:var(--sf-nav-hover-wash)]"
-                  onClick={() => setQty((q) => q + 1)}
+                  className="px-3 py-2 font-sans text-lg text-[color:var(--sf-accent)] transition-colors hover:bg-[color:var(--sf-nav-hover-wash)] disabled:opacity-40"
+                  disabled={!canAdd || qty >= maxQty}
+                  onClick={() =>
+                    setQty((q) => Math.min(maxQty, Math.max(1, q + 1)))
+                  }
                   aria-label="Increase quantity"
                 >
                   +
@@ -218,9 +241,10 @@ export function StorefrontProductDetailView({
               type="button"
               size="lg"
               className="mt-6 w-full max-w-md gap-2 rounded-lg"
-              disabled={product.status === "archived" || !cart}
+              disabled={!canAdd}
               onClick={() => {
-                if (!cart) return;
+                if (!cart || !canAdd) return;
+                const addQty = Math.min(Math.max(1, qty), maxQty);
                 const thumb = product.gallery.find((u) => u.trim()) ?? "";
                 cart.addItem({
                   productId: product.id,
@@ -228,7 +252,7 @@ export function StorefrontProductDetailView({
                   sku: product.sku,
                   priceLabel: product.priceLabel,
                   imageUrl: thumb,
-                  quantity: qty,
+                  quantity: addQty,
                 });
                 setJustAdded(true);
                 window.setTimeout(() => setJustAdded(false), 2200);
@@ -237,9 +261,9 @@ export function StorefrontProductDetailView({
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} aria-hidden>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
-              Add to cart
+              {product.inStock ? "Add to cart" : "Sold out"}
             </StorefrontButton>
-            {justAdded ? (
+            {justAdded && product.inStock ? (
               <p className="mt-2 font-sans text-xs font-medium text-emerald-700/90" role="status">
                 Added to your cart — open the bag icon to review or change quantities.
               </p>

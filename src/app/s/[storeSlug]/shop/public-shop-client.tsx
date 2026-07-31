@@ -232,6 +232,7 @@ function PublicShopBody({ storeSlug }: PublicShopClientProps) {
                       collection,
                       onSale: p.onSale,
                       compareAtPriceLabel: p.compareAtPriceLabel,
+                      inStock: p.inStock,
                     })}
                     href={`${basePath}/shop/${encodeURIComponent(slug)}`}
                     ctaLabel="View product"

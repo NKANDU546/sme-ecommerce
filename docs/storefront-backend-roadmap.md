@@ -62,6 +62,31 @@ Add:
 Send this after Step 03 (and ideally after Step 05 public product list exists so
 public filters can ship in the same change).
 
+### Step 03C: Product Inventory (Hard Stock)
+
+File: `docs/storefront-backend-step-03c-inventory.md`
+
+Add:
+
+- Required `quantity_available` on every product (no opt-in / unlimited mode)
+- Migration default for existing products (`999`)
+- Merchant + public `quantityAvailable` / `inStock`
+- Cart and checkout stock checks (`INSUFFICIENT_STOCK`)
+- Decrement on payment `paid` (idempotent); restock on cancel after paid
+
+Depends on Step 03 (product fields) and Step 06A/06B (cart, checkout, mark-paid).
+Cancel restock aligns with Step 06C.
+
+### Step 03D: Merchant Out-Of-Stock Email
+
+File: `docs/storefront-backend-step-03d-out-of-stock-email.md`
+
+Add:
+
+- Email workspace owner when quantity hits 0 (paid decrement or merchant PATCH)
+- Idempotency via `out_of_stock_notified_at`
+- Async SES; never fail payment on email errors
+
 ### Step 04: Media Uploads
 
 File: `docs/storefront-backend-step-04-media.md`
@@ -104,6 +129,13 @@ Add:
 - Payment provider initialization
 - Payment webhook handling
 
+**06C** (order status): `docs/storefront-backend-step-06c-order-status.md` — public
+lookup by order number + email, merchant fulfilment status updates.
+
+**03C** (hard inventory): `docs/storefront-backend-step-03c-inventory.md` — product
+quantity, cart/checkout enforcement, decrement on paid / restock on cancel.
+Ship after 06A/06B (and preferably with 06C for cancel restock).
+
 Send this after public storefront and products are working.
 
 ### Step 07: Frontend Migration
@@ -145,9 +177,10 @@ Send this before production launch.
 3. Send Step 02 for publish/Go Live.
 4. Send Step 03 and Step 04 for products and media.
 5. Send Step 05 for live public storefront APIs.
-6. Send Step 06 for checkout/orders/payments.
-7. Use Step 07 internally for frontend integration.
-8. Use Step 08 as the launch readiness checklist.
+6. Send Step 06 for checkout/orders/payments (incl. 06C order status lookup).
+7. Send Step 03C for hard inventory once cart/checkout/paid are stable.
+8. Use Step 07 internally for frontend integration.
+9. Use Step 08 as the launch readiness checklist.
 
 ## Parallel Work Option
 

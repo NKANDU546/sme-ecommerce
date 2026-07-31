@@ -32,8 +32,12 @@ export function asProductCategory(raw: ProductCategory): ProductCategory {
 }
 
 export function asProductApi(raw: ProductApi): ProductApi {
-  const priceAmount = Number(raw.priceAmount ?? 0);
-  const compareRaw = raw.compareAtPriceAmount;
+  const source = raw as ProductApi & {
+    quantity_available?: unknown;
+    in_stock?: unknown;
+  };
+  const priceAmount = Number(source.priceAmount ?? 0);
+  const compareRaw = source.compareAtPriceAmount;
   const compareAtPriceAmount =
     compareRaw == null || compareRaw === ("" as unknown)
       ? null
@@ -43,46 +47,58 @@ export function asProductApi(raw: ProductApi): ProductApi {
       ? compareAtPriceAmount
       : null;
   const onSale =
-    typeof raw.onSale === "boolean"
-      ? raw.onSale
+    typeof source.onSale === "boolean"
+      ? source.onSale
       : normalizedCompare != null && normalizedCompare > priceAmount;
+  const quantityRaw =
+    source.quantityAvailable ?? source.quantity_available ?? 0;
+  const quantityAvailable = Math.max(0, Math.floor(Number(quantityRaw)));
+  const inStockRaw = source.inStock ?? source.in_stock;
+  const inStock =
+    typeof inStockRaw === "boolean" ? inStockRaw : quantityAvailable > 0;
 
   return {
-    id: String(raw.id),
-    workspaceId: String(raw.workspaceId),
-    title: String(raw.title ?? ""),
-    slug: String(raw.slug ?? ""),
-    sku: String(raw.sku ?? ""),
+    id: String(source.id),
+    workspaceId: String(source.workspaceId),
+    title: String(source.title ?? ""),
+    slug: String(source.slug ?? ""),
+    sku: String(source.sku ?? ""),
     priceAmount,
     compareAtPriceAmount: normalizedCompare,
-    currency: String(raw.currency ?? "ZAR"),
-    priceLabel: String(raw.priceLabel ?? "R 0.00"),
+    currency: String(source.currency ?? "ZAR"),
+    priceLabel: String(source.priceLabel ?? "R 0.00"),
     compareAtPriceLabel:
-      raw.compareAtPriceLabel == null || raw.compareAtPriceLabel === ""
+      source.compareAtPriceLabel == null || source.compareAtPriceLabel === ""
         ? null
-        : String(raw.compareAtPriceLabel),
+        : String(source.compareAtPriceLabel),
     onSale,
-    category: raw.category ? asProductCategory(raw.category) : null,
-    status: normalizeStatus(raw.status),
-    mainImageId: raw.mainImageId == null ? null : String(raw.mainImageId),
-    imageUrl: raw.imageUrl == null ? null : String(raw.imageUrl),
-    summary: raw.summary == null ? null : String(raw.summary),
-    galleryMediaIds: Array.isArray(raw.galleryMediaIds)
-      ? raw.galleryMediaIds.map(String)
+    quantityAvailable,
+    inStock,
+    category: source.category ? asProductCategory(source.category) : null,
+    status: normalizeStatus(source.status),
+    mainImageId: source.mainImageId == null ? null : String(source.mainImageId),
+    imageUrl: source.imageUrl == null ? null : String(source.imageUrl),
+    summary: source.summary == null ? null : String(source.summary),
+    galleryMediaIds: Array.isArray(source.galleryMediaIds)
+      ? source.galleryMediaIds.map(String)
       : null,
-    galleryUrls: Array.isArray(raw.galleryUrls)
-      ? raw.galleryUrls.map(String)
+    galleryUrls: Array.isArray(source.galleryUrls)
+      ? source.galleryUrls.map(String)
       : null,
     configurationLabel:
-      raw.configurationLabel == null ? null : String(raw.configurationLabel),
-    warrantyNote: raw.warrantyNote == null ? null : String(raw.warrantyNote),
-    shippingNote: raw.shippingNote == null ? null : String(raw.shippingNote),
+      source.configurationLabel == null
+        ? null
+        : String(source.configurationLabel),
+    warrantyNote:
+      source.warrantyNote == null ? null : String(source.warrantyNote),
+    shippingNote:
+      source.shippingNote == null ? null : String(source.shippingNote),
     metadata:
-      raw.metadata && typeof raw.metadata === "object"
-        ? (raw.metadata as Record<string, unknown>)
+      source.metadata && typeof source.metadata === "object"
+        ? (source.metadata as Record<string, unknown>)
         : null,
-    createdAt: String(raw.createdAt ?? ""),
-    updatedAt: String(raw.updatedAt ?? ""),
+    createdAt: String(source.createdAt ?? ""),
+    updatedAt: String(source.updatedAt ?? ""),
   };
 }
 
@@ -96,6 +112,8 @@ export function productApiToCatalog(product: ProductApi): CatalogProduct {
     priceLabel: p.priceLabel,
     compareAtPriceLabel: p.compareAtPriceLabel ?? undefined,
     onSale: p.onSale,
+    quantityAvailable: p.quantityAvailable,
+    inStock: p.inStock,
     category: p.category?.name ?? "",
     status: normalizeStatus(p.status),
     imageUrl: p.imageUrl ?? "",

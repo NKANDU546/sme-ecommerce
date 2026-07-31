@@ -154,7 +154,9 @@ export function SaleSection({
                 compareAtPriceLabel={catalog.compareAtPriceLabel}
                 imageUrl={catalog.imageUrl}
                 href={productHref}
-                badge="Sale"
+                badges={
+                  catalog.inStock === false ? ["Sold out", "Sale"] : ["Sale"]
+                }
                 aspect="portrait"
                 showUploadHint={!isPublicStorefrontContext(basePath)}
                 ctaLabel="Shop sale"

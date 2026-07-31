@@ -22,6 +22,7 @@ import {
 } from "@/contexts/preview-cart-context";
 import { cartKeys } from "@/hooks/use-cart";
 import { formatMinorAmount } from "@/lib/format-money";
+import { stockFailureMessage } from "@/lib/stock";
 import {
   loadCartDisplayMap,
   loadStoredCartId,
@@ -31,6 +32,7 @@ import {
 } from "@/lib/store-cart-storage";
 import type { Cart, CartItem } from "@/types/cart";
 import type { PreviewCartLine } from "@/types/preview-cart";
+import { toast } from "sonner";
 
 type ApiCartProviderProps = {
   storeSlug: string;
@@ -202,12 +204,29 @@ export function ApiCartProvider({ storeSlug, children }: ApiCartProviderProps) {
             productId: input.productId,
             quantity,
           });
-          if (!result.ok) throw new Error(result.errorMessage);
+          if (!result.ok) {
+            const message = stockFailureMessage(
+              result.errorCode,
+              result.errorMessage,
+              result.availableQuantity,
+            );
+            setCartError(message);
+            setAddedModalOpen(false);
+            toast.error(
+              result.errorCode === "INSUFFICIENT_STOCK"
+                ? "Out of stock"
+                : "Could not add to cart",
+              { description: message },
+            );
+            return;
+          }
           applyCart(result.data);
         } catch (error) {
-          setCartError(
-            error instanceof Error ? error.message : "Could not update cart.",
-          );
+          const message =
+            error instanceof Error ? error.message : "Could not update cart.";
+          setCartError(message);
+          setAddedModalOpen(false);
+          toast.error("Could not add to cart", { description: message });
         } finally {
           setIsBusy(false);
         }
@@ -234,12 +253,27 @@ export function ApiCartProvider({ storeSlug, children }: ApiCartProviderProps) {
           const result = await updateCartItem(storeSlug, cartId, item.id, {
             quantity: q,
           });
-          if (!result.ok) throw new Error(result.errorMessage);
+          if (!result.ok) {
+            const message = stockFailureMessage(
+              result.errorCode,
+              result.errorMessage,
+              result.availableQuantity,
+            );
+            setCartError(message);
+            toast.error(
+              result.errorCode === "INSUFFICIENT_STOCK"
+                ? "Out of stock"
+                : "Could not update cart",
+              { description: message },
+            );
+            return;
+          }
           applyCart(result.data);
         } catch (error) {
-          setCartError(
-            error instanceof Error ? error.message : "Could not update cart.",
-          );
+          const message =
+            error instanceof Error ? error.message : "Could not update cart.";
+          setCartError(message);
+          toast.error("Could not update cart", { description: message });
         } finally {
           setIsBusy(false);
         }

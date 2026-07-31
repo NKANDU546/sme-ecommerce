@@ -1,10 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useMerchantOrders } from "@/hooks/use-orders";
+import { toast } from "sonner";
+import {
+  useMerchantOrders,
+  useUpdateMerchantOrderStatus,
+} from "@/hooks/use-orders";
 import { getStoredAuthSession } from "@/lib/auth-login-storage";
 import { formatMinorAmount } from "@/lib/format-money";
-import type { Order } from "@/types/cart";
+import { orderStatusLabel } from "@/lib/order-status";
+import type { Order, OrderStatus } from "@/types/cart";
 
 type OrdersPanelProps = {
   workspaceId: string;
@@ -32,6 +37,40 @@ function paymentBadgeClass(status: string): string {
   }
 }
 
+function orderBadgeClass(status: OrderStatus): string {
+  switch (status) {
+    case "fulfilled":
+      return "bg-emerald-50 text-emerald-800 ring-emerald-700/15";
+    case "processing":
+      return "bg-sky-50 text-sky-900 ring-sky-700/15";
+    case "cancelled":
+      return "bg-red-50 text-red-800 ring-red-700/15";
+    case "paid":
+      return "bg-amber-50 text-amber-900 ring-amber-700/15";
+    default:
+      return "bg-blue-gray/40 text-primary-blue/70 ring-primary-blue/10";
+  }
+}
+
+function nextStatusActions(
+  status: OrderStatus,
+): Array<{ status: "processing" | "fulfilled" | "cancelled"; label: string }> {
+  switch (status) {
+    case "paid":
+      return [
+        { status: "processing", label: "Mark preparing" },
+        { status: "cancelled", label: "Cancel order" },
+      ];
+    case "processing":
+      return [
+        { status: "fulfilled", label: "Mark fulfilled" },
+        { status: "cancelled", label: "Cancel order" },
+      ];
+    default:
+      return [];
+  }
+}
+
 export function OrdersPanel({ workspaceId }: OrdersPanelProps) {
   const [signedIn, setSignedIn] = useState(false);
   const [authReady, setAuthReady] = useState(false);
@@ -43,6 +82,7 @@ export function OrdersPanel({ workspaceId }: OrdersPanelProps) {
   }, []);
 
   const ordersQuery = useMerchantOrders(workspaceId, signedIn);
+  const updateStatus = useUpdateMerchantOrderStatus(workspaceId);
 
   const orders = useMemo(() => {
     const list = ordersQuery.data ?? [];
@@ -55,6 +95,21 @@ export function OrdersPanel({ workspaceId }: OrdersPanelProps) {
 
   const selected: Order | null =
     orders.find((order) => order.id === selectedId) ?? null;
+
+  async function onUpdateStatus(
+    orderId: string,
+    status: "processing" | "fulfilled" | "cancelled",
+  ) {
+    try {
+      const next = await updateStatus.mutateAsync({ orderId, status });
+      setSelectedId(next.id);
+      toast.success(`Order ${orderStatusLabel(next.status).toLowerCase()}`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not update order.",
+      );
+    }
+  }
 
   if (!authReady || (signedIn && ordersQuery.isLoading)) {
     return (
@@ -83,21 +138,7 @@ export function OrdersPanel({ workspaceId }: OrdersPanelProps) {
         <p className="max-w-md font-sans text-sm text-muted-foreground">
           {ordersQuery.error instanceof Error
             ? ordersQuery.error.message
-            : "The orders API may not be available yet."}
-        </p>
-      </div>
-    );
-  }
-
-  if (orders.length === 0) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-16 text-center">
-        <h2 className="font-serif text-2xl font-light text-primary-blue">
-          No orders yet
-        </h2>
-        <p className="max-w-md font-sans text-sm text-muted-foreground">
-          When customers place and pay for orders on your live store, they will
-          appear here with email, phone, and totals.
+            : "Please try again."}
         </p>
       </div>
     );
@@ -105,14 +146,24 @@ export function OrdersPanel({ workspaceId }: OrdersPanelProps) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-      <div className="min-h-0 flex-1 overflow-y-auto border-b border-primary-blue/10 lg:border-b-0 lg:border-r">
+      <div className="min-h-0 min-w-0 flex-1 overflow-auto">
+        <div className="border-b border-primary-blue/10 px-5 py-4">
+          <h1 className="font-serif text-2xl font-light text-primary-blue">
+            Orders
+          </h1>
+          <p className="mt-1 font-sans text-sm text-muted-foreground">
+            {orders.length === 0
+              ? "No orders yet. When customers check out on your live store, orders show up here with contact details and payment status."
+              : `${orders.length} order${orders.length === 1 ? "" : "s"}`}
+          </p>
+        </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full text-left">
-            <thead className="sticky top-0 bg-white/95 backdrop-blur">
+          <table className="w-full min-w-[40rem] border-collapse text-left">
+            <thead>
               <tr className="border-b border-primary-blue/10 font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-primary-blue/55">
                 <th className="px-5 py-3">Order</th>
                 <th className="px-5 py-3">Customer</th>
-                <th className="px-5 py-3">Email</th>
+                <th className="px-5 py-3">Status</th>
                 <th className="px-5 py-3">Payment</th>
                 <th className="px-5 py-3 text-right">Total</th>
               </tr>
@@ -123,27 +174,28 @@ export function OrdersPanel({ workspaceId }: OrdersPanelProps) {
                 return (
                   <tr
                     key={order.id}
-                    className={`cursor-pointer border-b border-primary-blue/5 font-sans text-sm transition-colors hover:bg-blue-gray/30 ${
-                      active ? "bg-blue-gray/40" : "bg-white"
+                    className={`cursor-pointer border-b border-primary-blue/5 font-sans text-sm transition-colors ${
+                      active
+                        ? "bg-primary-blue/[0.06]"
+                        : "hover:bg-blue-gray/30"
                     }`}
                     onClick={() => setSelectedId(order.id)}
                   >
-                    <td className="px-5 py-3">
-                      <p className="font-semibold text-primary-blue">
-                        {order.orderNumber}
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    <td className="px-5 py-3 font-semibold text-primary-blue">
+                      {order.orderNumber}
+                      <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground">
                         {formatWhen(order.createdAt)}
-                      </p>
+                      </span>
                     </td>
                     <td className="px-5 py-3 text-primary-blue">
                       {order.customerName}
-                      <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                        {order.customerPhone}
-                      </span>
                     </td>
-                    <td className="px-5 py-3 text-muted-foreground">
-                      {order.customerEmail || "—"}
+                    <td className="px-5 py-3">
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ${orderBadgeClass(order.status)}`}
+                      >
+                        {orderStatusLabel(order.status)}
+                      </span>
                     </td>
                     <td className="px-5 py-3">
                       <span
@@ -152,7 +204,7 @@ export function OrdersPanel({ workspaceId }: OrdersPanelProps) {
                         {order.paymentStatus}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-right font-semibold tabular-nums text-primary-blue">
+                    <td className="px-5 py-3 text-right tabular-nums text-primary-blue">
                       {formatMinorAmount(order.totalAmount, order.currency)}
                     </td>
                   </tr>
@@ -174,7 +226,8 @@ export function OrdersPanel({ workspaceId }: OrdersPanelProps) {
                 {selected.orderNumber}
               </h2>
               <p className="mt-1 font-sans text-xs text-muted-foreground">
-                {formatWhen(selected.createdAt)} · {selected.status}
+                {formatWhen(selected.createdAt)} ·{" "}
+                {orderStatusLabel(selected.status)}
               </p>
             </div>
             <div className="space-y-1 font-sans text-sm text-primary-blue">
@@ -202,6 +255,38 @@ export function OrdersPanel({ workspaceId }: OrdersPanelProps) {
                   .join(", ")}
               </p>
             </div>
+
+            {nextStatusActions(selected.status).length > 0 ? (
+              <div className="space-y-2 border border-primary-blue/10 bg-white p-3">
+                <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-primary-blue/55">
+                  Fulfilment
+                </p>
+                <p className="font-sans text-[11px] leading-relaxed text-muted-foreground">
+                  Update status for the customer track page. No shipping
+                  carrier yet.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {nextStatusActions(selected.status).map((action) => (
+                    <button
+                      key={action.status}
+                      type="button"
+                      disabled={updateStatus.isPending}
+                      onClick={() =>
+                        void onUpdateStatus(selected.id, action.status)
+                      }
+                      className={`px-3 py-1.5 font-sans text-xs font-semibold ${
+                        action.status === "cancelled"
+                          ? "border border-red-700/20 text-red-800 hover:bg-red-50"
+                          : "bg-primary-blue text-white hover:opacity-95"
+                      } disabled:opacity-50`}
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
             <ul className="divide-y divide-primary-blue/10 border border-primary-blue/10 bg-white">
               {selected.items.map((item) => (
                 <li

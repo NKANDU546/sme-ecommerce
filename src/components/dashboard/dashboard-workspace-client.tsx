@@ -7,6 +7,7 @@ import { WorkspaceEmptyState } from "@/components/dashboard/workspace-empty-stat
 import { WorkspaceRouteGuard } from "@/components/dashboard/workspace-route-guard";
 import { OrdersPanel } from "@/components/dashboard/orders-panel";
 import { ProductsPanel } from "@/components/dashboard/products-panel";
+import { InventoryPanel } from "@/components/dashboard/inventory-panel";
 import { PaymentsSettingsPanel } from "@/components/dashboard/payments-settings-panel";
 import { StorefrontPanel } from "@/components/storefront/storefront-panel";
 import { StorefrontTemplatesPanel } from "@/components/storefront/storefront-templates-panel";
@@ -52,7 +53,8 @@ export function DashboardWorkspaceClient({
           className={
             activeId === "storefront" ||
             activeId === "products" ||
-            activeId === "orders"
+            activeId === "orders" ||
+            activeId === "inventory"
               ? "flex h-dvh max-h-dvh min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
               : "flex min-h-0 min-w-0 flex-1 flex-col"
           }
@@ -126,6 +128,10 @@ export function DashboardWorkspaceClient({
           ) : activeId === "orders" ? (
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <OrdersPanel workspaceId={workspaceId} />
+            </div>
+          ) : activeId === "inventory" ? (
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <InventoryPanel workspaceId={workspaceId} />
             </div>
           ) : activeId === "settings" ? (
             <div className="flex min-h-0 flex-1 flex-col">

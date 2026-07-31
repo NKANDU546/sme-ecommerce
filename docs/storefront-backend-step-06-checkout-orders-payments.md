@@ -542,5 +542,12 @@ Confirmation copy tells the customer an email **will be sent** when
 
 ---
 
-Step 07 (broader) may still add fulfilment status updates and WhatsApp order
-flows on top of this list.
+Step 07 (broader) may still add WhatsApp order flows on top of this list.
+
+### Step 06C — Customer order status
+
+See [`storefront-backend-step-06c-order-status.md`](./storefront-backend-step-06c-order-status.md):
+
+- `POST /public/storefronts/{storeSlug}/orders/lookup` (order number + email)
+- `PATCH /workspaces/{workspaceId}/orders/{orderId}` (`processing` | `fulfilled` | `cancelled`)
+- No carrier shipping tracking in this step

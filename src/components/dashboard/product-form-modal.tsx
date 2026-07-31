@@ -17,6 +17,7 @@ export type ProductFormValues = {
   title: string;
   sku: string;
   priceAmount: number;
+  quantityAvailable: number;
   /** Was-price in minor units; omit/null when not on sale. */
   compareAtPriceAmount?: number | null;
   clearCompareAtPrice?: boolean;
@@ -46,6 +47,7 @@ type FormState = {
   sku: string;
   price: string;
   compareAtPrice: string;
+  quantityAvailable: string;
   categoryName: string;
   status: "DRAFT" | "ACTIVE" | "ARCHIVED";
   summary: string;
@@ -57,6 +59,7 @@ function emptyForm(): FormState {
     sku: "",
     price: "",
     compareAtPrice: "",
+    quantityAvailable: "1",
     categoryName: "",
     status: "DRAFT",
     summary: "",
@@ -116,6 +119,7 @@ export function productFormToCreateBody(
     title: values.title,
     sku: values.sku,
     priceAmount: values.priceAmount,
+    quantityAvailable: values.quantityAvailable,
     compareAtPriceAmount: values.compareAtPriceAmount ?? null,
     currency: values.currency,
     status: values.status,
@@ -133,6 +137,7 @@ export function productFormToUpdateBody(
     title: values.title,
     sku: values.sku,
     priceAmount: values.priceAmount,
+    quantityAvailable: values.quantityAvailable,
     compareAtPriceAmount: values.clearCompareAtPrice
       ? null
       : values.compareAtPriceAmount,
@@ -177,6 +182,9 @@ export function ProductFormModal({
           product.compareAtPriceAmount != null
             ? formatMinorUnits(Number(product.compareAtPriceAmount))
             : "",
+        quantityAvailable: String(
+          Math.max(0, Math.floor(Number(product.quantityAvailable ?? 0))),
+        ),
         categoryName: product.category?.name ?? "",
         status: normalizeStatus(product.status),
         summary: product.summary ?? "",
@@ -219,6 +227,17 @@ export function ProductFormModal({
       return;
     }
 
+    const quantityParsed = Number(form.quantityAvailable.trim());
+    if (
+      !Number.isFinite(quantityParsed) ||
+      !Number.isInteger(quantityParsed) ||
+      quantityParsed < 0
+    ) {
+      setError("Stock quantity must be a whole number of 0 or more.");
+      return;
+    }
+    const quantityAvailable = quantityParsed;
+
     const compareRaw = form.compareAtPrice.trim();
     let compareAtPriceAmount: number | null | undefined;
     let clearCompareAtPrice: boolean | undefined;
@@ -244,6 +263,7 @@ export function ProductFormModal({
       title,
       sku,
       priceAmount,
+      quantityAvailable,
       compareAtPriceAmount,
       clearCompareAtPrice,
       currency: "ZAR",
@@ -349,6 +369,29 @@ export function ProductFormModal({
               className={fieldClass}
             />
           </div>
+        </div>
+
+        <div>
+          <label htmlFor="product-form-stock" className={labelClass}>
+            Stock quantity
+          </label>
+          <input
+            id="product-form-stock"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            step={1}
+            required
+            value={form.quantityAvailable}
+            onChange={(e) => update("quantityAvailable", e.target.value)}
+            disabled={isSubmitting}
+            placeholder="1"
+            className={fieldClass}
+          />
+          <p className="mt-1.5 font-sans text-[11px] leading-relaxed text-muted-foreground">
+            Required. Use 0 for sold out. Checkout refuses quantities above this
+            number.
+          </p>
         </div>
 
         <div>

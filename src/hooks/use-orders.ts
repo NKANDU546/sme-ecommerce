@@ -1,7 +1,12 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { getWorkspaceOrder, listWorkspaceOrders } from "@/apis/orders";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  getWorkspaceOrder,
+  listWorkspaceOrders,
+  updateMerchantOrderStatus,
+  type UpdateMerchantOrderStatusBody,
+} from "@/apis/orders";
 import { getStoredAuthSession } from "@/lib/auth-login-storage";
 
 export const merchantOrderKeys = {
@@ -50,6 +55,34 @@ export function useMerchantOrder(
       );
       if (!result.ok) throw new Error(result.errorMessage);
       return result.data;
+    },
+  });
+}
+
+export function useUpdateMerchantOrderStatus(workspaceId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      orderId: string;
+      status: UpdateMerchantOrderStatusBody["status"];
+    }) => {
+      const result = await updateMerchantOrderStatus(
+        workspaceId,
+        input.orderId,
+        requireAccessToken(),
+        { status: input.status },
+      );
+      if (!result.ok) throw new Error(result.errorMessage);
+      return result.data;
+    },
+    onSuccess: (order) => {
+      queryClient.setQueryData(
+        merchantOrderKeys.detail(workspaceId, order.id),
+        order,
+      );
+      void queryClient.invalidateQueries({
+        queryKey: merchantOrderKeys.list(workspaceId),
+      });
     },
   });
 }

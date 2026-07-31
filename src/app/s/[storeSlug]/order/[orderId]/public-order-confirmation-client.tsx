@@ -15,6 +15,7 @@ import { useOrderConfirmation, useVerifyOrderPayment } from "@/hooks/use-checkou
 import { useInitializeOrderPayment } from "@/hooks/use-payments";
 import { usePublicStorefront } from "@/hooks/use-public-storefront";
 import { formatMinorAmount } from "@/lib/format-money";
+import { paymentStatusLabel } from "@/lib/order-status";
 import {
   paystackCallbackPath,
   savePaystackReturnPath,
@@ -25,23 +26,6 @@ type PublicOrderConfirmationClientProps = {
   storeSlug: string;
   orderId: string;
 };
-
-function paymentStatusLabel(status: string): string {
-  switch (status) {
-    case "paid":
-      return "Paid";
-    case "unpaid":
-      return "Awaiting payment";
-    case "initialized":
-      return "Payment in progress";
-    case "failed":
-      return "Payment failed";
-    case "refunded":
-      return "Refunded";
-    default:
-      return status;
-  }
-}
 
 export function PublicOrderConfirmationClient({
   storeSlug,
@@ -87,13 +71,15 @@ export function PublicOrderConfirmationClient({
 
   useEffect(() => {
     if (!returnedFromPaystack || !paystackReference) return;
-    if (orderQuery.data?.paymentStatus === "paid") return;
+    // Always verify on return — even if the order already shows paid (e.g. webhook
+    // from another host). Backend heals missing stock decrement idempotently.
     void (async () => {
       try {
         await verifyMutation.mutateAsync({
           orderId,
           reference: paystackReference,
         });
+        await orderQuery.refetch();
       } catch {
         /* webhook may still catch up — keep polling */
       }

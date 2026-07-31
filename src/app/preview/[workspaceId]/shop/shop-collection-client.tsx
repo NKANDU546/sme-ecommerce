@@ -250,6 +250,7 @@ function ShopCollectionBody({ workspaceId }: ShopCollectionClientProps) {
                       collection,
                       onSale: p.onSale,
                       compareAtPriceLabel: p.compareAtPriceLabel,
+                      inStock: p.inStock,
                     })}
                     href={`/preview/${workspaceId}/shop/${p.id}`}
                     showUploadHint

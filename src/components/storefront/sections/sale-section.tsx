@@ -1,13 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ClassicBoutiqueSmartLink as SmartLink } from "@/components/storefront/templates/classic-boutique-smart-link";
 import { storefrontButtonClassName } from "@/components/storefront/storefront-button";
+import { StorefrontProductCard } from "@/components/storefront/storefront-product-card";
+import { StorefrontSectionEmpty } from "@/components/storefront/storefront-section-empty";
 import { useProducts } from "@/hooks/use-products";
 import { usePublicProducts } from "@/hooks/use-public-storefront";
 import { getStoredAuthSession } from "@/lib/auth-login-storage";
 import { productApiToCatalog } from "@/lib/product-mapper";
+import { isPublicStorefrontContext } from "@/lib/storefront-public-context";
 import { resolveStorefrontProductSectionLimit } from "@/lib/storefront-product-section-limit";
 import type { StorefrontSaleSection } from "@/types/storefront";
 
@@ -128,12 +130,13 @@ export function SaleSection({
             : "Could not load sale products."}
         </p>
       ) : products.length === 0 ? (
-        <p className="font-sans text-sm text-[color:var(--sf-accent-text-55)]">
-          No sale products yet. Set a compare-at price higher than the selling
-          price on active products in the Products panel.
-        </p>
+        <StorefrontSectionEmpty
+          basePath={basePath}
+          merchantMessage="No sale products yet. Set a compare-at price higher than the selling price on active products in the Products panel."
+          publicMessage="Nothing on sale right now."
+        />
       ) : (
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
+        <div className="grid grid-cols-2 gap-4 @md/storefront:grid-cols-3 @md/storefront:gap-5 @xl/storefront:grid-cols-4 @xl/storefront:gap-6">
           {products.map(({ api, catalog }) => {
             const pathSegment =
               usePublic && api.slug ? api.slug : catalog.id;
@@ -143,54 +146,19 @@ export function SaleSection({
                 ? `/preview/${workspaceId}/shop/${encodeURIComponent(catalog.id)}`
                 : undefined;
 
-            const card = (
-              <article className="group flex flex-col">
-                <div className="relative aspect-[3/4] overflow-hidden rounded-xl border border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-card-frame-bg)]">
-                  {catalog.imageUrl.trim() ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={catalog.imageUrl}
-                      alt=""
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                    />
-                  ) : (
-                    <div
-                      className="flex h-full w-full items-center justify-center bg-[color:var(--sf-hero-placeholder)] font-sans text-xs text-[color:var(--sf-accent-text-45)]"
-                      aria-hidden
-                    >
-                      No image
-                    </div>
-                  )}
-                  <span className="absolute left-3 top-3 bg-[color:var(--sf-accent)] px-2 py-1 font-sans text-[10px] font-bold uppercase tracking-[0.14em] text-white">
-                    Sale
-                  </span>
-                </div>
-                <h3 className="mt-3 font-sans text-[15px] font-semibold text-[color:var(--sf-accent)]">
-                  {catalog.title}
-                </h3>
-                <p className="mt-1 flex flex-wrap items-baseline gap-2 font-sans text-sm">
-                  <span className="font-semibold text-[color:var(--sf-accent)]">
-                    {catalog.priceLabel}
-                  </span>
-                  {catalog.compareAtPriceLabel?.trim() ? (
-                    <span className="text-[color:var(--sf-accent-text-45)] line-through">
-                      {catalog.compareAtPriceLabel}
-                    </span>
-                  ) : null}
-                </p>
-              </article>
-            );
-
-            return productHref ? (
-              <Link
+            return (
+              <StorefrontProductCard
                 key={catalog.id}
+                title={catalog.title}
+                priceLabel={catalog.priceLabel}
+                compareAtPriceLabel={catalog.compareAtPriceLabel}
+                imageUrl={catalog.imageUrl}
                 href={productHref}
-                className="outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sf-accent)]/30"
-              >
-                {card}
-              </Link>
-            ) : (
-              <div key={catalog.id}>{card}</div>
+                badge="Sale"
+                aspect="portrait"
+                showUploadHint={!isPublicStorefrontContext(basePath)}
+                ctaLabel="Shop sale"
+              />
             );
           })}
         </div>

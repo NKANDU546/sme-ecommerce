@@ -8,6 +8,7 @@ import {
   type StorefrontCustomizeMode,
 } from "@/components/storefront/storefront-editor";
 import { StorefrontPublishControls } from "@/components/storefront/storefront-publish-controls";
+import { StorefrontShopCollectionPreview } from "@/components/storefront/storefront-shop-collection-preview";
 import { StorefrontTemplateView } from "@/components/storefront/storefront-template-view";
 import {
   useSaveStorefrontDraft,
@@ -15,6 +16,10 @@ import {
 } from "@/hooks/use-storefront-draft";
 import { usePublishedStorefront } from "@/hooks/use-storefront-publish";
 import { getStoredAuthSession } from "@/lib/auth-login-storage";
+import {
+  STOREFRONT_COLLECTION_PAGE_META,
+  parseCollectionPageSelectionId,
+} from "@/lib/storefront-collection-pages";
 import {
   hasChosenStorefrontTemplate,
   markStorefrontTemplateChosen,
@@ -178,7 +183,23 @@ function createStorefrontSection(type: StorefrontSection["type"]): StorefrontSec
         title: "Need help?",
         body: "Message us and we will help you choose the right products.",
         buttonLabel: "Contact us",
-        href: "#",
+        href: "@page:contact",
+      };
+    case "contact":
+      return {
+        id,
+        type,
+        eyebrow: "Contact",
+        title: "Get in touch",
+        body: "Prefer WhatsApp for a quick reply, or leave a message and we’ll follow up by email.",
+        email: "hello@example.com",
+        hours: "Mon–Fri, 9:00–17:00",
+        note: "Usually replies within a few hours.",
+        whatsappLabel: "Chat on WhatsApp",
+        whatsappHref: "",
+        formTitle: "Send a message",
+        submitLabel: "Send message",
+        successMessage: "Thanks — we have your message and will reply soon.",
       };
   }
 }
@@ -451,12 +472,14 @@ export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
     [config, persist, previewPageId],
   );
 
-  const handleSelectedPageChange = useCallback((pageId: "home" | string) => {
+  const handleSelectedPageChange = useCallback((pageId: string) => {
     setPreviewPageId(pageId);
   }, []);
 
+  const previewCollectionPageId =
+    parseCollectionPageSelectionId(previewPageId);
   const previewPage =
-    config && previewPageId !== "home"
+    config && previewPageId !== "home" && !previewCollectionPageId
       ? config.pages.find((page) => page.id === previewPageId) ?? null
       : null;
 
@@ -583,7 +606,11 @@ export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
   const previewLabel =
     previewPageId === "home"
       ? "Homepage"
-      : previewPage?.title.trim() || "Custom page";
+      : STOREFRONT_COLLECTION_PAGE_META.find(
+          (item) => item.id === previewCollectionPageId,
+        )?.label ||
+        previewPage?.title.trim() ||
+        "Custom page";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -640,6 +667,7 @@ export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
             onChange={persist}
             previewHref={`/preview/${workspaceId}`}
             onCustomizeModeChange={setCustomizeMode}
+            selectedPageId={previewPageId}
             onSelectedPageChange={handleSelectedPageChange}
             sectionEditTarget={sectionEditTarget}
           />
@@ -679,15 +707,24 @@ export function StorefrontPanel({ workspaceId }: StorefrontPanelProps) {
           Live preview · {previewLabel} · {saveLabel}
         </p>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          <StorefrontTemplateView
-            config={previewConfig}
-            workspaceId={workspaceId}
-            isEditing
-            onMoveSection={moveHomepageSection}
-            onAddSection={addHomepageSection}
-            onEditSection={editHomepageSection}
-            onRemoveSection={removeHomepageSection}
-          />
+          {previewCollectionPageId && config ? (
+            <StorefrontShopCollectionPreview
+              workspaceId={workspaceId}
+              config={config}
+              pageId={previewCollectionPageId}
+              onSelectPage={handleSelectedPageChange}
+            />
+          ) : (
+            <StorefrontTemplateView
+              config={previewConfig}
+              workspaceId={workspaceId}
+              isEditing
+              onMoveSection={moveHomepageSection}
+              onAddSection={addHomepageSection}
+              onEditSection={editHomepageSection}
+              onRemoveSection={removeHomepageSection}
+            />
+          )}
         </div>
         <footer className="shrink-0 border-t border-primary-blue/10 bg-white px-4 py-2.5 text-center font-sans text-[11px] leading-snug text-primary-blue/55">
           <span className="font-medium text-primary-blue/70">

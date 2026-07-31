@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ClassicBoutiqueSmartLink as SmartLink } from "@/components/storefront/templates/classic-boutique-smart-link";
 import { storefrontButtonClassName } from "@/components/storefront/storefront-button";
+import { StorefrontImagePlaceholder } from "@/components/storefront/storefront-image-placeholder";
+import { StorefrontSectionEmpty } from "@/components/storefront/storefront-section-empty";
 import { useProducts } from "@/hooks/use-products";
 import { usePublicProducts } from "@/hooks/use-public-storefront";
 import { getStoredAuthSession } from "@/lib/auth-login-storage";
@@ -110,15 +112,18 @@ export function NewArrivalsSection({
             Loading new arrivals…
           </p>
         ) : products.length === 0 ? (
-          <p className="text-center font-sans text-sm text-[color:var(--sf-accent-text-55)]">
-            No active products yet.
-          </p>
+          <StorefrontSectionEmpty
+            basePath={basePath}
+            align="center"
+            merchantMessage="No active products yet. Add and publish products in the Products panel."
+            publicMessage="Nothing here yet."
+          />
         ) : (
           <div
             className={`mx-auto grid gap-4 sm:gap-5 ${
               limit > 4
-                ? "max-w-6xl grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
-                : "max-w-5xl grid-cols-1 sm:grid-cols-2"
+                ? "max-w-6xl grid-cols-1 @sm/storefront:grid-cols-2 @lg/storefront:grid-cols-3 @xl/storefront:grid-cols-4"
+                : "max-w-5xl grid-cols-1 @sm/storefront:grid-cols-2"
             }`}
           >
             {products.map((p) => {
@@ -147,10 +152,12 @@ export function NewArrivalsSection({
                         alt=""
                         className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
                       />
-                    ) : null}
+                    ) : (
+                      <StorefrontImagePlaceholder label={p.title} />
+                    )}
                   </div>
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
-                  <span className="absolute left-4 top-4 font-sans text-[10px] font-bold uppercase tracking-[0.18em] text-white">
+                  <span className="absolute left-4 top-4 bg-white px-2 py-1 font-sans text-[10px] font-bold uppercase tracking-[0.18em] text-[color:var(--sf-accent)] shadow-sm">
                     New
                   </span>
                   <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">

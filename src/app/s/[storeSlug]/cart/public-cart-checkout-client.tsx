@@ -8,6 +8,7 @@ import {
   StorefrontButton,
   StorefrontButtonLink,
 } from "@/components/storefront/storefront-button";
+import { StorefrontImagePlaceholder } from "@/components/storefront/storefront-image-placeholder";
 import { StorefrontThemeRoot } from "@/components/storefront/storefront-theme-root";
 import { ClassicBoutiqueSiteFooter } from "@/components/storefront/templates/classic-boutique-site-footer";
 import { ClassicBoutiqueSiteHeader } from "@/components/storefront/templates/classic-boutique-site-header";
@@ -28,6 +29,43 @@ const fieldClass =
 const labelClass =
   "font-sans text-xs font-bold uppercase tracking-[0.16em] text-[color:var(--sf-accent)]";
 
+function CheckoutSteps({ step }: { step: Step }) {
+  const steps = [
+    { id: "cart" as const, label: "Cart" },
+    { id: "checkout" as const, label: "Details" },
+    { id: "pay" as const, label: "Pay" },
+  ];
+  const activeIndex = step === "cart" ? 0 : 1;
+
+  return (
+    <ol className="mb-6 flex items-center gap-2 font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--sf-accent-text-45)] sm:mb-8">
+      {steps.map((s, i) => {
+        const done = i < activeIndex;
+        const current = i === activeIndex;
+        return (
+          <li key={s.id} className="flex items-center gap-2">
+            {i > 0 ? (
+              <span className="text-[color:var(--sf-accent-border-15)]" aria-hidden>
+                /
+              </span>
+            ) : null}
+            <span
+              className={
+                current || done
+                  ? "text-[color:var(--sf-accent)]"
+                  : undefined
+              }
+              aria-current={current ? "step" : undefined}
+            >
+              {s.label}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 export function PublicCartCheckoutClient({
   storeSlug,
 }: PublicCartCheckoutClientProps) {
@@ -40,7 +78,7 @@ export function PublicCartCheckoutClient({
 
   if (storefrontQuery.isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background font-sans text-sm text-muted-foreground">
+      <div className="flex min-h-screen items-center justify-center bg-[color:var(--sf-page-bg)] font-sans text-sm text-[color:var(--sf-accent-text-55)]">
         Loading…
       </div>
     );
@@ -64,6 +102,8 @@ export function PublicCartCheckoutClient({
   const config = storefrontQuery.data.config;
   const lines = cart?.lines ?? [];
   const busy = Boolean(cart?.isBusy || checkoutMutation.isPending);
+  const canProceedCart = lines.length > 0 && !busy && Boolean(cart?.cartId);
+  const canPlaceOrder = !busy && Boolean(cart?.cartId);
 
   async function onCheckoutSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -111,11 +151,83 @@ export function PublicCartCheckoutClient({
     }
   }
 
+  const summaryTotals = (
+    <div className="space-y-2 font-sans text-sm text-[color:var(--sf-accent)]">
+      <div className="flex justify-between gap-3">
+        <span>Items</span>
+        <span>{cart?.itemCount ?? 0}</span>
+      </div>
+      <div className="flex justify-between gap-3">
+        <span>Subtotal</span>
+        <span>{cart?.subtotalLabel ?? "—"}</span>
+      </div>
+      <div className="flex justify-between gap-3">
+        <span>Shipping</span>
+        <span>R0.00</span>
+      </div>
+      <div className="flex justify-between gap-3 border-t border-[color:var(--sf-accent-border-10)] pt-3 text-base font-bold">
+        <span>Total</span>
+        <span>{cart?.totalLabel ?? "—"}</span>
+      </div>
+    </div>
+  );
+
+  function renderPrimaryActions(compact?: boolean) {
+    if (step === "cart") {
+      return (
+        <StorefrontButton
+          type="button"
+          className="w-full rounded-none font-bold"
+          disabled={!canProceedCart}
+          onClick={() => setStep("checkout")}
+        >
+          Proceed to checkout
+        </StorefrontButton>
+      );
+    }
+    return (
+      <div className="space-y-2">
+        <StorefrontButton
+          type="submit"
+          form="public-checkout-form"
+          className="w-full rounded-none font-bold"
+          disabled={!canPlaceOrder}
+        >
+          {checkoutMutation.isPending ? "Placing order…" : "Place order"}
+        </StorefrontButton>
+        {!compact ? (
+          <StorefrontButton
+            type="button"
+            variant="outline"
+            className="w-full rounded-none"
+            disabled={busy}
+            onClick={() => setStep("cart")}
+          >
+            Back to cart
+          </StorefrontButton>
+        ) : (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setStep("cart")}
+            className="w-full font-sans text-xs font-semibold text-[color:var(--sf-accent)] underline disabled:opacity-40"
+          >
+            Back to cart
+          </button>
+        )}
+        <p className="pt-1 text-center font-sans text-[11px] text-[color:var(--sf-accent-text-45)]">
+          You’ll pay securely with Paystack on the next step.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <StorefrontThemeRoot config={config}>
-      <div className="min-h-screen bg-[color:var(--sf-page-bg)]">
+      <div className="min-h-screen bg-[color:var(--sf-page-bg)] pb-28 lg:pb-0">
         <ClassicBoutiqueSiteHeader config={config} basePath={basePath} />
         <main className="w-full px-4 py-8 sm:px-8 sm:py-10">
+          <CheckoutSteps step={step} />
           <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--sf-accent-text-45)]">
@@ -164,7 +276,7 @@ export function PublicCartCheckoutClient({
                       {lines.map((line) => (
                         <li
                           key={line.productId}
-                          className="flex flex-wrap items-center gap-4 p-5"
+                          className="grid grid-cols-[4rem_minmax(0,1fr)] items-center gap-x-3 gap-y-3 p-4 sm:grid-cols-[4rem_minmax(0,1fr)_auto_auto] sm:gap-4 sm:p-5"
                         >
                           <div className="h-16 w-16 shrink-0 overflow-hidden bg-[color:var(--sf-nav-hover-wash)]">
                             {line.imageUrl.trim() ? (
@@ -174,10 +286,12 @@ export function PublicCartCheckoutClient({
                                 alt=""
                                 className="h-full w-full object-cover"
                               />
-                            ) : null}
+                            ) : (
+                              <StorefrontImagePlaceholder label={line.title} />
+                            )}
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-sans text-sm font-bold text-[color:var(--sf-accent)]">
+                          <div className="min-w-0">
+                            <p className="truncate font-sans text-sm font-bold text-[color:var(--sf-accent)]">
                               {line.title}
                             </p>
                             <p className="mt-1 font-mono text-[11px] text-muted-foreground">
@@ -187,42 +301,44 @@ export function PublicCartCheckoutClient({
                               {line.priceLabel}
                             </p>
                           </div>
-                          <div className="inline-flex border border-[color:var(--sf-accent)]">
-                            <button
+                          <div className="col-span-2 flex items-center justify-between gap-3 sm:col-span-1 sm:justify-end">
+                            <div className="inline-flex border border-[color:var(--sf-accent)]">
+                              <button
+                                type="button"
+                                disabled={busy || line.quantity <= 1}
+                                onClick={() =>
+                                  cart?.decrementLine(line.productId)
+                                }
+                                className="h-9 w-9 disabled:opacity-40"
+                                aria-label="Decrease quantity"
+                              >
+                                -
+                              </button>
+                              <span className="flex h-9 w-10 items-center justify-center border-x border-[color:var(--sf-accent)] text-sm tabular-nums">
+                                {line.quantity}
+                              </span>
+                              <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() =>
+                                  cart?.incrementLine(line.productId)
+                                }
+                                className="h-9 w-9 disabled:opacity-40"
+                                aria-label="Increase quantity"
+                              >
+                                +
+                              </button>
+                            </div>
+                            <StorefrontButton
                               type="button"
-                              disabled={busy || line.quantity <= 1}
-                              onClick={() =>
-                                cart?.decrementLine(line.productId)
-                              }
-                              className="h-9 w-9 disabled:opacity-40"
-                              aria-label="Decrease quantity"
-                            >
-                              -
-                            </button>
-                            <span className="flex h-9 w-10 items-center justify-center border-x border-[color:var(--sf-accent)] text-sm">
-                              {line.quantity}
-                            </span>
-                            <button
-                              type="button"
+                              variant="text"
                               disabled={busy}
-                              onClick={() =>
-                                cart?.incrementLine(line.productId)
-                              }
-                              className="h-9 w-9 disabled:opacity-40"
-                              aria-label="Increase quantity"
+                              onClick={() => cart?.removeLine(line.productId)}
+                              className="text-xs"
                             >
-                              +
-                            </button>
+                              Remove
+                            </StorefrontButton>
                           </div>
-                          <StorefrontButton
-                            type="button"
-                            variant="text"
-                            disabled={busy}
-                            onClick={() => cart?.removeLine(line.productId)}
-                            className="text-xs"
-                          >
-                            Remove
-                          </StorefrontButton>
                         </li>
                       ))}
                     </ul>
@@ -238,8 +354,8 @@ export function PublicCartCheckoutClient({
                     Customer & delivery
                   </h2>
                   <p className="mt-2 font-sans text-sm text-[color:var(--sf-accent-text-60)]">
-                    Online card payment comes in Step 06B. This places an order
-                    as unpaid / pending payment.
+                    Enter your details to place the order. You’ll pay securely
+                    with Paystack next.
                   </p>
                   <div className="mt-7 grid gap-5 sm:grid-cols-2">
                     <label className={`${labelClass} sm:col-span-2`}>
@@ -325,64 +441,24 @@ export function PublicCartCheckoutClient({
               )}
             </div>
 
-            <aside className="h-fit bg-white p-6 shadow-sm">
+            <aside className="hidden h-fit bg-white p-6 shadow-sm lg:block">
               <h2 className="font-sans text-sm font-bold uppercase tracking-[0.14em] text-[color:var(--sf-accent)]">
                 Order summary
               </h2>
-              <div className="mt-4 space-y-2 font-sans text-sm text-[color:var(--sf-accent)]">
-                <div className="flex justify-between gap-3">
-                  <span>Items</span>
-                  <span>{cart?.itemCount ?? 0}</span>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <span>Subtotal</span>
-                  <span>{cart?.subtotalLabel ?? "—"}</span>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <span>Shipping</span>
-                  <span>R0.00</span>
-                </div>
-                <div className="flex justify-between gap-3 border-t border-[color:var(--sf-accent-border-10)] pt-3 text-base font-bold">
-                  <span>Total</span>
-                  <span>{cart?.totalLabel ?? "—"}</span>
-                </div>
-              </div>
-
-              {step === "cart" ? (
-                <StorefrontButton
-                  type="button"
-                  className="mt-6 w-full rounded-none font-bold"
-                  disabled={lines.length === 0 || busy || !cart?.cartId}
-                  onClick={() => setStep("checkout")}
-                >
-                  Proceed to checkout
-                </StorefrontButton>
-              ) : (
-                <div className="mt-6 space-y-2">
-                  <StorefrontButton
-                    type="submit"
-                    form="public-checkout-form"
-                    className="w-full rounded-none font-bold"
-                    disabled={busy || !cart?.cartId}
-                  >
-                    {checkoutMutation.isPending
-                      ? "Placing order…"
-                      : "Place order"}
-                  </StorefrontButton>
-                  <StorefrontButton
-                    type="button"
-                    variant="outline"
-                    className="w-full rounded-none"
-                    disabled={busy}
-                    onClick={() => setStep("cart")}
-                  >
-                    Back to cart
-                  </StorefrontButton>
-                </div>
-              )}
+              <div className="mt-4">{summaryTotals}</div>
+              <div className="mt-6">{renderPrimaryActions()}</div>
             </aside>
           </div>
         </main>
+
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-header-surface)] px-4 py-3 shadow-[0_-8px_24px_rgba(0,0,0,0.06)] backdrop-blur-md lg:hidden">
+          <div className="mb-2 flex items-center justify-between font-sans text-sm font-bold text-[color:var(--sf-accent)]">
+            <span>Total</span>
+            <span className="tabular-nums">{cart?.totalLabel ?? "—"}</span>
+          </div>
+          {renderPrimaryActions(true)}
+        </div>
+
         <ClassicBoutiqueSiteFooter config={config} basePath={basePath} />
       </div>
     </StorefrontThemeRoot>

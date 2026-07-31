@@ -26,6 +26,23 @@ type PublicOrderConfirmationClientProps = {
   orderId: string;
 };
 
+function paymentStatusLabel(status: string): string {
+  switch (status) {
+    case "paid":
+      return "Paid";
+    case "unpaid":
+      return "Awaiting payment";
+    case "initialized":
+      return "Payment in progress";
+    case "failed":
+      return "Payment failed";
+    case "refunded":
+      return "Refunded";
+    default:
+      return status;
+  }
+}
+
 export function PublicOrderConfirmationClient({
   storeSlug,
   orderId,
@@ -119,11 +136,19 @@ export function PublicOrderConfirmationClient({
   }
 
   if (storefrontQuery.isLoading || orderQuery.isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background font-sans text-sm text-muted-foreground">
+    const loadingShell = (
+      <div className="flex min-h-screen items-center justify-center bg-[color:var(--sf-page-bg)] font-sans text-sm text-[color:var(--sf-accent-text-55)]">
         Loading order…
       </div>
     );
+    if (storefrontQuery.data?.config) {
+      return (
+        <StorefrontThemeRoot config={storefrontQuery.data.config}>
+          {loadingShell}
+        </StorefrontThemeRoot>
+      );
+    }
+    return loadingShell;
   }
 
   if (storefrontQuery.isError || !storefrontQuery.data) {
@@ -227,19 +252,22 @@ export function PublicOrderConfirmationClient({
                   {businessName}
                 </span>{" "}
                 is almost done. Reference{" "}
-                <span className="font-semibold">{order.orderNumber}</span> ·
-                payment{" "}
-                <span className="font-semibold">{order.paymentStatus}</span>.
+                <span className="font-semibold">{order.orderNumber}</span>
+                {" · "}
+                <span className="font-semibold">
+                  {paymentStatusLabel(order.paymentStatus)}
+                </span>
+                .
               </p>
               <p className="mt-2 font-sans text-sm text-[color:var(--sf-accent-text-60)]">
                 {awaitingPaystack ||
                 returnedFromPaystack ||
                 order.paymentStatus === "initialized"
                   ? "Confirming your Paystack payment… this page updates automatically."
-                  : "Complete payment with Paystack to confirm this order."}
+                  : "Pay securely with Paystack to confirm this order."}
               </p>
               {canPay ? (
-                <div className="mt-6">
+                <div className="mt-6 space-y-2">
                   <StorefrontButton
                     type="button"
                     className="rounded-none"
@@ -250,6 +278,9 @@ export function PublicOrderConfirmationClient({
                       ? "Opening Paystack…"
                       : "Pay with Paystack"}
                   </StorefrontButton>
+                  <p className="font-sans text-xs text-[color:var(--sf-accent-text-45)]">
+                    Card payment secured by Paystack.
+                  </p>
                 </div>
               ) : null}
             </div>

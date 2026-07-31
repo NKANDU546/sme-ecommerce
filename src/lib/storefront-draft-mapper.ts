@@ -38,6 +38,10 @@ export function storefrontDraftToConfig(draft: StorefrontDraft): StorefrontConfi
     products: Array.isArray(raw.products) ? raw.products : seed.products,
     sections: Array.isArray(raw.sections) ? raw.sections : seed.sections,
     pages: Array.isArray(raw.pages) ? raw.pages : seed.pages,
+    collectionPages:
+      raw.collectionPages && typeof raw.collectionPages === "object"
+        ? (raw.collectionPages as StorefrontConfig["collectionPages"])
+        : seed.collectionPages,
     updatedAt: parseUpdatedAt(raw.updatedAt ?? draft.updatedAt),
   } as StorefrontConfig;
 

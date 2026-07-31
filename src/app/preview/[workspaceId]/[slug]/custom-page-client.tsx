@@ -81,7 +81,7 @@ export function CustomPageClient({ workspaceId, slug }: CustomPageClientProps) {
   if (!page) {
     return (
       <StorefrontThemeRoot config={config}>
-        <div className="flex min-h-screen flex-col bg-[color:var(--sf-page-bg)]">
+        <div className="flex min-h-screen flex-col bg-[color:var(--sf-page-bg)] @container/storefront">
           <ClassicBoutiqueSiteHeader config={config} workspaceId={workspaceId} />
           <main className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
             <h1 className="font-serif text-3xl font-light text-[color:var(--sf-accent)]">
@@ -102,12 +102,13 @@ export function CustomPageClient({ workspaceId, slug }: CustomPageClientProps) {
 
   return (
     <StorefrontThemeRoot config={config}>
-      <div className="min-h-full">
+      <div className="@container/storefront min-h-full">
         <ClassicBoutiqueSiteHeader config={config} workspaceId={workspaceId} />
         <StorefrontSections
           sections={page.sections}
           config={config}
           workspaceId={workspaceId}
+          basePath={`/preview/${workspaceId}`}
         />
         <ClassicBoutiqueSiteFooter config={config} workspaceId={workspaceId} />
       </div>

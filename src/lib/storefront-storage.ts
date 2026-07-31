@@ -1,5 +1,15 @@
 import defaultStorefrontJson from "@/data/default-storefront.json";
 import {
+  defaultCollectionPages,
+  mergeCollectionPages,
+} from "@/lib/storefront-collection-pages";
+import {
+  STOREFRONT_DEFAULT_MEDIA,
+  defaultInstagramImageUrl,
+  defaultPromoImageUrl,
+  withDefaultImageUrl,
+} from "@/lib/storefront-default-media";
+import {
   STOREFRONT_THEME_DEFINITIONS,
   normalizeStorefrontThemeId,
 } from "@/lib/storefront-themes";
@@ -13,6 +23,7 @@ import type {
   StorefrontPromoCard,
   StorefrontSection,
   StorefrontSeed,
+  StorefrontShopChromeConfig,
   StorefrontTemplateId,
   StorefrontThemeId,
 } from "@/types/storefront";
@@ -32,6 +43,33 @@ function mergeLink(
     label: String(raw.label ?? seed.label),
     href: String(raw.href ?? seed.href),
   };
+}
+
+/** Point Sale / New arrivals nav items at filtered shop collections. */
+function upgradeShopCollectionLink(link: StorefrontLink): StorefrontLink {
+  const label = link.label.trim().toLowerCase();
+  const href = link.href.trim();
+  if (
+    (href === "@shop" || href === "#") &&
+    (label === "sale" || label.includes("sale"))
+  ) {
+    return { ...link, href: "@shop/sale" };
+  }
+  if (
+    (href === "@shop" || href === "#") &&
+    (label === "new arrivals" ||
+      label === "new arrival" ||
+      label.includes("new arrival"))
+  ) {
+    return { ...link, href: "@shop/new" };
+  }
+  if (
+    (href === "#" || href === "") &&
+    (label === "contact" || label === "contact us")
+  ) {
+    return { ...link, href: "@page:contact" };
+  }
+  return link;
 }
 
 /** `null` = intentionally hidden; `undefined` = legacy missing → use seed. */
@@ -117,6 +155,7 @@ const VALID_SECTION_TYPES = new Set<StorefrontSection["type"]>([
   "features",
   "faq",
   "contactCta",
+  "contact",
   "testimonials",
   "instagramGallery",
   "newsletter",
@@ -174,7 +213,10 @@ function defaultHomeSections(config: StorefrontConfig): StorefrontSection[] {
     {
       id: "home-hero",
       type: "hero",
-      imageUrl: String(config.heroBackgroundImageUrl || ""),
+      imageUrl: withDefaultImageUrl(
+        config.heroBackgroundImageUrl,
+        STOREFRONT_DEFAULT_MEDIA.hero,
+      ),
       heading: String(config.heroHeading || "Welcome to our store"),
       subheading: String(config.heroSubheading || ""),
       primaryCta: mergeLink(config.heroPrimaryCta, {
@@ -185,6 +227,12 @@ function defaultHomeSections(config: StorefrontConfig): StorefrontSection[] {
         label: "Learn more",
         href: "#",
       }),
+    },
+    {
+      id: "home-features",
+      type: "features",
+      title: "Why shop with us",
+      items: config.features,
     },
     {
       id: "home-featured-products",
@@ -202,22 +250,16 @@ function defaultHomeSections(config: StorefrontConfig): StorefrontSection[] {
       title: String(promo.title || "Promotion"),
       description: String(promo.description || ""),
       buttonLabel: String(promo.buttonLabel || "Shop now"),
-      imageUrl: String(promo.imageUrl || ""),
+      imageUrl: withDefaultImageUrl(promo.imageUrl, defaultPromoImageUrl(index)),
       href: String(promo.href || "#"),
     })),
-    {
-      id: "home-features",
-      type: "features",
-      title: "Why shop with us",
-      items: config.features,
-    },
     {
       id: "home-contact",
       type: "contactCta",
       title: "Need help choosing?",
-      body: "Message us on WhatsApp and we will help you find the right products for your order.",
+      body: "Message us and we will help you find the right pieces for your order.",
       buttonLabel: "Contact us",
-      href: config.whatsappNumber ? `https://wa.me/${config.whatsappNumber.replace(/\D/g, "")}` : "#",
+      href: "@page:contact",
     },
   ];
 }
@@ -259,7 +301,10 @@ function mergeSection(
         ...raw,
         id,
         desktopLayout,
-        imageUrl: String(raw.imageUrl ?? ""),
+        imageUrl: withDefaultImageUrl(
+          raw.imageUrl,
+          STOREFRONT_DEFAULT_MEDIA.hero,
+        ),
         heading: String(raw.heading ?? "Welcome to our store"),
         subheading: String(raw.subheading ?? ""),
         primaryCta: mergeOptionalLink(raw.primaryCta, {
@@ -294,7 +339,7 @@ function mergeSection(
         title: String(raw.title ?? "Promotion"),
         description: String(raw.description ?? ""),
         buttonLabel: String(raw.buttonLabel ?? "Shop now"),
-        imageUrl: String(raw.imageUrl ?? ""),
+        imageUrl: withDefaultImageUrl(raw.imageUrl, defaultPromoImageUrl(index)),
         href: String(raw.href ?? "#"),
       };
     case "textImage":
@@ -305,7 +350,10 @@ function mergeSection(
         eyebrow: String(raw.eyebrow ?? "Our story"),
         title: String(raw.title ?? "Tell customers what makes you different"),
         body: String(raw.body ?? ""),
-        imageUrl: String(raw.imageUrl ?? ""),
+        imageUrl: withDefaultImageUrl(
+          raw.imageUrl,
+          STOREFRONT_DEFAULT_MEDIA.textImage,
+        ),
         imagePosition: raw.imagePosition === "left" ? "left" : "right",
         cta: mergeLink(raw.cta, { label: "Learn more", href: "#" }),
       };
@@ -330,7 +378,8 @@ function mergeSection(
         title: String(raw.title ?? "Frequently asked questions"),
         items: mergeFaqItems(raw.items),
       };
-    case "contactCta":
+    case "contactCta": {
+      const rawHref = String(raw.href ?? "@page:contact").trim();
       return {
         ...raw,
         id,
@@ -338,8 +387,35 @@ function mergeSection(
         title: String(raw.title ?? "Contact us"),
         body: String(raw.body ?? ""),
         buttonLabel: String(raw.buttonLabel ?? "Contact us"),
-        href: String(raw.href ?? "#"),
+        href: rawHref === "#" || !rawHref ? "@page:contact" : rawHref,
       };
+    }
+    case "contact": {
+      const c = raw as StorefrontSection & { type: "contact" };
+      return {
+        ...raw,
+        id,
+        desktopLayout,
+        type: "contact",
+        eyebrow: String(c.eyebrow ?? "Contact"),
+        title: String(c.title ?? "Get in touch"),
+        body: String(
+          c.body ??
+            "Questions about an order, sizing, or what to choose — we are happy to help.",
+        ),
+        email: String(c.email ?? "hello@example.com"),
+        hours: String(c.hours ?? "Mon–Fri, 9:00–17:00"),
+        note: String(c.note ?? "Usually replies within a few hours."),
+        whatsappLabel: String(c.whatsappLabel ?? "Chat on WhatsApp"),
+        whatsappHref: String(c.whatsappHref ?? ""),
+        formTitle: String(c.formTitle ?? "Send a message"),
+        submitLabel: String(c.submitLabel ?? "Send message"),
+        successMessage: String(
+          c.successMessage ??
+            "Thanks — we have your message and will reply soon.",
+        ),
+      };
+    }
     case "testimonials":
       return {
         ...raw,
@@ -370,15 +446,18 @@ function mergeSection(
         title: String(raw.title ?? "Follow us"),
         handle: String(raw.handle ?? "@yourstore"),
         images: Array.isArray(raw.images)
-          ? raw.images.map((item) => ({
-              imageUrl: String(item.imageUrl ?? ""),
+          ? raw.images.map((item, i) => ({
+              imageUrl: withDefaultImageUrl(
+                item.imageUrl,
+                defaultInstagramImageUrl(i),
+              ),
               href: String(item.href ?? "#"),
             }))
           : [
-              { imageUrl: "", href: "#" },
-              { imageUrl: "", href: "#" },
-              { imageUrl: "", href: "#" },
-              { imageUrl: "", href: "#" },
+              { imageUrl: defaultInstagramImageUrl(0), href: "#" },
+              { imageUrl: defaultInstagramImageUrl(1), href: "#" },
+              { imageUrl: defaultInstagramImageUrl(2), href: "#" },
+              { imageUrl: defaultInstagramImageUrl(3), href: "#" },
             ],
       };
     case "newsletter":
@@ -425,10 +504,15 @@ function mergeSection(
         title: String(raw.title ?? "New arrivals"),
         eyebrow:
           typeof na.eyebrow === "string" ? na.eyebrow : "Just landed",
-        viewAll: mergeOptionalLink(na.viewAll, {
-          label: "Shop all new",
-          href: "@shop",
-        }),
+        viewAll: mergeOptionalLink(
+          na.viewAll?.href === "@shop"
+            ? { ...na.viewAll, href: "@shop/new" }
+            : na.viewAll,
+          {
+            label: "Shop all new",
+            href: "@shop/new",
+          },
+        ),
         limit: clampSectionProductLimit(na.limit, undefined),
       };
     }
@@ -446,7 +530,7 @@ function mergeSection(
           : sale.buttonLabel != null || sale.href != null
             ? {
                 label: String(sale.buttonLabel ?? "Shop the sale"),
-                href: String(sale.href ?? "@shop"),
+                href: String(sale.href ?? "@shop/sale"),
               }
             : undefined;
       return {
@@ -458,11 +542,19 @@ function mergeSection(
         description: String(
           raw.description ?? "Save on selected pieces while stocks last.",
         ),
-        viewAll: mergeOptionalLink(legacyViewAll, {
-          label: "Shop the sale",
-          href: "@shop",
-        }),
-        imageUrl: String(raw.imageUrl ?? ""),
+        viewAll: mergeOptionalLink(
+          legacyViewAll?.href === "@shop"
+            ? { ...legacyViewAll, href: "@shop/sale" }
+            : legacyViewAll,
+          {
+            label: "Shop the sale",
+            href: "@shop/sale",
+          },
+        ),
+        imageUrl: withDefaultImageUrl(
+          raw.imageUrl,
+          STOREFRONT_DEFAULT_MEDIA.saleBanner,
+        ),
         limit: clampSectionProductLimit(sale.limit, undefined),
       };
     }
@@ -492,17 +584,91 @@ function slugify(raw: string, fallback: string): string {
   return slug || fallback;
 }
 
+function defaultContactPage(): StorefrontCustomPage {
+  return {
+    id: "page-contact",
+    title: "Contact",
+    slug: "contact",
+    sections: [
+      {
+        id: "contact-hero",
+        type: "hero",
+        imageUrl: STOREFRONT_DEFAULT_MEDIA.textImage,
+        heading: "We’re here to help",
+        subheading:
+          "Orders, sizing, or what to choose — reach out and we’ll get back to you soon.",
+        primaryCta: { label: "Shop collection", href: "@shop" },
+        secondaryCta: null,
+      },
+      {
+        id: "contact-main",
+        type: "contact",
+        eyebrow: "Contact",
+        title: "Get in touch",
+        body: "Prefer WhatsApp for a quick reply, or leave a message and we’ll follow up by email.",
+        email: "hello@example.com",
+        hours: "Mon–Fri, 9:00–17:00",
+        note: "Usually replies within a few hours.",
+        whatsappLabel: "Chat on WhatsApp",
+        whatsappHref: "",
+        formTitle: "Send a message",
+        submitLabel: "Send message",
+        successMessage: "Thanks — we have your message and will reply soon.",
+      },
+      {
+        id: "contact-faq",
+        type: "faq",
+        title: "Before you write",
+        items: [
+          {
+            question: "How do I track my order?",
+            answer:
+              "After checkout you’ll get an order confirmation. Reply to that email or message us with your order number.",
+          },
+          {
+            question: "Do you ship everywhere?",
+            answer:
+              "We ship across South Africa. Delivery times depend on your location — ask us if you need a timeline.",
+          },
+          {
+            question: "What’s the fastest way to reach you?",
+            answer:
+              "WhatsApp is usually fastest during business hours. Email works well for longer questions.",
+          },
+        ],
+      },
+    ],
+  };
+}
+
 function mergePages(
   raw: StorefrontCustomPage[] | undefined,
   fallbackSections: StorefrontSection[],
 ): StorefrontCustomPage[] {
-  if (!raw?.length) return [];
-  return raw.map((page, index) => ({
+  const seedContact = defaultContactPage();
+  if (!raw?.length) {
+    return [
+      {
+        ...seedContact,
+        sections: mergeSections(seedContact.sections, fallbackSections.slice(0, 1)),
+      },
+    ];
+  }
+  const pages = raw.map((page, index) => ({
     id: String(page.id || sectionId("page", index)),
     title: typeof page.title === "string" ? page.title : `Page ${index + 1}`,
     slug: slugify(page.slug || page.title, `page-${index + 1}`),
     sections: mergeSections(page.sections, fallbackSections.slice(0, 1)),
   }));
+  const hasContact = pages.some((page) => page.slug === "contact");
+  if (hasContact) return pages;
+  return [
+    ...pages,
+    {
+      ...seedContact,
+      sections: mergeSections(seedContact.sections, fallbackSections.slice(0, 1)),
+    },
+  ];
 }
 
 export function upgradeStorefrontConfig(raw: StorefrontConfig): StorefrontConfig {
@@ -518,10 +684,11 @@ export function upgradeStorefrontConfig(raw: StorefrontConfig): StorefrontConfig
   const navLinks =
     navLen >= 2
       ? legacy.navLinks!.map((l, i) =>
-          mergeLink(l, seed.navLinks[Math.min(i, seed.navLinks.length - 1)]),
+          upgradeShopCollectionLink(
+            mergeLink(l, seed.navLinks[Math.min(i, seed.navLinks.length - 1)]),
+          ),
         )
-      : [...seed.navLinks];
-
+      : seed.navLinks.map(upgradeShopCollectionLink);
   const maxNav = Math.max(0, navLinks.length - 1);
   const activeNavIndex = Math.min(
     Math.max(0, Number(legacy.activeNavIndex ?? seed.activeNavIndex)),
@@ -546,13 +713,22 @@ export function upgradeStorefrontConfig(raw: StorefrontConfig): StorefrontConfig
     heroBackgroundImageUrl: heroBg,
     navLinks,
     activeNavIndex,
-    heroPrimaryCta: mergeLink(legacy.heroPrimaryCta, seed.heroPrimaryCta),
-    heroSecondaryCta: mergeLink(legacy.heroSecondaryCta, seed.heroSecondaryCta),
-    featuredViewAll: mergeLink(legacy.featuredViewAll, seed.featuredViewAll),
+    heroPrimaryCta: upgradeShopCollectionLink(
+      mergeLink(legacy.heroPrimaryCta, seed.heroPrimaryCta),
+    ),
+    heroSecondaryCta: upgradeShopCollectionLink(
+      mergeLink(legacy.heroSecondaryCta, seed.heroSecondaryCta),
+    ),
+    featuredViewAll: upgradeShopCollectionLink(
+      mergeLink(legacy.featuredViewAll, seed.featuredViewAll),
+    ),
     products: mergeProducts(legacy.products, seed.products),
     promos: mergePromos(legacy.promos, seed.promos),
     features: mergeFeatures(legacy.features, seed.features),
-    footerShopLinks: mergeLinkList(legacy.footerShopLinks, seed.footerShopLinks),
+    footerShopLinks: mergeLinkList(
+      legacy.footerShopLinks,
+      seed.footerShopLinks,
+    ).map(upgradeShopCollectionLink),
     footerPolicyLinks: mergeLinkList(
       legacy.footerPolicyLinks,
       seed.footerPolicyLinks,
@@ -560,7 +736,7 @@ export function upgradeStorefrontConfig(raw: StorefrontConfig): StorefrontConfig
     footerConnectLinks: mergeLinkList(
       legacy.footerConnectLinks,
       seed.footerConnectLinks,
-    ),
+    ).map(upgradeShopCollectionLink),
     footerBlurb: String(legacy.footerBlurb ?? seed.footerBlurb),
     copyrightLine: String(legacy.copyrightLine ?? seed.copyrightLine),
     cartCountLabel: String(legacy.cartCountLabel ?? seed.cartCountLabel),
@@ -573,6 +749,11 @@ export function upgradeStorefrontConfig(raw: StorefrontConfig): StorefrontConfig
     accentColor,
     templateId: (legacy.templateId ||
       seed.templateId) as StorefrontTemplateId,
+    collectionPages: mergeCollectionPages(
+      (legacy as StorefrontConfig).collectionPages,
+      seed.collectionPages ?? defaultCollectionPages(),
+      (legacy as { shopChrome?: Partial<StorefrontShopChromeConfig> }).shopChrome,
+    ),
   };
   const fallbackSections = defaultHomeSections(baseConfig);
   return {

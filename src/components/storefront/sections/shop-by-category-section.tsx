@@ -4,10 +4,13 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ClassicBoutiqueSmartLink as SmartLink } from "@/components/storefront/templates/classic-boutique-smart-link";
 import { storefrontButtonClassName } from "@/components/storefront/storefront-button";
+import { StorefrontImagePlaceholder } from "@/components/storefront/storefront-image-placeholder";
+import { StorefrontSectionEmpty } from "@/components/storefront/storefront-section-empty";
 import { useProducts } from "@/hooks/use-products";
 import { usePublicProducts } from "@/hooks/use-public-storefront";
 import { getStoredAuthSession } from "@/lib/auth-login-storage";
 import { resolveStorefrontHref } from "@/lib/preview-shop-href";
+import { isPublicStorefrontContext } from "@/lib/storefront-public-context";
 import type { StorefrontShopByCategorySection } from "@/types/storefront";
 
 function storeSlugFromBasePath(basePath?: string): string | undefined {
@@ -64,7 +67,7 @@ export function ShopByCategorySection({
       map.set(key, {
         name: cat.name,
         imageUrl: product.imageUrl ?? "",
-        href: "@shop",
+        href: `@shop/category:${cat.slug || key}`,
       });
     }
     return [...map.values()].slice(0, 6);
@@ -99,11 +102,13 @@ export function ShopByCategorySection({
           Loading categories…
         </p>
       ) : derived.length === 0 ? (
-        <p className="font-sans text-sm text-[color:var(--sf-accent-text-55)]">
-          Add category cards in the editor, or publish products with categories.
-        </p>
+        <StorefrontSectionEmpty
+          basePath={basePath}
+          merchantMessage="Add category cards in the editor, or publish products with categories."
+          publicMessage="Nothing here yet."
+        />
       ) : (
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6">
+        <div className="grid grid-cols-2 gap-4 @md/storefront:grid-cols-3 @md/storefront:gap-6">
           {derived.map((cat) => {
             const href = resolveStorefrontHref(
               { label: cat.name, href: cat.href },
@@ -119,7 +124,16 @@ export function ShopByCategorySection({
                       alt=""
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                     />
-                  ) : null}
+                  ) : (
+                    <StorefrontImagePlaceholder
+                      label={cat.name}
+                      hint={
+                        isPublicStorefrontContext(basePath)
+                          ? undefined
+                          : "Needs image"
+                      }
+                    />
+                  )}
                 </div>
                 <div className="p-4">
                   <h3 className="font-sans text-sm font-semibold text-[color:var(--sf-accent)] sm:text-base">

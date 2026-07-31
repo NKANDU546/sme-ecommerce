@@ -1,47 +1,37 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { usePreviewCartOptional } from "@/contexts/preview-cart-context";
-import { resolveStorefrontHref } from "@/lib/preview-shop-href";
+import {
+  isStorefrontNavLinkActive,
+  resolveStorefrontHref,
+} from "@/lib/preview-shop-href";
 import type { StorefrontConfig, StorefrontLink } from "@/types/storefront";
-
-/**
- * Determine whether a nav link is "active" based on the current pathname.
- * - Exact match on resolved href wins.
- * - For non-root hrefs, also activates when pathname starts with that href
- *   (so /s/store/shop/product marks Shop as active).
- */
-function isNavLinkActive(
-  link: StorefrontLink,
-  resolvedHref: string,
-  pathname: string,
-): boolean {
-  if (!pathname) return false;
-  const href = resolvedHref.split("?")[0].replace(/\/$/, "") || "/";
-  const current = pathname.replace(/\/$/, "") || "/";
-  if (current === href) return true;
-  // Prefix match only for non-root paths
-  if (href !== "/" && current.startsWith(href + "/")) return true;
-  return false;
-}
 
 function NavLink({
   link,
   resolvedHref,
   pathname,
+  search,
+  className,
 }: {
   link: StorefrontLink;
   resolvedHref: string;
   pathname: string;
+  search: string;
+  className?: string;
 }) {
-  const active = isNavLinkActive(link, resolvedHref, pathname);
-  const cls = `text-sm font-medium transition-colors ${
-    active
-      ? "border-b-2 border-[color:var(--sf-accent)] pb-0.5 text-[color:var(--sf-accent)]"
-      : "text-[color:var(--sf-accent-text-65)] hover:text-[color:var(--sf-accent)]"
-  }`;
+  const active = isStorefrontNavLinkActive(resolvedHref, pathname, search);
+  const cls =
+    className ??
+    `shrink-0 text-sm font-medium transition-colors ${
+      active
+        ? "border-b-2 border-[color:var(--sf-accent)] pb-0.5 text-[color:var(--sf-accent)]"
+        : "text-[color:var(--sf-accent-text-65)] hover:text-[color:var(--sf-accent)]"
+    }`;
   return (
-    <a href={resolvedHref} className={cls}>
+    <a href={resolvedHref} className={cls} aria-current={active ? "page" : undefined}>
       {link.label}
     </a>
   );
@@ -71,8 +61,7 @@ function cartBadgeLabel(
   return t || null;
 }
 
-/** Same top bar as the classic boutique home preview (logo row, desktop nav, mobile nav strip). */
-export function ClassicBoutiqueSiteHeader({
+function HeaderNav({
   config,
   basePath,
   workspaceId,
@@ -80,6 +69,8 @@ export function ClassicBoutiqueSiteHeader({
 }: ClassicBoutiqueSiteHeaderProps) {
   const cart = usePreviewCartOptional();
   const pathname = usePathname() ?? "";
+  const searchParams = useSearchParams();
+  const search = searchParams?.toString() ?? "";
 
   const resolvedBase =
     basePath ?? (workspaceId ? `/preview/${workspaceId}` : undefined);
@@ -98,12 +89,12 @@ export function ClassicBoutiqueSiteHeader({
 
   return (
     <header className="sticky top-0 z-20 border-b border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-header-surface)] backdrop-blur-md">
-      <div className="mx-auto flex max-w-[100%] items-center justify-between gap-4 px-4 py-4 sm:px-8">
+      <div className="mx-auto flex max-w-[100%] items-center justify-between gap-3 px-4 py-3 @sm/storefront:gap-4 @sm/storefront:px-8 @sm/storefront:py-4">
         <div className="min-w-0 shrink">
-          <p className="truncate font-sans text-lg font-bold tracking-tight text-[color:var(--sf-accent)] sm:text-xl">
+          <p className="truncate font-sans text-lg font-bold tracking-tight text-[color:var(--sf-accent)] @sm/storefront:text-xl">
             {config.shopName}
           </p>
-          <p className="truncate font-sans text-[11px] text-[color:var(--sf-accent-text-45)] sm:text-xs">
+          <p className="hidden truncate font-sans text-[11px] text-[color:var(--sf-accent-text-45)] @sm/storefront:block @sm/storefront:text-xs">
             {config.tagline}
           </p>
         </div>
@@ -112,7 +103,7 @@ export function ClassicBoutiqueSiteHeader({
             className={
               forceViewport === "desktop"
                 ? "flex min-w-0 flex-1 items-center justify-center gap-8"
-                : "hidden min-w-0 flex-1 items-center justify-center gap-8 lg:flex"
+                : "hidden min-w-0 flex-1 items-center justify-center gap-8 @lg/storefront:flex"
             }
             aria-label="Storefront"
           >
@@ -122,30 +113,12 @@ export function ClassicBoutiqueSiteHeader({
                 link={link}
                 resolvedHref={href}
                 pathname={pathname}
+                search={search}
               />
             ))}
           </nav>
         ) : null}
-        <div className="flex shrink-0 items-center gap-4 text-[color:var(--sf-accent)]">
-          <button
-            type="button"
-            className="rounded-full p-2 ring-1 ring-[color:var(--sf-accent-border-15)] transition-colors hover:bg-[color:var(--sf-nav-hover-wash)]"
-            aria-label="Account"
-          >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.5}
-              aria-hidden
-            >
-              <path
-                strokeLinecap="round"
-                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM5 21a7 7 0 0114 0"
-              />
-            </svg>
-          </button>
+        <div className="flex shrink-0 items-center text-[color:var(--sf-accent)]">
           <button
             type="button"
             onClick={() => cart?.toggleDrawer()}
@@ -177,12 +150,12 @@ export function ClassicBoutiqueSiteHeader({
         <div
           className={
             forceViewport === "mobile"
-              ? "border-t border-[color:var(--sf-accent-border-5)] px-4 py-2"
-              : "border-t border-[color:var(--sf-accent-border-5)] px-4 py-2 lg:hidden"
+              ? "border-t border-[color:var(--sf-accent-border-5)]"
+              : "border-t border-[color:var(--sf-accent-border-5)] @lg/storefront:hidden"
           }
         >
           <nav
-            className="flex flex-wrap justify-center gap-x-5 gap-y-2"
+            className="flex gap-5 overflow-x-auto px-4 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             aria-label="Storefront mobile"
           >
             {resolvedLinks.map(({ link, href }, i) => (
@@ -191,11 +164,34 @@ export function ClassicBoutiqueSiteHeader({
                 link={link}
                 resolvedHref={href}
                 pathname={pathname}
+                search={search}
+                className={`shrink-0 whitespace-nowrap text-sm font-medium transition-colors ${
+                  isStorefrontNavLinkActive(href, pathname, search)
+                    ? "border-b-2 border-[color:var(--sf-accent)] pb-0.5 text-[color:var(--sf-accent)]"
+                    : "text-[color:var(--sf-accent-text-65)] hover:text-[color:var(--sf-accent)]"
+                }`}
               />
             ))}
           </nav>
         </div>
       ) : null}
     </header>
+  );
+}
+
+/** Same top bar as the classic boutique home preview (logo row, desktop nav, mobile nav strip). */
+export function ClassicBoutiqueSiteHeader(props: ClassicBoutiqueSiteHeaderProps) {
+  return (
+    <Suspense
+      fallback={
+        <header className="sticky top-0 z-20 border-b border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-header-surface)] px-4 py-3 @sm/storefront:px-8 @sm/storefront:py-4">
+          <p className="font-sans text-lg font-bold text-[color:var(--sf-accent)]">
+            {props.config.shopName}
+          </p>
+        </header>
+      }
+    >
+      <HeaderNav {...props} />
+    </Suspense>
   );
 }

@@ -1,14 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { usePreviewCartOptional } from "@/contexts/preview-cart-context";
-import { StorefrontButtonLink } from "@/components/storefront/storefront-button";
+import { ShopCollectionToolbar } from "@/components/storefront/shop-collection-toolbar";
+import {
+  StorefrontProductCard,
+  shopProductBadges,
+} from "@/components/storefront/storefront-product-card";
+import { StorefrontTrustStrip } from "@/components/storefront/storefront-trust-strip";
+import { ClassicBoutiqueSiteFooter } from "@/components/storefront/templates/classic-boutique-site-footer";
 import { ClassicBoutiqueSiteHeader } from "@/components/storefront/templates/classic-boutique-site-header";
 import { StorefrontThemeRoot } from "@/components/storefront/storefront-theme-root";
 import { useProducts } from "@/hooks/use-products";
 import { usePreviewStorefrontConfig } from "@/hooks/use-preview-storefront-config";
 import { getStoredAuthSession } from "@/lib/auth-login-storage";
+import { STOREFRONT_DEFAULT_MEDIA } from "@/lib/storefront-default-media";
+import {
+  collectionPageIdFromShopCollection,
+  resolveCollectionPage,
+  resolveShopChrome,
+} from "@/lib/storefront-collection-pages";
+import {
+  buildShopHref,
+  parseShopCollection,
+  previewStorefrontBasePath,
+} from "@/lib/preview-shop-href";
 import { productApiToCatalog } from "@/lib/product-mapper";
 import type { CatalogProduct } from "@/types/catalog-product";
 
@@ -16,19 +34,84 @@ type ShopCollectionClientProps = {
   workspaceId: string;
 };
 
-export function ShopCollectionClient({ workspaceId }: ShopCollectionClientProps) {
+function ShopCollectionBody({ workspaceId }: ShopCollectionClientProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const basePath = previewStorefrontBasePath(workspaceId);
   const cart = usePreviewCartOptional();
   const storefront = usePreviewStorefrontConfig(workspaceId);
   const accessToken = getStoredAuthSession()?.accessToken ?? null;
+
+  const collection = parseShopCollection(searchParams.get("collection"));
+  const category = searchParams.get("category")?.trim() ?? "";
+  const qParam = searchParams.get("q")?.trim() ?? "";
+  const [searchDraft, setSearchDraft] = useState(qParam);
+
+  useEffect(() => {
+    setSearchDraft(qParam);
+  }, [qParam]);
+
   const productsQuery = useProducts(workspaceId, accessToken, {
     page: 0,
     limit: 100,
+    status: "active",
+    ...(qParam ? { search: qParam } : {}),
+    ...(collection === "sale" ? { onSale: true } : {}),
+    sort: "newest",
   });
 
-  const products: CatalogProduct[] = useMemo(
-    () => (productsQuery.data?.items ?? []).map(productApiToCatalog),
-    [productsQuery.data],
-  );
+  const catalogQuery = useProducts(workspaceId, accessToken, {
+    page: 0,
+    limit: 100,
+    status: "active",
+    sort: "newest",
+  });
+
+  const products: CatalogProduct[] = useMemo(() => {
+    let items = [...(productsQuery.data?.items ?? [])];
+    if (collection === "sale") {
+      items = items.filter(
+        (item) =>
+          item.onSale ||
+          (item.compareAtPriceAmount != null &&
+            item.compareAtPriceAmount > item.priceAmount),
+      );
+    }
+    if (category) {
+      const needle = category.toLowerCase();
+      items = items.filter((item) => {
+        const slug = item.category?.slug?.toLowerCase() ?? "";
+        const name = item.category?.name?.toLowerCase() ?? "";
+        const id = item.category?.id?.toLowerCase() ?? "";
+        return slug === needle || name === needle || id === needle;
+      });
+    }
+    return items
+      .map(productApiToCatalog)
+      .filter((p) => p.status !== "archived");
+  }, [productsQuery.data, collection, category]);
+
+  const categories = useMemo(() => {
+    const map = new Map<string, { name: string; slug: string }>();
+    for (const item of catalogQuery.data?.items ?? []) {
+      const cat = item.category;
+      if (!cat?.name?.trim()) continue;
+      const slug = cat.slug?.trim() || cat.id || cat.name;
+      if (map.has(slug)) continue;
+      map.set(slug, { name: cat.name, slug });
+    }
+    return [...map.values()];
+  }, [catalogQuery.data]);
+
+  function commitSearch() {
+    router.push(
+      buildShopHref(basePath, {
+        collection,
+        category: category || undefined,
+        q: searchDraft.trim() || undefined,
+      }),
+    );
+  }
 
   if (storefront.status === "loading" || productsQuery.isLoading) {
     return (
@@ -84,95 +167,120 @@ export function ShopCollectionClient({ workspaceId }: ShopCollectionClientProps)
             ? productsQuery.error.message
             : "Please try again."}
         </p>
-        <button
-          type="button"
-          onClick={() => productsQuery.refetch()}
-          className="mt-2 font-sans text-sm font-semibold text-primary-blue underline"
-        >
-          Retry
-        </button>
       </div>
     );
   }
 
   const config = storefront.config;
-  const visible = products.filter((p) => p.status !== "archived");
+  const storeName = config.shopName?.trim() || "Shop";
+  const page = resolveCollectionPage(
+    config.collectionPages,
+    collectionPageIdFromShopCollection(collection),
+  );
+  const chrome = resolveShopChrome(page.chrome);
+  const bannerImage =
+    page.imageUrl.trim() ||
+    (collection === "sale"
+      ? STOREFRONT_DEFAULT_MEDIA.saleBanner
+      : STOREFRONT_DEFAULT_MEDIA.promo[0]);
 
   return (
     <StorefrontThemeRoot config={config}>
-      <div className="min-h-full bg-[color:var(--sf-page-bg)]">
-        <ClassicBoutiqueSiteHeader config={config} workspaceId={workspaceId} />
+      <div className="@container/storefront min-h-full bg-[color:var(--sf-page-bg)]">
+        <ClassicBoutiqueSiteHeader
+          config={config}
+          workspaceId={workspaceId}
+          basePath={basePath}
+        />
 
-        <main className="mx-auto max-w-[100%] px-4 py-12 sm:px-8 sm:py-16">
-          <h1 className="font-serif text-3xl font-light text-[color:var(--sf-accent)] sm:text-4xl">
-            Shop collection
-          </h1>
-          <p className="mt-3 max-w-2xl font-sans text-sm leading-relaxed text-[color:var(--sf-accent-text-60)] sm:text-base">
-            Browse the catalogue synced from your workspace.
-          </p>
+        <section className="relative min-h-[12rem] overflow-hidden @sm/storefront:min-h-[16rem]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={bannerImage}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/40 to-black/20" />
+          <div className="relative z-10 mx-auto flex min-h-[12rem] max-w-[100%] flex-col justify-end px-4 py-8 @sm/storefront:min-h-[16rem] @sm/storefront:px-8 @sm/storefront:py-10">
+            <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-white/70">
+              {page.eyebrow || "Preview shop"}
+            </p>
+            <h1 className="mt-2 font-serif text-3xl font-light text-white @sm/storefront:text-5xl">
+              {page.title.trim() || storeName}
+            </h1>
+            {page.description.trim() ? (
+              <p className="mt-3 max-w-xl font-sans text-sm leading-relaxed text-white/85 @sm/storefront:text-base">
+                {page.description}
+              </p>
+            ) : null}
+          </div>
+        </section>
 
-          {visible.length === 0 ? (
+        <StorefrontTrustStrip />
+
+        <main className="mx-auto max-w-[100%] px-4 py-10 @sm/storefront:px-8 @sm/storefront:py-14">
+          <ShopCollectionToolbar
+            basePath={basePath}
+            collection={collection}
+            category={category}
+            q={searchDraft}
+            categories={categories}
+            resultCount={products.length}
+            chrome={chrome}
+            onSearchChange={setSearchDraft}
+            onSearchSubmit={commitSearch}
+          />
+
+          {products.length === 0 ? (
             <p className="mt-12 font-sans text-sm text-[color:var(--sf-accent-text-55)]">
-              No products to show yet. Add products under{" "}
-              <strong>Products</strong> in the dashboard.
+              No products match. Add products under{" "}
+              <strong>Products</strong> or clear filters.
             </p>
           ) : (
-            <ul className="mt-12 grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4 lg:gap-8">
-              {visible.map((p) => (
-                <li
-                  key={p.id}
-                  className="flex flex-col overflow-hidden rounded-xl border border-[color:var(--sf-accent-border-10)] bg-white shadow-sm"
-                >
-                  <Link
+            <ul className="mt-8 grid grid-cols-2 gap-4 @md/storefront:grid-cols-3 @md/storefront:gap-6 @xl/storefront:grid-cols-4 @xl/storefront:gap-8">
+              {products.map((p) => (
+                <li key={p.id}>
+                  <StorefrontProductCard
+                    title={p.title}
+                    priceLabel={p.priceLabel}
+                    compareAtPriceLabel={p.compareAtPriceLabel}
+                    imageUrl={p.imageUrl}
+                    category={p.category}
+                    badges={shopProductBadges({
+                      collection,
+                      onSale: p.onSale,
+                      compareAtPriceLabel: p.compareAtPriceLabel,
+                    })}
                     href={`/preview/${workspaceId}/shop/${p.id}`}
-                    className="group block flex flex-1 flex-col px-3 pb-2 pt-3 outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-[color:var(--sf-accent)]/30"
-                  >
-                    <article className="flex flex-col">
-                      <div className="aspect-square overflow-hidden rounded-xl border border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-card-frame-bg)]">
-                        {p.imageUrl.trim() ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={p.imageUrl}
-                            alt=""
-                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-                          />
-                        ) : (
-                          <div
-                            className="flex h-full w-full items-center justify-center bg-[color:var(--sf-hero-placeholder)] font-sans text-xs text-[color:var(--sf-accent-text-45)]"
-                            aria-hidden
-                          >
-                            No image
-                          </div>
-                        )}
-                      </div>
-                      <h2 className="mt-4 font-sans text-[15px] font-semibold text-[color:var(--sf-accent)]">
-                        {p.title}
-                      </h2>
-                      <p className="mt-1 font-sans text-sm text-[color:var(--sf-accent-text-55)]">
-                        {p.priceLabel}
-                      </p>
-                      <p className="mt-1 font-sans text-[11px] uppercase tracking-wide text-[color:var(--sf-accent-text-45)]">
-                        {p.category}
-                      </p>
-                    </article>
-                  </Link>
-                  {cart ? (
-                    <div className="mt-auto border-t border-[color:var(--sf-accent-border-5)] px-3 py-2">
-                      <StorefrontButtonLink
-                        href={`/preview/${workspaceId}/shop/${p.id}`}
-                        size="sm"
-                        className="w-full"
-                      >
-                        View product
-                      </StorefrontButtonLink>
-                    </div>
-                  ) : null}
+                    showUploadHint
+                    ctaLabel={cart ? "View product" : "View"}
+                  />
                 </li>
               ))}
             </ul>
           )}
         </main>
+
+        <ClassicBoutiqueSiteFooter
+          config={config}
+          workspaceId={workspaceId}
+          basePath={basePath}
+        />
       </div>
     </StorefrontThemeRoot>
+  );
+}
+
+export function ShopCollectionClient({ workspaceId }: ShopCollectionClientProps) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center font-sans text-sm text-muted-foreground">
+          Loading shop…
+        </div>
+      }
+    >
+      <ShopCollectionBody workspaceId={workspaceId} />
+    </Suspense>
   );
 }

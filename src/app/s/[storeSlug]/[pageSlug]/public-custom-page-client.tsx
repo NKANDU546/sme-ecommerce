@@ -91,7 +91,7 @@ export function PublicCustomPageClient({
   if (pageQuery.isError || !pageQuery.data) {
     return (
       <StorefrontThemeRoot config={config}>
-        <div className="flex min-h-screen flex-col bg-[color:var(--sf-page-bg)]">
+        <div className="flex min-h-screen flex-col bg-[color:var(--sf-page-bg)] @container/storefront">
           <ClassicBoutiqueSiteHeader config={config} basePath={basePath} />
           <main className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
             <h1 className="font-serif text-3xl font-light text-[color:var(--sf-accent)]">
@@ -124,7 +124,7 @@ export function PublicCustomPageClient({
 
   return (
     <StorefrontThemeRoot config={config}>
-      <div className="min-h-full">
+      <div className="@container/storefront min-h-full">
         <ClassicBoutiqueSiteHeader config={config} basePath={basePath} />
         <StorefrontSections
           sections={resolvedPage.sections}

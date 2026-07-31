@@ -1,8 +1,13 @@
 "use client";
 
-import Link from "next/link";
-import { useMemo } from "react";
-import { StorefrontButtonLink } from "@/components/storefront/storefront-button";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ShopCollectionToolbar } from "@/components/storefront/shop-collection-toolbar";
+import {
+  StorefrontProductCard,
+  shopProductBadges,
+} from "@/components/storefront/storefront-product-card";
+import { StorefrontTrustStrip } from "@/components/storefront/storefront-trust-strip";
 import { ClassicBoutiqueSiteFooter } from "@/components/storefront/templates/classic-boutique-site-footer";
 import { ClassicBoutiqueSiteHeader } from "@/components/storefront/templates/classic-boutique-site-header";
 import { StorefrontThemeRoot } from "@/components/storefront/storefront-theme-root";
@@ -10,30 +15,107 @@ import {
   usePublicProducts,
   usePublicStorefront,
 } from "@/hooks/use-public-storefront";
-import { publicStorefrontBasePath } from "@/lib/preview-shop-href";
+import { STOREFRONT_DEFAULT_MEDIA } from "@/lib/storefront-default-media";
+import {
+  collectionPageIdFromShopCollection,
+  resolveCollectionPage,
+  resolveShopChrome,
+} from "@/lib/storefront-collection-pages";
+import {
+  buildShopHref,
+  parseShopCollection,
+  publicStorefrontBasePath,
+} from "@/lib/preview-shop-href";
 import { productApiToCatalog } from "@/lib/product-mapper";
 
 type PublicShopClientProps = {
   storeSlug: string;
 };
 
-export function PublicShopClient({ storeSlug }: PublicShopClientProps) {
+function PublicShopBody({ storeSlug }: PublicShopClientProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const basePath = publicStorefrontBasePath(storeSlug);
-  const storefrontQuery = usePublicStorefront(storeSlug);
-  const productsQuery = usePublicProducts(storeSlug, { page: 0, limit: 100 });
 
-  const products = useMemo(
-    () =>
-      (productsQuery.data?.items ?? []).map((item) => ({
-        catalog: productApiToCatalog(item),
-        slug: item.slug,
-      })),
-    [productsQuery.data],
+  const collection = parseShopCollection(searchParams.get("collection"));
+  const category = searchParams.get("category")?.trim() ?? "";
+  const qParam = searchParams.get("q")?.trim() ?? "";
+  const [searchDraft, setSearchDraft] = useState(qParam);
+
+  useEffect(() => {
+    setSearchDraft(qParam);
+  }, [qParam]);
+
+  const listParams = useMemo(
+    () => ({
+      page: 0,
+      limit: 100,
+      ...(category ? { category } : {}),
+      ...(qParam ? { search: qParam } : {}),
+      ...(collection === "sale" ? { onSale: true as const } : {}),
+      ...(collection === "new" || collection === "sale"
+        ? { sort: "newest" as const }
+        : { sort: "newest" as const }),
+    }),
+    [category, qParam, collection],
   );
+
+  const storefrontQuery = usePublicStorefront(storeSlug);
+  const productsQuery = usePublicProducts(storeSlug, listParams);
+  /** Unfiltered fetch to build category chips. */
+  const catalogQuery = usePublicProducts(storeSlug, {
+    page: 0,
+    limit: 100,
+    sort: "newest",
+  });
+
+  const products = useMemo(() => {
+    const items = productsQuery.data?.items ?? [];
+    // Client fallback if backend ignores onSale until fully rolled out.
+    if (collection === "sale") {
+      return items
+        .filter(
+          (item) =>
+            item.onSale ||
+            (item.compareAtPriceAmount != null &&
+              item.compareAtPriceAmount > item.priceAmount),
+        )
+        .map((item) => ({
+          catalog: productApiToCatalog(item),
+          slug: item.slug,
+        }));
+    }
+    return items.map((item) => ({
+      catalog: productApiToCatalog(item),
+      slug: item.slug,
+    }));
+  }, [productsQuery.data, collection]);
+
+  const categories = useMemo(() => {
+    const map = new Map<string, { name: string; slug: string }>();
+    for (const item of catalogQuery.data?.items ?? []) {
+      const cat = item.category;
+      if (!cat?.name?.trim()) continue;
+      const slug = cat.slug?.trim() || cat.id || cat.name;
+      if (map.has(slug)) continue;
+      map.set(slug, { name: cat.name, slug });
+    }
+    return [...map.values()];
+  }, [catalogQuery.data]);
+
+  function commitSearch() {
+    router.push(
+      buildShopHref(basePath, {
+        collection,
+        category: category || undefined,
+        q: searchDraft.trim() || undefined,
+      }),
+    );
+  }
 
   if (storefrontQuery.isLoading || productsQuery.isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background font-sans text-sm text-muted-foreground">
+      <div className="flex min-h-screen items-center justify-center bg-[color:var(--sf-page-bg)] font-sans text-sm text-[color:var(--sf-accent-text-55)]">
         Loading…
       </div>
     );
@@ -70,73 +152,90 @@ export function PublicShopClient({ storeSlug }: PublicShopClientProps) {
   }
 
   const config = storefrontQuery.data.config;
+  const storeName =
+    config.shopName?.trim() ||
+    storefrontQuery.data.storefront.storeName?.trim() ||
+    "Shop";
+
+  const page = resolveCollectionPage(
+    config.collectionPages,
+    collectionPageIdFromShopCollection(collection),
+  );
+  const bannerCopy = {
+    eyebrow: page.eyebrow,
+    title: page.title.trim() || storeName,
+    body: page.description,
+  };
+  const bannerImage =
+    page.imageUrl.trim() ||
+    (collection === "sale"
+      ? STOREFRONT_DEFAULT_MEDIA.saleBanner
+      : STOREFRONT_DEFAULT_MEDIA.promo[0]);
+  const chrome = resolveShopChrome(page.chrome);
 
   return (
     <StorefrontThemeRoot config={config}>
-      <div className="min-h-full bg-[color:var(--sf-page-bg)]">
+      <div className="@container/storefront min-h-full bg-[color:var(--sf-page-bg)]">
         <ClassicBoutiqueSiteHeader config={config} basePath={basePath} />
 
-        <main className="mx-auto max-w-[100%] px-4 py-12 sm:px-8 sm:py-16">
-          <h1 className="font-serif text-3xl font-light text-[color:var(--sf-accent)] sm:text-4xl">
-            Shop collection
-          </h1>
-          <p className="mt-3 max-w-2xl font-sans text-sm leading-relaxed text-[color:var(--sf-accent-text-60)] sm:text-base">
-            Browse products from {storefrontQuery.data.storefront.storeName}.
-          </p>
+        <section className="relative min-h-[12rem] overflow-hidden @sm/storefront:min-h-[16rem]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={bannerImage}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/40 to-black/20" />
+          <div className="relative z-10 mx-auto flex min-h-[12rem] max-w-[100%] flex-col justify-end px-4 py-8 @sm/storefront:min-h-[16rem] @sm/storefront:px-8 @sm/storefront:py-10">
+            <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-white/70">
+              {bannerCopy.eyebrow}
+            </p>
+            <h1 className="mt-2 font-serif text-3xl font-light text-white @sm/storefront:text-5xl">
+              {bannerCopy.title}
+            </h1>
+            <p className="mt-3 max-w-xl font-sans text-sm leading-relaxed text-white/85 @sm/storefront:text-base">
+              {bannerCopy.body}
+            </p>
+          </div>
+        </section>
+
+        <StorefrontTrustStrip />
+
+        <main className="mx-auto max-w-[100%] px-4 py-10 @sm/storefront:px-8 @sm/storefront:py-14">
+          <ShopCollectionToolbar
+            basePath={basePath}
+            collection={collection}
+            category={category}
+            q={searchDraft}
+            categories={categories}
+            resultCount={products.length}
+            chrome={chrome}
+            onSearchChange={setSearchDraft}
+            onSearchSubmit={commitSearch}
+          />
 
           {products.length === 0 ? (
             <p className="mt-12 font-sans text-sm text-[color:var(--sf-accent-text-55)]">
-              No products available yet.
+              Nothing here yet. Try another collection or clear your search.
             </p>
           ) : (
-            <ul className="mt-12 grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4 lg:gap-8">
+            <ul className="mt-8 grid grid-cols-2 gap-4 @md/storefront:grid-cols-3 @md/storefront:gap-6 @xl/storefront:grid-cols-4 @xl/storefront:gap-8">
               {products.map(({ catalog: p, slug }) => (
-                <li
-                  key={p.id}
-                  className="flex flex-col overflow-hidden rounded-xl border border-[color:var(--sf-accent-border-10)] bg-white shadow-sm"
-                >
-                  <Link
+                <li key={p.id}>
+                  <StorefrontProductCard
+                    title={p.title}
+                    priceLabel={p.priceLabel}
+                    compareAtPriceLabel={p.compareAtPriceLabel}
+                    imageUrl={p.imageUrl}
+                    category={p.category}
+                    badges={shopProductBadges({
+                      collection,
+                      onSale: p.onSale,
+                      compareAtPriceLabel: p.compareAtPriceLabel,
+                    })}
                     href={`${basePath}/shop/${encodeURIComponent(slug)}`}
-                    className="group flex flex-1 flex-col px-3 pb-2 pt-3 outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-[color:var(--sf-accent)]/30"
-                  >
-                    <article className="flex flex-col">
-                      <div className="aspect-square overflow-hidden rounded-xl border border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-card-frame-bg)]">
-                        {p.imageUrl.trim() ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={p.imageUrl}
-                            alt=""
-                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-                          />
-                        ) : (
-                          <div
-                            className="flex h-full w-full items-center justify-center bg-[color:var(--sf-hero-placeholder)] font-sans text-xs text-[color:var(--sf-accent-text-45)]"
-                            aria-hidden
-                          >
-                            No image
-                          </div>
-                        )}
-                      </div>
-                      <h2 className="mt-4 font-sans text-[15px] font-semibold text-[color:var(--sf-accent)]">
-                        {p.title}
-                      </h2>
-                      <p className="mt-1 font-sans text-sm text-[color:var(--sf-accent-text-55)]">
-                        {p.priceLabel}
-                      </p>
-                      <p className="mt-1 font-sans text-[11px] uppercase tracking-wide text-[color:var(--sf-accent-text-45)]">
-                        {p.category}
-                      </p>
-                    </article>
-                  </Link>
-                  <div className="mt-auto border-t border-[color:var(--sf-accent-border-5)] px-3 py-2">
-                    <StorefrontButtonLink
-                      href={`${basePath}/shop/${encodeURIComponent(slug)}`}
-                      size="sm"
-                      className="w-full"
-                    >
-                      View product
-                    </StorefrontButtonLink>
-                  </div>
+                    ctaLabel="View product"
+                  />
                 </li>
               ))}
             </ul>
@@ -146,5 +245,19 @@ export function PublicShopClient({ storeSlug }: PublicShopClientProps) {
         <ClassicBoutiqueSiteFooter config={config} basePath={basePath} />
       </div>
     </StorefrontThemeRoot>
+  );
+}
+
+export function PublicShopClient({ storeSlug }: PublicShopClientProps) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center font-sans text-sm text-muted-foreground">
+          Loading shop…
+        </div>
+      }
+    >
+      <PublicShopBody storeSlug={storeSlug} />
+    </Suspense>
   );
 }

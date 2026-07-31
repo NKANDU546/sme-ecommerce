@@ -6,6 +6,7 @@ import {
   StorefrontButton,
   StorefrontButtonLink,
 } from "@/components/storefront/storefront-button";
+import { StorefrontImagePlaceholder } from "@/components/storefront/storefront-image-placeholder";
 import { StorefrontThemeRoot } from "@/components/storefront/storefront-theme-root";
 import { usePreviewStorefrontConfig } from "@/hooks/use-preview-storefront-config";
 
@@ -293,9 +294,7 @@ export function PreviewCartDrawer({
                     className="max-h-40 w-full object-contain sm:max-h-44"
                   />
                 ) : (
-                  <div className="flex h-40 w-full items-center justify-center bg-neutral-100 font-sans text-sm text-neutral-500">
-                    No image
-                  </div>
+                  <StorefrontImagePlaceholder label={displayLine.title} />
                 )}
               </div>
 

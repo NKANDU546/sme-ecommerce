@@ -30,7 +30,7 @@ export function ClassicBoutiqueStorefront({
   onRemoveSection,
 }: ClassicBoutiqueStorefrontProps) {
   return (
-    <div className="min-h-full">
+    <div className="@container/storefront min-h-full">
       <ClassicBoutiqueSiteHeader
         config={config}
         basePath={basePath}

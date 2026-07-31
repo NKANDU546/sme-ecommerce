@@ -2,6 +2,7 @@
 
 import { type FormEvent, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { StorefrontImagePlaceholder } from "@/components/storefront/storefront-image-placeholder";
 import type {
   StorefrontInstagramGallerySection,
   StorefrontNewsletterSection,
@@ -168,8 +169,10 @@ export function TestimonialsSection({
 
 export function InstagramGallerySection({
   section,
+  isEditing = false,
 }: {
   section: StorefrontInstagramGallerySection;
+  isEditing?: boolean;
 }) {
   return (
     <section
@@ -188,7 +191,7 @@ export function InstagramGallerySection({
             {section.handle}
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+        <div className="grid grid-cols-2 gap-3 @md/storefront:grid-cols-4 @md/storefront:gap-4">
           {section.images.map((item, i) => {
             const media = (
               <div className="aspect-square overflow-hidden rounded-xl border border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-hero-placeholder)]">
@@ -200,9 +203,10 @@ export function InstagramGallerySection({
                     className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.03]"
                   />
                 ) : (
-                  <div className="flex h-full items-center justify-center font-sans text-xs text-[color:var(--sf-accent-text-45)]">
-                    Upload image
-                  </div>
+                  <StorefrontImagePlaceholder
+                    label={section.title}
+                    hint={isEditing ? "Upload image" : undefined}
+                  />
                 )}
               </div>
             );

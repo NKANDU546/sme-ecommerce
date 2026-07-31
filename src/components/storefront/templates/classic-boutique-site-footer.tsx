@@ -14,7 +14,7 @@ export function ClassicBoutiqueSiteFooter({
 }: ClassicBoutiqueSiteFooterProps) {
   return (
     <footer className="border-t border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-footer-bg)] py-14 text-[color:var(--sf-accent)]">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:grid-cols-2 sm:px-8 lg:grid-cols-4 lg:gap-12">
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:grid-cols-2 sm:px-8 lg:grid-cols-4 lg:gap-12 @sm/storefront:grid-cols-2 @sm/storefront:px-8 @lg/storefront:grid-cols-4 @lg/storefront:gap-12">
         <div>
           <p className="font-sans text-lg font-bold">{config.shopName}</p>
           <p className="mt-3 font-sans text-sm leading-relaxed text-[color:var(--sf-accent-text-65)]">

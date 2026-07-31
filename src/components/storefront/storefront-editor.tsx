@@ -4,9 +4,22 @@ import Link from "next/link";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { ImageUploadField } from "@/components/storefront/image-upload-field";
+import {
+  STOREFRONT_COLLECTION_PAGE_META,
+  collectionPageSelectionId,
+  mergeCollectionPages,
+  parseCollectionPageSelectionId,
+} from "@/lib/storefront-collection-pages";
+import {
+  STOREFRONT_DEFAULT_MEDIA,
+  defaultInstagramImageUrl,
+  defaultPromoImageUrl,
+} from "@/lib/storefront-default-media";
 import { STOREFRONT_THEME_DEFINITIONS } from "@/lib/storefront-themes";
 import { isReservedStorefrontPageSlug } from "@/lib/storefront-reserved-slugs";
 import type {
+  StorefrontCollectionPageConfig,
+  StorefrontCollectionPageId,
   StorefrontConfig,
   StorefrontCustomPage,
   StorefrontFeature,
@@ -14,6 +27,7 @@ import type {
   StorefrontLink,
   StorefrontPromoCard,
   StorefrontSection,
+  StorefrontShopChromeConfig,
   StorefrontThemeId,
 } from "@/types/storefront";
 
@@ -44,8 +58,9 @@ type StorefrontEditorProps = {
   onChange: (next: StorefrontConfig) => void;
   /** Lets the parent resize the shell (e.g. hide preview) when a section is open vs. the list. */
   onCustomizeModeChange?: (mode: StorefrontCustomizeMode) => void;
-  /** Notify parent when Homepage vs a custom page is selected (for live preview). */
-  onSelectedPageChange?: (pageId: "home" | string) => void;
+  /** Controlled page selection (home / collection:* / custom page id). */
+  selectedPageId: string;
+  onSelectedPageChange: (pageId: string) => void;
   /** Shown next to Return on small screens while the preview column is hidden. */
   previewHref?: string;
   sectionEditTarget?: {
@@ -302,6 +317,11 @@ const SECTION_LIBRARY: Array<{
     description: "Frequently asked questions.",
   },
   {
+    type: "contact",
+    label: "Contact form",
+    description: "Channels + message form for a Contact page.",
+  },
+  {
     type: "contactCta",
     label: "Contact CTA",
     description: "WhatsApp or contact call-to-action.",
@@ -328,7 +348,7 @@ function newSection(type: StorefrontSection["type"]): StorefrontSection {
       return {
         id,
         type,
-        imageUrl: "",
+        imageUrl: STOREFRONT_DEFAULT_MEDIA.hero,
         heading: "New page hero",
         subheading: "Tell customers what this page is about.",
         primaryCta: { label: "Shop collection", href: "@shop" },
@@ -348,7 +368,7 @@ function newSection(type: StorefrontSection["type"]): StorefrontSection {
         type,
         eyebrow: "Just landed",
         title: "New arrivals",
-        viewAll: { label: "Shop all new", href: "@shop" },
+        viewAll: { label: "Shop all new", href: "@shop/new" },
         limit: 4,
       };
     case "sale":
@@ -358,8 +378,8 @@ function newSection(type: StorefrontSection["type"]): StorefrontSection {
         eyebrow: "Sale",
         title: "On sale now",
         description: "Hand-picked deals while stocks last.",
-        viewAll: { label: "Shop all sale", href: "@shop" },
-        imageUrl: "",
+        viewAll: { label: "Shop all sale", href: "@shop/sale" },
+        imageUrl: STOREFRONT_DEFAULT_MEDIA.saleBanner,
         limit: 4,
       };
     case "shopByCategory":
@@ -377,7 +397,7 @@ function newSection(type: StorefrontSection["type"]): StorefrontSection {
         title: "Special offer",
         description: "Highlight a launch, sale, or seasonal promotion.",
         buttonLabel: "Shop now",
-        imageUrl: "",
+        imageUrl: defaultPromoImageUrl(0),
         href: "@shop",
       };
     case "textImage":
@@ -387,7 +407,7 @@ function newSection(type: StorefrontSection["type"]): StorefrontSection {
         eyebrow: "Story",
         title: "Add your story",
         body: "Use this section to explain your brand, service, or product range.",
-        imageUrl: "",
+        imageUrl: STOREFRONT_DEFAULT_MEDIA.textImage,
         imagePosition: "right",
         cta: { label: "Learn more", href: "#" },
       };
@@ -398,18 +418,18 @@ function newSection(type: StorefrontSection["type"]): StorefrontSection {
         title: "Why shop with us",
         items: [
           {
-            title: "Fast service",
-            description: "Help customers understand why ordering is easy.",
-            icon: "check",
-          },
-          {
-            title: "Reliable delivery",
-            description: "Explain pickup, shipping, or local fulfilment.",
+            title: "Free shipping & returns",
+            description: "Easy online returns on eligible orders.",
             icon: "truck",
           },
           {
+            title: "Secure checkout",
+            description: "Card payments are encrypted and secure.",
+            icon: "check",
+          },
+          {
             title: "Helpful support",
-            description: "Mention WhatsApp support or personal service.",
+            description: "Message us anytime — we reply fast.",
             icon: "sparkle",
           },
         ],
@@ -447,10 +467,10 @@ function newSection(type: StorefrontSection["type"]): StorefrontSection {
         title: "Follow us",
         handle: "@yourstore",
         images: [
-          { imageUrl: "", href: "#" },
-          { imageUrl: "", href: "#" },
-          { imageUrl: "", href: "#" },
-          { imageUrl: "", href: "#" },
+          { imageUrl: defaultInstagramImageUrl(0), href: "#" },
+          { imageUrl: defaultInstagramImageUrl(1), href: "#" },
+          { imageUrl: defaultInstagramImageUrl(2), href: "#" },
+          { imageUrl: defaultInstagramImageUrl(3), href: "#" },
         ],
       };
     case "newsletter":
@@ -486,7 +506,23 @@ function newSection(type: StorefrontSection["type"]): StorefrontSection {
         title: "Need help?",
         body: "Message us and we will help you choose the right products.",
         buttonLabel: "Contact us",
-        href: "#",
+        href: "@page:contact",
+      };
+    case "contact":
+      return {
+        id,
+        type,
+        eyebrow: "Contact",
+        title: "Get in touch",
+        body: "Prefer WhatsApp for a quick reply, or leave a message and we’ll follow up by email.",
+        email: "hello@example.com",
+        hours: "Mon–Fri, 9:00–17:00",
+        note: "Usually replies within a few hours.",
+        whatsappLabel: "Chat on WhatsApp",
+        whatsappHref: "",
+        formTitle: "Send a message",
+        submitLabel: "Send message",
+        successMessage: "Thanks — we have your message and will reply soon.",
       };
   }
 }
@@ -496,6 +532,7 @@ export function StorefrontEditor({
   config,
   onChange,
   onCustomizeModeChange,
+  selectedPageId,
   onSelectedPageChange,
   previewHref,
   sectionEditTarget,
@@ -503,7 +540,6 @@ export function StorefrontEditor({
   const [section, setSection] = useState<StorefrontEditorSectionId>(
     EDITOR_SECTIONS[0].id,
   );
-  const [selectedPageId, setSelectedPageId] = useState<"home" | string>("home");
   const [focusedSectionId, setFocusedSectionId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -512,14 +548,10 @@ export function StorefrontEditor({
   }, [onCustomizeModeChange]);
 
   useEffect(() => {
-    onSelectedPageChange?.(selectedPageId);
-  }, [selectedPageId, onSelectedPageChange]);
-
-  useEffect(() => {
     if (!sectionEditTarget) return;
     const timeoutId = window.setTimeout(() => {
       setSection("pages");
-      setSelectedPageId(sectionEditTarget.pageId);
+      onSelectedPageChange(sectionEditTarget.pageId);
       setFocusedSectionId(sectionEditTarget.id);
       window.requestAnimationFrame(() => {
         document
@@ -529,7 +561,11 @@ export function StorefrontEditor({
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [sectionEditTarget]);
+  }, [sectionEditTarget, onSelectedPageChange]);
+
+  function setSelectedPageId(pageId: string) {
+    onSelectedPageChange(pageId);
+  }
 
   function patch(partial: Partial<StorefrontConfig>) {
     onChange({ ...config, ...partial });
@@ -581,14 +617,46 @@ export function StorefrontEditor({
     patch({ [key]: list });
   }
 
+  const selectedCollectionPageId =
+    parseCollectionPageSelectionId(selectedPageId);
+  const collectionPages = mergeCollectionPages(config.collectionPages);
+  const selectedCollectionPage = selectedCollectionPageId
+    ? collectionPages[selectedCollectionPageId]
+    : null;
   const selectedPage =
-    selectedPageId === "home"
+    selectedPageId === "home" || selectedCollectionPageId
       ? null
       : config.pages.find((p) => p.id === selectedPageId) ?? null;
   const editableSections =
-    selectedPageId === "home" ? config.sections : selectedPage?.sections ?? [];
+    selectedPageId === "home"
+      ? config.sections
+      : selectedCollectionPageId
+        ? []
+        : selectedPage?.sections ?? [];
+
+  function patchCollectionPage(
+    id: StorefrontCollectionPageId,
+    partial: Partial<StorefrontCollectionPageConfig>,
+  ) {
+    patch({
+      collectionPages: {
+        ...collectionPages,
+        [id]: { ...collectionPages[id], ...partial },
+      },
+    });
+  }
+
+  function patchSelectedCollectionChrome(
+    partial: Partial<StorefrontShopChromeConfig>,
+  ) {
+    if (!selectedCollectionPageId || !selectedCollectionPage) return;
+    patchCollectionPage(selectedCollectionPageId, {
+      chrome: { ...selectedCollectionPage.chrome, ...partial },
+    });
+  }
 
   function patchSections(nextSections: StorefrontSection[]) {
+    if (selectedCollectionPageId) return;
     if (selectedPageId === "home") {
       patch({ sections: nextSections });
       return;
@@ -603,7 +671,7 @@ export function StorefrontEditor({
   }
 
   function patchSelectedPage(partial: Partial<StorefrontCustomPage>) {
-    if (selectedPageId === "home") return;
+    if (selectedPageId === "home" || selectedCollectionPageId) return;
     patch({
       pages: config.pages.map((page) =>
         page.id === selectedPageId ? { ...page, ...partial } : page,
@@ -625,7 +693,7 @@ export function StorefrontEditor({
   }
 
   function removeSelectedPage() {
-    if (selectedPageId === "home") return;
+    if (selectedPageId === "home" || selectedCollectionPageId) return;
     patch({ pages: config.pages.filter((page) => page.id !== selectedPageId) });
     setSelectedPageId("home");
   }
@@ -1070,8 +1138,118 @@ export function StorefrontEditor({
               label="Link"
               id={`sec-${item.id}-href`}
               value={item.href}
+              placeholder="@page:contact"
               onChange={(e) =>
                 patchSectionAt(index, { ...item, href: e.target.value })
+              }
+            />
+          </div>
+        );
+      case "contact":
+        return (
+          <div className="space-y-3">
+            <Field
+              label="Eyebrow"
+              id={`sec-${item.id}-eyebrow`}
+              value={item.eyebrow}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, eyebrow: e.target.value })
+              }
+            />
+            <Field
+              label="Title"
+              id={`sec-${item.id}-title`}
+              value={item.title}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, title: e.target.value })
+              }
+            />
+            <TextAreaField
+              label="Body"
+              id={`sec-${item.id}-body`}
+              value={item.body}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, body: e.target.value })
+              }
+            />
+            <Field
+              label="Email"
+              id={`sec-${item.id}-email`}
+              value={item.email}
+              placeholder="hello@example.com"
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, email: e.target.value })
+              }
+            />
+            <Field
+              label="Hours"
+              id={`sec-${item.id}-hours`}
+              value={item.hours}
+              placeholder="Mon–Fri, 9:00–17:00"
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, hours: e.target.value })
+              }
+            />
+            <TextAreaField
+              label="Note"
+              id={`sec-${item.id}-note`}
+              value={item.note}
+              placeholder="Usually replies within a few hours."
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, note: e.target.value })
+              }
+            />
+            <Field
+              label="WhatsApp label"
+              id={`sec-${item.id}-wa-label`}
+              value={item.whatsappLabel}
+              onChange={(e) =>
+                patchSectionAt(index, {
+                  ...item,
+                  whatsappLabel: e.target.value,
+                })
+              }
+            />
+            <Field
+              label="WhatsApp link (optional)"
+              id={`sec-${item.id}-wa-href`}
+              value={item.whatsappHref}
+              placeholder="Leave empty to use Footer WhatsApp number"
+              onChange={(e) =>
+                patchSectionAt(index, {
+                  ...item,
+                  whatsappHref: e.target.value,
+                })
+              }
+            />
+            <Field
+              label="Form title"
+              id={`sec-${item.id}-form-title`}
+              value={item.formTitle}
+              onChange={(e) =>
+                patchSectionAt(index, { ...item, formTitle: e.target.value })
+              }
+            />
+            <Field
+              label="Submit label"
+              id={`sec-${item.id}-submit`}
+              value={item.submitLabel}
+              onChange={(e) =>
+                patchSectionAt(index, {
+                  ...item,
+                  submitLabel: e.target.value,
+                })
+              }
+            />
+            <TextAreaField
+              label="Success message"
+              id={`sec-${item.id}-success`}
+              value={item.successMessage}
+              onChange={(e) =>
+                patchSectionAt(index, {
+                  ...item,
+                  successMessage: e.target.value,
+                })
               }
             />
           </div>
@@ -1108,7 +1286,7 @@ export function StorefrontEditor({
             <OptionalHeroCtaEditor
               label="View all button"
               link={item.viewAll}
-              defaultLink={{ label: "Shop all new", href: "@shop" }}
+              defaultLink={{ label: "Shop all new", href: "@shop/new" }}
               idPrefix={`sec-${item.id}-view-all`}
               onChange={(next) =>
                 patchSectionAt(index, { ...item, viewAll: next })
@@ -1179,7 +1357,7 @@ export function StorefrontEditor({
             <OptionalHeroCtaEditor
               label="View all button"
               link={item.viewAll}
-              defaultLink={{ label: "Shop all sale", href: "@shop" }}
+              defaultLink={{ label: "Shop all sale", href: "@shop/sale" }}
               idPrefix={`sec-${item.id}-view-all`}
               onChange={(next) =>
                 patchSectionAt(index, { ...item, viewAll: next })
@@ -1645,6 +1823,23 @@ export function StorefrontEditor({
               >
                 Homepage
               </button>
+              {STOREFRONT_COLLECTION_PAGE_META.map((page) => {
+                const id = collectionPageSelectionId(page.id);
+                return (
+                  <button
+                    key={page.id}
+                    type="button"
+                    onClick={() => setSelectedPageId(id)}
+                    className={`rounded border px-3 py-2 font-sans text-xs font-semibold ${
+                      selectedPageId === id
+                        ? "border-primary-blue bg-primary-blue text-white"
+                        : "border-primary-blue/15 bg-white text-primary-blue"
+                    }`}
+                  >
+                    {page.label}
+                  </button>
+                );
+              })}
               {config.pages.map((page) => (
                 <button
                   key={page.id}
@@ -1661,6 +1856,156 @@ export function StorefrontEditor({
               ))}
             </div>
           </div>
+
+          {selectedCollectionPage && selectedCollectionPageId ? (
+            <div className="rounded border border-primary-blue/10 bg-blue-gray/15 p-3">
+              <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
+                System page
+              </p>
+              <p className="mt-2 font-sans text-[11px] leading-relaxed text-muted-foreground">
+                Banner for{" "}
+                <span className="font-medium text-primary-blue/80">
+                  {
+                    STOREFRONT_COLLECTION_PAGE_META.find(
+                      (p) => p.id === selectedCollectionPageId,
+                    )?.pathHint
+                  }
+                </span>
+                . Product grid comes from your catalog filters — edit copy and
+                image here.
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <Field
+                  label="Eyebrow"
+                  id={`collection-${selectedCollectionPageId}-eyebrow`}
+                  value={selectedCollectionPage.eyebrow}
+                  placeholder="Shop"
+                  onChange={(e) =>
+                    patchCollectionPage(selectedCollectionPageId, {
+                      eyebrow: e.target.value,
+                    })
+                  }
+                />
+                <Field
+                  label="Title"
+                  id={`collection-${selectedCollectionPageId}-title`}
+                  value={selectedCollectionPage.title}
+                  placeholder="All products"
+                  onChange={(e) =>
+                    patchCollectionPage(selectedCollectionPageId, {
+                      title: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="mt-3">
+                <TextAreaField
+                  label="Description"
+                  id={`collection-${selectedCollectionPageId}-description`}
+                  value={selectedCollectionPage.description}
+                  placeholder="Browse the full collection…"
+                  onChange={(e) =>
+                    patchCollectionPage(selectedCollectionPageId, {
+                      description: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="mt-3">
+                <ImageUploadField
+                  label="Banner image"
+                  workspaceId={workspaceId}
+                  value={selectedCollectionPage.imageUrl}
+                  onChange={(url) =>
+                    patchCollectionPage(selectedCollectionPageId, {
+                      imageUrl: url,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="mt-4 border-t border-primary-blue/10 pt-3">
+                <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
+                  Catalog filters
+                </p>
+                <p className="mt-1 font-sans text-[11px] leading-relaxed text-muted-foreground">
+                  Only for this page — other shop pages keep their own settings.
+                </p>
+                <div className="mt-3 space-y-2">
+                  {(
+                    [
+                      ["showSearch", "Search bar"],
+                      ["showCollectionTabs", "Collection tabs"],
+                      ["showCategoryFilters", "Category filters"],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <label
+                      key={key}
+                      className="flex cursor-pointer items-center gap-2 font-sans text-xs text-primary-blue"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedCollectionPage.chrome[key]}
+                        onChange={(e) =>
+                          patchSelectedCollectionChrome({
+                            [key]: e.target.checked,
+                          })
+                        }
+                        className="rounded border-primary-blue/30"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+                {selectedCollectionPage.chrome.showCollectionTabs ? (
+                  <div className="mt-3 space-y-2 border-t border-primary-blue/10 pt-3">
+                    <p className="font-sans text-[11px] text-muted-foreground">
+                      Visible tabs
+                    </p>
+                    {(
+                      [
+                        ["tabAll", "All"],
+                        ["tabNew", "New arrivals"],
+                        ["tabSale", "Sale"],
+                      ] as const
+                    ).map(([key, label]) => (
+                      <label
+                        key={key}
+                        className="flex cursor-pointer items-center gap-2 font-sans text-xs text-primary-blue"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedCollectionPage.chrome[key]}
+                          onChange={(e) =>
+                            patchSelectedCollectionChrome({
+                              [key]: e.target.checked,
+                            })
+                          }
+                          className="rounded border-primary-blue/30"
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              {previewHref ? (
+                <Link
+                  href={
+                    selectedCollectionPageId === "shop"
+                      ? `${previewHref}/shop`
+                      : `${previewHref}/shop?collection=${selectedCollectionPageId}`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-flex font-sans text-xs font-semibold text-primary-blue underline decoration-primary-blue/30 underline-offset-2"
+                >
+                  Preview page
+                </Link>
+              ) : null}
+            </div>
+          ) : null}
 
           {selectedPage ? (
             <div className="rounded border border-primary-blue/10 bg-blue-gray/15 p-3">
@@ -1692,16 +2037,6 @@ export function StorefrontEditor({
                   /{selectedPage.slug || "…"}
                 </span>
               </p>
-              <p className="mt-2 font-sans text-[11px] leading-relaxed text-muted-foreground">
-                Tip: for a New arrivals or Sale page, add that section, raise
-                <span className="font-medium text-primary-blue/80"> Products to show </span>
-                (e.g. 48), and use{" "}
-                <span className="font-medium text-primary-blue/80">
-                  Products only
-                </span>{" "}
-                to hide section titles/buttons. Put products on sale via
-                compare-at price in Products.
-              </p>
               {previewHref ? (
                 <Link
                   href={`${previewHref}/${selectedPage.slug}`}
@@ -1722,6 +2057,7 @@ export function StorefrontEditor({
             </div>
           ) : null}
 
+          {!selectedCollectionPageId ? (
           <div className="rounded border border-primary-blue/10 bg-white p-3">
             <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
               Section library
@@ -1744,6 +2080,7 @@ export function StorefrontEditor({
               ))}
             </div>
           </div>
+          ) : null}
           </>
           ) : (
           <div className="rounded border border-primary-blue/10 bg-white p-3">
@@ -1767,6 +2104,7 @@ export function StorefrontEditor({
           </div>
           )}
 
+          {!selectedCollectionPageId ? (
           <div>
             <div>
               <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
@@ -1820,6 +2158,7 @@ export function StorefrontEditor({
               ))}
             </div>
           </div>
+          ) : null}
         </div>
       );
       break;

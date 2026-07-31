@@ -102,6 +102,23 @@ export type StorefrontContactCtaSection = StorefrontSectionBase & {
   href: string;
 };
 
+/** Full contact page block: channels + local form (no backend yet). */
+export type StorefrontContactSection = StorefrontSectionBase & {
+  type: "contact";
+  eyebrow: string;
+  title: string;
+  body: string;
+  email: string;
+  hours: string;
+  note: string;
+  whatsappLabel: string;
+  /** Empty → build from config.whatsappNumber. */
+  whatsappHref: string;
+  formTitle: string;
+  submitLabel: string;
+  successMessage: string;
+};
+
 export type StorefrontTestimonial = {
   quote: string;
   name: string;
@@ -191,6 +208,7 @@ export type StorefrontSection =
   | StorefrontFeaturesSection
   | StorefrontFaqSection
   | StorefrontContactCtaSection
+  | StorefrontContactSection
   | StorefrontTestimonialsSection
   | StorefrontInstagramGallerySection
   | StorefrontNewsletterSection
@@ -203,6 +221,36 @@ export type StorefrontCustomPage = {
   title: string;
   slug: string;
   sections: StorefrontSection[];
+};
+
+/** Editable banner copy for system shop routes (`/shop`, `?collection=new|sale`). */
+export type StorefrontCollectionPageConfig = {
+  eyebrow: string;
+  title: string;
+  description: string;
+  /** Optional banner image; falls back to template default media. */
+  imageUrl: string;
+  /** Per-page search / tabs / category filters. */
+  chrome: StorefrontShopChromeConfig;
+};
+
+export type StorefrontCollectionPages = {
+  shop: StorefrontCollectionPageConfig;
+  new: StorefrontCollectionPageConfig;
+  sale: StorefrontCollectionPageConfig;
+};
+
+export type StorefrontCollectionPageId = keyof StorefrontCollectionPages;
+
+/** Shop page chrome: search, collection tabs, category chips (per collection page). */
+export type StorefrontShopChromeConfig = {
+  showSearch: boolean;
+  showCollectionTabs: boolean;
+  showCategoryFilters: boolean;
+  /** Individual tab visibility (when `showCollectionTabs` is true). */
+  tabAll: boolean;
+  tabNew: boolean;
+  tabSale: boolean;
 };
 
 export type StorefrontConfig = {
@@ -237,6 +285,8 @@ export type StorefrontConfig = {
   features: [StorefrontFeature, StorefrontFeature, StorefrontFeature];
   sections: StorefrontSection[];
   pages: StorefrontCustomPage[];
+  /** System Shop / New / Sale collection pages (editable in Pages). */
+  collectionPages: StorefrontCollectionPages;
 
   footerBlurb: string;
   footerShopLinks: StorefrontLink[];

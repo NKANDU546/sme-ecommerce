@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { usePreviewCartOptional } from "@/contexts/preview-cart-context";
 import { StorefrontButton } from "@/components/storefront/storefront-button";
+import { StorefrontImagePlaceholder } from "@/components/storefront/storefront-image-placeholder";
 import { ClassicBoutiqueSiteFooter } from "@/components/storefront/templates/classic-boutique-site-footer";
 import { ClassicBoutiqueSiteHeader } from "@/components/storefront/templates/classic-boutique-site-header";
 import type { CatalogProductPdpView } from "@/lib/catalog-product-pdp";
@@ -73,7 +74,7 @@ export function StorefrontProductDetailView({
   const mainSrc = images[activeImage] ?? "";
 
   return (
-    <div className="min-h-full">
+    <div className="@container/storefront min-h-full">
       <ClassicBoutiqueSiteHeader config={config} basePath={basePath} workspaceId={workspaceId} />
 
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-8">
@@ -124,9 +125,7 @@ export function StorefrontProductDetailView({
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center bg-[color:var(--sf-hero-placeholder)] font-sans text-sm text-[color:var(--sf-accent-text-45)]">
-                  No image
-                </div>
+                <StorefrontImagePlaceholder label={product.title} />
               )}
             </div>
             {images.length > 1 ? (
@@ -179,25 +178,16 @@ export function StorefrontProductDetailView({
               {product.summary}
             </p>
 
-            <div className="mt-8 rounded-xl border border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-promo-section-bg)] px-4 py-4 sm:px-5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--sf-accent-text-45)]">
-                    Configuration
-                  </p>
-                  <p className="mt-1 font-sans text-sm font-medium text-[color:var(--sf-accent)]">
-                    {product.configurationLabel}
-                  </p>
-                </div>
-                <StorefrontButton
-                  type="button"
-                  variant="text"
-                  className="shrink-0 text-sm"
-                >
-                  Change
-                </StorefrontButton>
+            {product.configurationLabel.trim() ? (
+              <div className="mt-8 rounded-xl border border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-promo-section-bg)] px-4 py-4 sm:px-5">
+                <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--sf-accent-text-45)]">
+                  Details
+                </p>
+                <p className="mt-1 font-sans text-sm font-medium text-[color:var(--sf-accent)]">
+                  {product.configurationLabel}
+                </p>
               </div>
-            </div>
+            ) : null}
 
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <div className="inline-flex items-center rounded-lg border border-[color:var(--sf-accent-border-15)] bg-white">
@@ -335,15 +325,6 @@ export function StorefrontProductDetailView({
                   </p>
                 </div>
               ))}
-            </div>
-            <div className="mt-10 flex justify-end">
-              <StorefrontButton
-                type="button"
-                size="sm"
-                className="rounded-lg uppercase tracking-wide"
-              >
-                Download whitepaper
-              </StorefrontButton>
             </div>
           </div>
         </section>

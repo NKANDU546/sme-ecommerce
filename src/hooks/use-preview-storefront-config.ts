@@ -15,8 +15,14 @@ export function usePreviewStorefrontConfig(
   workspaceId: string,
 ): PreviewStorefrontLoad {
   const signedIn = Boolean(getStoredAuthSession()?.accessToken);
-  const draftQuery = useStorefrontDraft(workspaceId, signedIn);
+  const draftQuery = useStorefrontDraft(
+    workspaceId,
+    signedIn && Boolean(workspaceId.trim()),
+  );
 
+  if (!workspaceId.trim()) {
+    return { status: "error", message: "Missing workspace." };
+  }
   if (!signedIn) {
     return { status: "unauthenticated" };
   }

@@ -21,6 +21,15 @@ export type PreviewCartContextValue = {
   itemCount: number;
   isDrawerOpen: boolean;
   isAddedModalOpen: boolean;
+  /** Backend cart id when `mode === "api"`. */
+  cartId?: string | null;
+  /** `api` = backend cart (public store). `preview` = browser-only draft cart. */
+  mode?: "preview" | "api";
+  isBusy?: boolean;
+  cartError?: string | null;
+  /** Backend totals when `mode === "api"`. */
+  subtotalLabel?: string | null;
+  totalLabel?: string | null;
   openDrawer: () => void;
   closeDrawer: () => void;
   toggleDrawer: () => void;
@@ -41,9 +50,11 @@ export type PreviewCartContextValue = {
   decrementLine: (productId: string) => void;
   removeLine: (productId: string) => void;
   clearCart: () => void;
+  /** Drop local cart id after checkout converts the cart (API mode). */
+  discardCartSession?: () => void;
 };
 
-const PreviewCartContext = createContext<PreviewCartContextValue | null>(
+export const PreviewCartContext = createContext<PreviewCartContextValue | null>(
   null,
 );
 
@@ -183,6 +194,7 @@ export function PreviewCartProvider({
       lines,
       lastAddedLine,
       itemCount,
+      mode: "preview",
       isDrawerOpen,
       isAddedModalOpen,
       openDrawer,

@@ -10,14 +10,27 @@ import { StorefrontThemeRoot } from "@/components/storefront/storefront-theme-ro
 import { usePreviewStorefrontConfig } from "@/hooks/use-preview-storefront-config";
 
 type PreviewCartDrawerProps = {
-  workspaceId: string;
+  workspaceId?: string;
+  /** Public store root, e.g. `/s/bridge-labs`. When set, cart links use this path. */
+  basePath?: string;
 };
 
-export function PreviewCartDrawer({ workspaceId }: PreviewCartDrawerProps) {
+export function PreviewCartDrawer({
+  workspaceId,
+  basePath,
+}: PreviewCartDrawerProps) {
   const cart = usePreviewCartOptional();
-  const storefront = usePreviewStorefrontConfig(workspaceId);
+  const storefront = usePreviewStorefrontConfig(workspaceId ?? "");
   const config =
-    storefront.status === "ready" ? storefront.config : null;
+    Boolean(workspaceId?.trim()) && storefront.status === "ready"
+      ? storefront.config
+      : null;
+
+  const cartHref = basePath
+    ? `${basePath.replace(/\/$/, "")}/cart`
+    : workspaceId
+      ? `/preview/${workspaceId}/cart`
+      : "/cart";
 
   useEffect(() => {
     if (!cart?.isDrawerOpen && !cart?.isAddedModalOpen) return;
@@ -170,14 +183,34 @@ export function PreviewCartDrawer({ workspaceId }: PreviewCartDrawerProps) {
         <div className="shrink-0 border-t border-border bg-muted/40 px-5 py-4">
           <p className="font-sans text-xs text-muted-foreground">
             <span className="font-semibold text-[color:var(--sf-accent)]">{itemCount}</span>{" "}
-            {itemCount === 1 ? "item" : "items"} · preview only (saved in this
-            browser)
+            {itemCount === 1 ? "item" : "items"}
+            {cart.mode === "api" ? (
+              <>
+                {cart.totalLabel ? (
+                  <>
+                    {" "}
+                    · Total{" "}
+                    <span className="font-semibold text-[color:var(--sf-accent)]">
+                      {cart.totalLabel}
+                    </span>
+                  </>
+                ) : null}
+                {cart.isBusy ? " · Updating…" : null}
+              </>
+            ) : (
+              <> · preview only (saved in this browser)</>
+            )}
           </p>
+          {cart.cartError ? (
+            <p className="mt-2 font-sans text-xs text-red-700" role="alert">
+              {cart.cartError}
+            </p>
+          ) : null}
           <div className="mt-3 flex flex-wrap gap-2">
             <StorefrontButton
               type="button"
               onClick={clearCart}
-              disabled={lines.length === 0}
+              disabled={lines.length === 0 || Boolean(cart.isBusy)}
               variant="outline"
               size="sm"
               className="rounded-lg"
@@ -195,7 +228,7 @@ export function PreviewCartDrawer({ workspaceId }: PreviewCartDrawerProps) {
               </StorefrontButton>
             ) : (
               <StorefrontButtonLink
-                href={`/preview/${workspaceId}/cart`}
+                href={cartHref}
                 onClick={closeDrawer}
                 size="sm"
                 className="rounded-lg"
@@ -321,7 +354,7 @@ export function PreviewCartDrawer({ workspaceId }: PreviewCartDrawerProps) {
                     Continue Shopping
                   </StorefrontButton>
                   <StorefrontButtonLink
-                    href={`/preview/${workspaceId}/cart`}
+                    href={cartHref}
                     onClick={closeAddedModal}
                     className="rounded-none"
                   >

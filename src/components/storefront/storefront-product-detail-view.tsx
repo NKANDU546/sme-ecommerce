@@ -256,7 +256,7 @@ export function StorefrontProductDetailView({
             ) : null}
             {!cart ? (
               <p className="mt-2 font-sans text-xs text-[color:var(--sf-accent-text-55)]">
-                Cart controls appear on the public preview URL for this workspace.
+                Cart is available on the live store URL and customer preview.
               </p>
             ) : null}
 

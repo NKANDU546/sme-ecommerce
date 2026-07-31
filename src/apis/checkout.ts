@@ -66,3 +66,35 @@ export async function getOrderConfirmation(
   if (!parsed.ok) return parsed;
   return { ok: true, data: parsed.data };
 }
+
+/**
+ * POST /public/storefronts/{storeSlug}/orders/{orderId}/payment/verify
+ * Asks backend to confirm Paystack transaction (backup when webhook is slow/missed).
+ */
+export async function verifyOrderPayment(
+  storeSlug: string,
+  orderId: string,
+  reference?: string,
+): Promise<OrderResult> {
+  const url = `${storeBase(storeSlug)}/orders/${encodeURIComponent(orderId)}/payment/verify`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: publicHeaders(true),
+      body: JSON.stringify(reference ? { reference } : {}),
+      cache: "no-store",
+    });
+  } catch {
+    return networkFailure(
+      "Could not verify payment. Check your connection and try again.",
+    );
+  }
+
+  const parsed = await parseApiEnvelope<Order>(
+    res,
+    "Payment could not be verified.",
+  );
+  if (!parsed.ok) return parsed;
+  return { ok: true, data: parsed.data };
+}

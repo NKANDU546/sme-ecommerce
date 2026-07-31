@@ -1,16 +1,19 @@
 # Step 06: Cart, Checkout, Orders, And Payments
 
 This step turns the public storefront into a transactional store. It is split
-into two sub-steps to allow independent delivery.
+into two sub-steps that can ship in sequence (or in parallel once 06A APIs exist):
+
+- **06A** — Cart, checkout, orders (no card charge yet).
+- **06B** — Paystack **Subaccounts**: merchant payout setup in our dashboard +
+  customer card/mobile-money payment.
 
 ---
 
-## Step 06A: Cart And Checkout (Current Priority)
+## Step 06A: Cart And Checkout
 
 This sub-step adds anonymous carts, server-side totals, checkout order creation,
-and order confirmation. Payment is intentionally excluded here — merchants
-can collect payment manually (bank transfer, WhatsApp) while Step 06B is
-being built.
+and order confirmation. Online payment is Step 06B; until then orders stay
+`pending_payment` / `unpaid` (manual collection is fine for testing).
 
 ### Goal
 
@@ -36,9 +39,8 @@ After Step 06A the backend should be able to:
 
 #### Not Included In 06A
 
-- Payment provider integration.
+- Payment provider integration (see 06B Subaccounts).
 - Payment table.
-- Merchant Paystack keys.
 - Refunds.
 - Inventory reservations.
 - Shipping carrier integrations.
@@ -247,9 +249,20 @@ Step 06A is complete when:
 7. Add tests for totals, active product validation, and order snapshots.
 8. Migrate frontend cart from memory to backend cart APIs.
 
-### Implementation Status — Complete
+### Frontend migration (public store)
 
-Step 06A is fully implemented and compiles clean.
+Public `/s/{storeSlug}` cart is API-backed:
+
+- `ApiCartProvider` creates/loads cart via `POST/GET …/carts`
+- Add / update / remove call public cart item APIs; totals come from the backend
+- `/s/{slug}/cart` — cart + checkout form → `POST …/checkout`
+- `/s/{slug}/order/{orderId}` — confirmation via `GET …/orders/{orderId}`
+- Merchant `/preview/{workspaceId}` cart stays browser-local for draft UX
+
+### Implementation Status — Backend Complete / FE Public Wired
+
+Step 06A backend is fully implemented and compiles clean. Public storefront FE
+uses backend cart/checkout APIs (see Frontend migration above).
 
 #### Entities And Enums
 
@@ -297,47 +310,88 @@ snapshot independence, zero shipping, and order total formula.
 
 ---
 
-## Step 06B: Payments (Later)
+## Step 06B: Payments (Paystack Subaccounts)
 
-This sub-step adds Paystack payment integration. It builds on the orders
-created in Step 06A.
+This sub-step adds card/mobile-money checkout via Paystack. It builds on the
+orders created in Step 06A.
+
+**Primary model: platform Paystack account + Subaccounts per merchant.**
+Merchants do **not** copy secret keys from paystack.com. They enter bank
+details in **our** dashboard; we create/manage a Paystack subaccount via API.
 
 ### Goal
 
 After Step 06B the backend should be able to:
 
-- Accept a Paystack secret key per merchant workspace.
-- Initialize a payment for an existing order.
-- Verify payment via a Paystack webhook.
+- Let a merchant connect payout banking details from the SME dashboard.
+- Create/update a Paystack **subaccount** for that workspace via API.
+- Initialize a payment for an existing order (using the **platform** Paystack
+  secret key + the merchant's `subaccount_code`).
+- Optionally keep a platform fee (percentage or flat) via split / `percentage_charge`.
+- Verify payment via a Paystack webhook (platform webhook secret).
 - Mark the order as paid after confirmed payment.
 
-### Payment Architecture
+### How Paystack Subaccounts Work
 
-Each merchant configures their own Paystack account. The merchant copies
-their Paystack secret key and public key into the dashboard Settings page.
-The backend stores these keys per workspace and uses them when initializing
-payments for that store's orders. Money goes directly to the merchant's
-linked bank account via Paystack.
+```text
+┌─────────────────────┐         ┌──────────────────────┐
+│  SME platform       │  API    │  Paystack (1 master  │
+│  (our backend)      │────────▶│   integration)       │
+│  secret key (env)   │         │                      │
+└─────────┬───────────┘         │  Subaccount A (shop) │
+          │                     │  Subaccount B (shop) │
+          │ create subaccount   └──────────┬───────────┘
+          │ bank + business name           │
+          ▼                                │ settlement
+   Merchant fills form                     ▼
+   in OUR Settings                   Merchant bank account
+```
 
-Future improvement: migrate to Paystack Connect or Subaccounts so merchants
-can connect their account with one click instead of copying keys manually.
+1. **Platform** has one Paystack business account (keys in env / secrets manager).
+2. Merchant opens **Settings → Payments** in our dashboard and submits:
+   - Business / shop name
+   - Bank code (from Paystack List Banks)
+   - Account number
+   - Optional contact email / phone
+3. Backend calls Paystack `POST /subaccount` with the **platform** secret key.
+4. Paystack returns `subaccount_code` (e.g. `ACCT_xxxxx`). We store it on the workspace.
+5. Customer checks out → we create an order (06A) → `POST …/pay` calls Paystack
+   `transaction/initialize` with:
+   - Platform secret key
+   - Amount, email, reference (= our payment/order id)
+   - `subaccount: ACCT_xxxxx` so settlement goes to the merchant
+   - Optional platform fee (`percentage_charge` on the subaccount, or
+     `transaction_charge` / Transaction Splits if we take a cut)
+6. Customer pays on Paystack (redirect or Popup).
+7. Paystack sends `charge.success` to **our** webhook URL.
+8. We verify signature with the **platform** webhook secret, then mark
+   payment + order as paid.
+
+Merchant UX: stay inside SME Settings. They never paste API keys.
+They may still complete Paystack KYC / bank verification for that subaccount
+when Paystack requires it (country-dependent) — but onboarding is driven by us.
+
+Docs: [Split payments / subaccounts](https://paystack.com/docs/payments/split-payments/),
+[Subaccount API](https://paystack.com/docs/api/subaccount/).
 
 ### Scope
 
 #### Included In 06B
 
-- Merchant Paystack key settings (stored per workspace).
+- Platform Paystack keys in env (not per merchant).
+- Workspace payment / payout settings (bank details + stored `subaccount_code`).
+- Create / update Paystack subaccount from dashboard APIs.
 - Payment table.
-- Payment initialization API.
-- Paystack webhook endpoint.
-- Dashboard Settings page for payment keys.
+- Payment initialization API (with `subaccount`).
+- Single Paystack webhook endpoint (platform).
+- Dashboard Settings → Payments UI (bank form, status: connected / needs bank).
 
 #### Not Included In 06B
 
-- Refunds.
-- Paystack Connect / OAuth flow.
-- Paystack Subaccounts.
-- Multi-provider support.
+- Refunds (can follow).
+- Per-merchant Paystack secret keys (explicitly rejected for this product).
+- Multi-provider support (Stripe, etc.).
+- Full OAuth “Paystack Connect” if unavailable in target markets — Subaccounts cover the same merchant payout need.
 
 ### Database Changes
 
@@ -347,23 +401,45 @@ can connect their account with one click instead of copying keys manually.
 | --- | --- | --- |
 | `id` | UUID/string | Primary key |
 | `order_id` | UUID/string | FK to `orders.id` |
-| `provider` | string | Example `paystack` |
-| `provider_reference` | string | Unique provider reference |
+| `workspace_id` | UUID/string | FK (for webhook routing / audit) |
+| `provider` | string | `paystack` |
+| `provider_reference` | string | Our unique reference sent to Paystack |
+| `provider_access_code` | string nullable | Paystack access code if using Popup |
 | `amount` | integer | Minor units |
-| `currency` | string | Example `ZAR` |
-| `status` | string | `initialized`, `paid`, `failed`, `refunded` |
+| `currency` | string | Example `ZAR` / `NGN` / `GHS` |
+| `status` | string | `initialized`, `paid`, `failed`, `abandoned` |
 | `raw_response` | JSON nullable | Provider response |
 | `created_at` | timestamp | Created date |
 | `updated_at` | timestamp | Updated date |
 
-#### Update `workspaces`
+#### Update `workspaces` (or `workspace_payment_settings`)
 
 | Column | Type | Notes |
 | --- | --- | --- |
-| `paystack_secret_key` | string nullable | Encrypted at rest |
-| `paystack_public_key` | string nullable | Safe to expose to frontend |
+| `paystack_subaccount_code` | string nullable | From Paystack create/update subaccount |
+| `payout_business_name` | string nullable | Shown to Paystack |
+| `payout_bank_code` | string nullable | Paystack bank code |
+| `payout_account_number` | string nullable | Bank account number |
+| `payout_account_name` | string nullable | Verified name from Paystack resolve (optional) |
+| `paystack_subaccount_status` | string | `not_connected`, `pending`, `active`, `failed` |
+| `platform_fee_percent` | decimal nullable | Optional override; else global default |
 
-### Payment APIs
+**Do not store** merchant `paystack_secret_key`. Platform keys live in env only:
+`PAYSTACK_SECRET_KEY`, `PAYSTACK_PUBLIC_KEY`, `PAYSTACK_WEBHOOK_SECRET`.
+
+### Merchant Payment Settings APIs
+
+```http
+GET  /workspaces/{workspaceId}/payments/settings
+PUT  /workspaces/{workspaceId}/payments/settings
+POST /workspaces/{workspaceId}/payments/connect   # create/update Paystack subaccount
+GET  /payments/paystack/banks?country=…            # proxy List Banks (auth)
+```
+
+`PUT` saves draft bank fields. `POST …/connect` calls Paystack create or update
+subaccount and persists `paystack_subaccount_code` + status.
+
+### Customer Payment APIs
 
 #### Initialize Payment
 
@@ -371,8 +447,9 @@ can connect their account with one click instead of copying keys manually.
 POST /public/storefronts/{storeSlug}/checkout/{orderId}/pay
 ```
 
-Uses the workspace Paystack keys to create a payment with Paystack.
-Returns the Paystack authorization URL for redirect.
+Requires workspace `paystack_subaccount_status = active` (or equivalent).
+Uses platform secret key + workspace `subaccount_code`.
+Returns authorization URL and/or access code for Popup.
 
 #### Payment Webhook
 
@@ -380,44 +457,90 @@ Returns the Paystack authorization URL for redirect.
 POST /payments/paystack/webhook
 ```
 
-Receives Paystack event. Must verify the HMAC signature using the workspace
-secret key before updating payment and order status.
+Verify HMAC with **platform** webhook secret. Match `data.reference` to
+`payments.provider_reference`. Mark payment + order paid on `charge.success`.
 
 ### Payment Rules
 
-- Order must exist and have status `pending_payment` before payment can be initialized.
-- Set payment status to `initialized` after provider initialization.
-- Mark order as `paid` and payment as `paid` only after verified webhook.
-- Store raw provider response for debugging.
-- Never expose the merchant Paystack secret key to the public API or frontend.
+- Order must exist and have status `pending_payment` before payment init.
+- Refuse pay if merchant has no active subaccount (`PAYMENT_NOT_CONFIGURED`).
+- Set payment status to `initialized` after Paystack initialize succeeds.
+- Mark order `paid` / payment `paid` only after verified webhook (or verified
+  `transaction/verify` as a backup).
+- Never expose platform or any Paystack secret to the frontend (public key only).
+- Idempotent webhook handling (same reference paid twice → no double apply).
 
 ### Error Codes
 
 - `PAYMENT_INITIALIZATION_FAILED`
 - `PAYMENT_WEBHOOK_INVALID`
-- `PAYMENT_KEYS_NOT_CONFIGURED`
+- `PAYMENT_NOT_CONFIGURED`
+- `PAYSTACK_SUBACCOUNT_FAILED`
+- `INVALID_BANK_ACCOUNT`
 
 ### Acceptance Criteria
 
 Step 06B is complete when:
 
-- Merchants can save Paystack keys in their dashboard settings.
-- Payment initialization redirects the customer to Paystack.
-- Paystack webhook verifies the signature and marks the order paid.
-- Order confirmation reflects updated payment status after payment.
+- Merchant connects payout bank details in Settings without leaving SME for API keys.
+- Backend creates a Paystack subaccount and stores the code on the workspace.
+- Customer payment init uses platform keys + merchant subaccount.
+- Webhook marks the order paid; confirmation page reflects paid status.
+- Workspace without subaccount cannot accept online payment (clear UI + API error).
 
 ### Suggested Implementation Order
 
-1. Add Paystack key fields to `workspaces`.
-2. Add `payments` migration.
-3. Add Dashboard Settings page for payment keys.
-4. Implement payment initialization API using workspace Paystack keys.
-5. Implement Paystack webhook with HMAC signature verification.
-6. Add tests for signature verification, initialized/paid status transitions.
+1. Platform Paystack env + webhook route skeleton.
+2. Workspace payout settings + List Banks proxy.
+3. Create/update Subaccount on connect.
+4. `payments` migration + initialize payment with `subaccount`.
+5. Webhook verification + order paid transition (idempotent).
+6. Dashboard Settings → Payments UI.
+7. Public checkout “Pay with Paystack” button after order create.
+8. Tests: subaccount connect, init with subaccount, webhook signature, idempotency.
+
+### Frontend (SME app)
+
+- **Settings → Payments**: bank form, save, Connect with Paystack (`…/payments/connect`)
+- **Order confirmation** (`/s/{slug}/order/{id}`): **Pay with Paystack** →
+  `POST …/checkout/{orderId}/pay` → redirect to `authorizationUrl`
+- Confirmation page polls until `paymentStatus === paid` after return from Paystack
 
 ---
 
 ## What Comes Next
 
-Step 07 adds the merchant orders dashboard so merchants can view, manage,
-and fulfil incoming orders.
+### Merchant Orders Dashboard (frontend wired)
+
+The SME dashboard **Orders** section calls:
+
+```http
+GET /api/v1/workspaces/{workspaceId}/orders
+GET /api/v1/workspaces/{workspaceId}/orders/{orderId}
+```
+
+Auth: merchant JWT. Return camelCase order objects (same shape as public order
+confirmation), newest first. List may be a bare array or `{ "items": [...] }`.
+
+If this endpoint is not implemented yet on the backend, the Orders panel will
+show the API error until it ships.
+
+### Customer thank-you + Paystack callback
+
+After Paystack success, customers return to:
+
+`/s/{storeSlug}/order/{orderId}?reference=...`
+
+Pay init accepts optional body `{ "callbackUrl": "..." }` so Paystack redirects
+back to that thank-you page (business name, order number, email message).
+
+### Email
+
+Confirmation copy tells the customer an email **will be sent** when
+`customerEmail` is present. **Sending that email is a backend responsibility**
+(after `charge.success` / order paid) — not handled by the Next.js app.
+
+---
+
+Step 07 (broader) may still add fulfilment status updates and WhatsApp order
+flows on top of this list.

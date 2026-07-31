@@ -3,6 +3,7 @@ export const DASHBOARD_NAV_IDS = [
   "orders",
   "products",
   "storefront",
+  "templates",
   "customers",
   "analytics",
   "inventory",
@@ -30,6 +31,7 @@ export type DashboardSectionConfig = {
     | "orders"
     | "box"
     | "store"
+    | "layout"
     | "users"
     | "chart"
     | "inventory"
@@ -96,15 +98,32 @@ export const DASHBOARD_SECTIONS: readonly DashboardSectionConfig[] = [
   },
   {
     id: "storefront",
-    label: "Storefront",
+    label: "My Store",
     icon: "store",
-    panelTitle: "Storefront",
+    panelTitle: "My Store",
     panelSubtitle:
-      "Your public shop and order hub—branded, clear, and ready to share.",
+      "Edit your public shop—branding, pages, and publish when you are ready.",
     empty: {
       title: "No storefront published",
       description:
-        "Open Storefront to customize your draft, then use Go Live to publish a snapshot customers will eventually see.",
+        "Choose a template, customize your draft, then publish so customers can visit your store.",
+      action: {
+        kind: "section",
+        label: "Browse templates",
+        section: "templates",
+      },
+    },
+  },
+  {
+    id: "templates",
+    label: "Templates",
+    icon: "layout",
+    panelTitle: "Templates",
+    panelSubtitle:
+      "Preview layouts and choose one for your store. Your current template stays selected.",
+    empty: {
+      title: "No templates",
+      description: "Templates will appear here when available.",
     },
   },
   {

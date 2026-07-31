@@ -105,6 +105,8 @@ export function usePublishStorefront(workspaceId: string) {
           queryKey: workspaceQueryKey(workspaceId),
         }),
         queryClient.invalidateQueries({ queryKey: workspacesQueryKey }),
+        // Public `/s/{slug}` pages use this key — clear so customers see the new snapshot.
+        queryClient.invalidateQueries({ queryKey: ["public-storefront"] }),
       ]);
     },
   });
@@ -135,6 +137,7 @@ export function useUnpublishStorefront(workspaceId: string) {
           queryKey: workspaceQueryKey(workspaceId),
         }),
         queryClient.invalidateQueries({ queryKey: workspacesQueryKey }),
+        queryClient.invalidateQueries({ queryKey: ["public-storefront"] }),
       ]);
     },
   });

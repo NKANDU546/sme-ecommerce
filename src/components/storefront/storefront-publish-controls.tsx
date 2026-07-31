@@ -17,6 +17,8 @@ type StorefrontPublishControlsProps = {
   /** Flush pending draft autosave before publishing. */
   flushDraftSave: () => Promise<void>;
   hasUnsavedDraft: boolean;
+  /** Local draft `updatedAt` (ms) — used to flag edits not yet on the live URL. */
+  draftUpdatedAt?: number | null;
 };
 
 /** Fixed locale/timezone so SSR and client render the same label. */
@@ -39,6 +41,7 @@ export function StorefrontPublishControls({
   workspaceId,
   flushDraftSave,
   hasUnsavedDraft,
+  draftUpdatedAt = null,
 }: StorefrontPublishControlsProps) {
   const [showHistory, setShowHistory] = useState(false);
   const [goLiveOpen, setGoLiveOpen] = useState(false);
@@ -73,6 +76,14 @@ export function StorefrontPublishControls({
   const publishedAtLabel = formatPublishedAt(
     publishedQuery.data?.publishedAt ?? null,
   );
+  const publishedAtMs = publishedQuery.data?.publishedAt
+    ? Date.parse(publishedQuery.data.publishedAt)
+    : NaN;
+  const hasUnpublishedChanges =
+    isLive &&
+    typeof draftUpdatedAt === "number" &&
+    Number.isFinite(publishedAtMs) &&
+    draftUpdatedAt > publishedAtMs;
 
   const statusLabel = useMemo(() => {
     if (isLive) return "Live";
@@ -173,6 +184,10 @@ export function StorefrontPublishControls({
             {hasUnsavedDraft ? (
               <span className="font-sans text-[11px] font-medium text-amber-800">
                 Unsaved draft will be saved before publish
+              </span>
+            ) : hasUnpublishedChanges ? (
+              <span className="font-sans text-[11px] font-medium text-amber-800">
+                Draft differs from live — click Publish update
               </span>
             ) : null}
           </div>

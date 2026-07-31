@@ -127,7 +127,7 @@ export function PublicOrderConfirmationClient({
         window.location.assign(result.authorizationUrl);
         return;
       }
-      toast.error("Paystack did not return a payment URL.");
+      toast.error("Payment could not be started. Please try again.");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Could not start payment.",
@@ -263,8 +263,8 @@ export function PublicOrderConfirmationClient({
                 {awaitingPaystack ||
                 returnedFromPaystack ||
                 order.paymentStatus === "initialized"
-                  ? "Confirming your Paystack payment… this page updates automatically."
-                  : "Pay securely with Paystack to confirm this order."}
+                  ? "Confirming your payment… this page updates automatically."
+                  : "Pay securely to confirm this order."}
               </p>
               {canPay ? (
                 <div className="mt-6 space-y-2">
@@ -274,12 +274,10 @@ export function PublicOrderConfirmationClient({
                     disabled={payMutation.isPending}
                     onClick={() => void onPay()}
                   >
-                    {payMutation.isPending
-                      ? "Opening Paystack…"
-                      : "Pay with Paystack"}
+                    {payMutation.isPending ? "Opening payment…" : "Pay now"}
                   </StorefrontButton>
                   <p className="font-sans text-xs text-[color:var(--sf-accent-text-45)]">
-                    Card payment secured by Paystack.
+                    Card payments are encrypted and secure.
                   </p>
                 </div>
               ) : null}

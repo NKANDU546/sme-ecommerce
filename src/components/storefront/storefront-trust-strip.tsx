@@ -10,7 +10,7 @@ const DEFAULT_TRUST: TrustItem[] = [
   },
   {
     title: "Secure checkout",
-    description: "Card payments protected with Paystack.",
+    description: "Card payments are encrypted and secure.",
   },
   {
     title: "Helpful support",

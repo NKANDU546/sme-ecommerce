@@ -424,7 +424,7 @@ function newSection(type: StorefrontSection["type"]): StorefrontSection {
           },
           {
             title: "Secure checkout",
-            description: "Card payments protected with Paystack.",
+            description: "Card payments are encrypted and secure.",
             icon: "check",
           },
           {

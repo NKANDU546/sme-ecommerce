@@ -122,13 +122,18 @@ export function PublicCartCheckoutClient({
     const postalCode = String(form.get("postalCode") ?? "").trim();
     const country = String(form.get("country") ?? "ZA").trim() || "ZA";
 
+    if (!email) {
+      toast.error("Please enter your email address.");
+      return;
+    }
+
     try {
       const order = await checkoutMutation.mutateAsync({
         cartId: cart.cartId,
         customer: {
           name,
           phone,
-          ...(email ? { email } : {}),
+          email,
         },
         shippingAddress: {
           line1,
@@ -141,7 +146,7 @@ export function PublicCartCheckoutClient({
       });
       cart.discardCartSession?.();
       toast.success("Order placed", {
-        description: `Reference ${order.orderNumber}. Continue to Paystack on the next screen.`,
+        description: `Reference ${order.orderNumber}. Continue to payment on the next screen.`,
       });
       router.push(`${basePath}/order/${order.id}`);
     } catch (error) {
@@ -216,7 +221,7 @@ export function PublicCartCheckoutClient({
           </button>
         )}
         <p className="pt-1 text-center font-sans text-[11px] text-[color:var(--sf-accent-text-45)]">
-          You’ll pay securely with Paystack on the next step.
+          You’ll pay securely on the next step.
         </p>
       </div>
     );
@@ -355,7 +360,7 @@ export function PublicCartCheckoutClient({
                   </h2>
                   <p className="mt-2 font-sans text-sm text-[color:var(--sf-accent-text-60)]">
                     Enter your details to place the order. You’ll pay securely
-                    with Paystack next.
+                    next.
                   </p>
                   <div className="mt-7 grid gap-5 sm:grid-cols-2">
                     <label className={`${labelClass} sm:col-span-2`}>
@@ -368,8 +373,9 @@ export function PublicCartCheckoutClient({
                       />
                     </label>
                     <label className={labelClass}>
-                      Email (optional)
+                      Email
                       <input
+                        required
                         type="email"
                         name="email"
                         autoComplete="email"

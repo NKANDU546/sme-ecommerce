@@ -69,13 +69,11 @@ export const DASHBOARD_SECTIONS: readonly DashboardSectionConfig[] = [
     icon: "orders",
     panelTitle: "Orders",
     panelSubtitle:
-      "Track WhatsApp and storefront orders in one list with clear status.",
-    showHeaderCta: true,
-    headerCtaLabel: "New order",
+      "Paid and pending storefront orders — customer email, phone, and totals.",
     empty: {
       title: "No orders yet",
       description:
-        "When customers message or checkout, each order will land here so you can fulfil without losing threads in chat.",
+        "When customers check out on your live store, orders show up here with contact details and payment status.",
       action: {
         kind: "section",
         label: "Make your site",
@@ -179,11 +177,11 @@ export const DASHBOARD_SECTIONS: readonly DashboardSectionConfig[] = [
     label: "Settings",
     icon: "gear",
     panelTitle: "Settings",
-    panelSubtitle: "Workspace, notifications, and how SME Operations behaves.",
+    panelSubtitle: "Payments and workspace preferences.",
     empty: {
-      title: "Settings coming soon",
+      title: "Workspace settings",
       description:
-        "Team access, WhatsApp numbers, and billing will live here. For now your workspace link and profile are enough to explore.",
+        "Connect Paystack payouts under Payments so customers can pay on your live store.",
     },
   },
 ] as const;

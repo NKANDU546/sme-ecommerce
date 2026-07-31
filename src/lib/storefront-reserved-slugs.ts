@@ -3,6 +3,7 @@ export const STOREFRONT_RESERVED_PAGE_SLUGS = new Set([
   "shop",
   "cart",
   "checkout",
+  "order",
   "page",
 ]);
 

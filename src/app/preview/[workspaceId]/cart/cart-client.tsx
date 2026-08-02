@@ -8,8 +8,7 @@ import {
   StorefrontButtonLink,
 } from "@/components/storefront/storefront-button";
 import { StorefrontThemeRoot } from "@/components/storefront/storefront-theme-root";
-import { ClassicBoutiqueSiteFooter } from "@/components/storefront/templates/classic-boutique-site-footer";
-import { ClassicBoutiqueSiteHeader } from "@/components/storefront/templates/classic-boutique-site-header";
+import { StorefrontSiteFooter, StorefrontSiteHeader } from "@/components/storefront/storefront-chrome";
 import { usePreviewStorefrontConfig } from "@/hooks/use-preview-storefront-config";
 import type { PreviewCartLine } from "@/types/preview-cart";
 
@@ -546,7 +545,7 @@ export function CartClient({
   return (
     <StorefrontThemeRoot config={config}>
       <div className="min-h-screen bg-[color:var(--sf-page-bg)]">
-        <ClassicBoutiqueSiteHeader config={config} workspaceId={workspaceId} />
+        <StorefrontSiteHeader config={config} workspaceId={workspaceId} />
 
         <main className="mx-auto max-w-[100%] px-4 py-8 sm:px-8 sm:py-10">
           <h1 className="mb-6 font-sans text-2xl font-bold text-[color:var(--sf-accent)]">
@@ -614,7 +613,7 @@ export function CartClient({
           </form>
         </main>
 
-        <ClassicBoutiqueSiteFooter config={config} workspaceId={workspaceId} />
+        <StorefrontSiteFooter config={config} workspaceId={workspaceId} />
       </div>
     </StorefrontThemeRoot>
   );

@@ -8,8 +8,7 @@ import {
   shopProductBadges,
 } from "@/components/storefront/storefront-product-card";
 import { StorefrontTrustStrip } from "@/components/storefront/storefront-trust-strip";
-import { ClassicBoutiqueSiteFooter } from "@/components/storefront/templates/classic-boutique-site-footer";
-import { ClassicBoutiqueSiteHeader } from "@/components/storefront/templates/classic-boutique-site-header";
+import { StorefrontSiteFooter, StorefrontSiteHeader } from "@/components/storefront/storefront-chrome";
 import { StorefrontThemeRoot } from "@/components/storefront/storefront-theme-root";
 import {
   usePublicProducts,
@@ -176,7 +175,7 @@ function PublicShopBody({ storeSlug }: PublicShopClientProps) {
   return (
     <StorefrontThemeRoot config={config}>
       <div className="@container/storefront min-h-full bg-[color:var(--sf-page-bg)]">
-        <ClassicBoutiqueSiteHeader config={config} basePath={basePath} />
+        <StorefrontSiteHeader config={config} basePath={basePath} />
 
         <section className="relative min-h-[12rem] overflow-hidden @sm/storefront:min-h-[16rem]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -199,7 +198,7 @@ function PublicShopBody({ storeSlug }: PublicShopClientProps) {
           </div>
         </section>
 
-        <StorefrontTrustStrip />
+        <StorefrontTrustStrip templateId={config.templateId} />
 
         <main className="mx-auto max-w-[100%] px-4 py-10 @sm/storefront:px-8 @sm/storefront:py-14">
           <ShopCollectionToolbar
@@ -210,13 +209,14 @@ function PublicShopBody({ storeSlug }: PublicShopClientProps) {
             categories={categories}
             resultCount={products.length}
             chrome={chrome}
+            templateId={config.templateId}
             onSearchChange={setSearchDraft}
             onSearchSubmit={commitSearch}
           />
 
           {products.length === 0 ? (
             <p className="mt-12 font-sans text-sm text-[color:var(--sf-accent-text-55)]">
-              Nothing here yet. Try another collection or clear your search.
+              Nothing here yet. Try another filter or clear your search.
             </p>
           ) : (
             <ul className="mt-8 grid grid-cols-2 gap-4 @md/storefront:grid-cols-3 @md/storefront:gap-6 @xl/storefront:grid-cols-4 @xl/storefront:gap-8">
@@ -228,6 +228,11 @@ function PublicShopBody({ storeSlug }: PublicShopClientProps) {
                     compareAtPriceLabel={p.compareAtPriceLabel}
                     imageUrl={p.imageUrl}
                     category={p.category}
+                    variant={
+                      config.templateId === "minimal-catalogue"
+                        ? "catalogue"
+                        : "default"
+                    }
                     badges={shopProductBadges({
                       collection,
                       onSale: p.onSale,
@@ -235,7 +240,7 @@ function PublicShopBody({ storeSlug }: PublicShopClientProps) {
                       inStock: p.inStock,
                     })}
                     href={`${basePath}/shop/${encodeURIComponent(slug)}`}
-                    ctaLabel="View product"
+                    ctaLabel="View"
                   />
                 </li>
               ))}
@@ -243,7 +248,7 @@ function PublicShopBody({ storeSlug }: PublicShopClientProps) {
           )}
         </main>
 
-        <ClassicBoutiqueSiteFooter config={config} basePath={basePath} />
+        <StorefrontSiteFooter config={config} basePath={basePath} />
       </div>
     </StorefrontThemeRoot>
   );

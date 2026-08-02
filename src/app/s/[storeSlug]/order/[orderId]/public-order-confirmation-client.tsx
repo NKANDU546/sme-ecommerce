@@ -9,8 +9,7 @@ import {
   StorefrontButtonLink,
 } from "@/components/storefront/storefront-button";
 import { StorefrontThemeRoot } from "@/components/storefront/storefront-theme-root";
-import { ClassicBoutiqueSiteFooter } from "@/components/storefront/templates/classic-boutique-site-footer";
-import { ClassicBoutiqueSiteHeader } from "@/components/storefront/templates/classic-boutique-site-header";
+import { StorefrontSiteFooter, StorefrontSiteHeader } from "@/components/storefront/storefront-chrome";
 import { useOrderConfirmation, useVerifyOrderPayment } from "@/hooks/use-checkout";
 import { useInitializeOrderPayment } from "@/hooks/use-payments";
 import { usePublicStorefront } from "@/hooks/use-public-storefront";
@@ -185,7 +184,7 @@ export function PublicOrderConfirmationClient({
   return (
     <StorefrontThemeRoot config={config}>
       <div className="min-h-screen bg-[color:var(--sf-page-bg)]">
-        <ClassicBoutiqueSiteHeader config={config} basePath={basePath} />
+        <StorefrontSiteHeader config={config} basePath={basePath} />
         <main className="mx-auto max-w-3xl px-4 py-10 sm:px-8">
           {isPaid ? (
             <div className="border border-emerald-700/15 bg-emerald-50/80 px-5 py-6 sm:px-8 sm:py-8">
@@ -337,7 +336,7 @@ export function PublicOrderConfirmationClient({
             </StorefrontButtonLink>
           </div>
         </main>
-        <ClassicBoutiqueSiteFooter config={config} basePath={basePath} />
+        <StorefrontSiteFooter config={config} basePath={basePath} />
       </div>
     </StorefrontThemeRoot>
   );

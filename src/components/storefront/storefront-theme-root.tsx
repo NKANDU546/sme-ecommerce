@@ -20,6 +20,7 @@ export function StorefrontThemeRoot({
   const theme = resolveStorefrontTheme(config);
   return (
     <div
+      data-storefront-template={config.templateId || "classic-boutique"}
       className="min-h-full bg-[color:var(--sf-page-bg)] font-sans text-[color:var(--sf-body-text)]"
       style={storefrontThemeCssVars(theme)}
     >

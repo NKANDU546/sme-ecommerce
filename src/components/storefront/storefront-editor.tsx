@@ -1758,37 +1758,42 @@ export function StorefrontEditor({
       body = (
         <div className="space-y-5">
           <p className="font-sans text-xs leading-relaxed text-muted-foreground">
-            Choose the main colour theme for storefront backgrounds, text, and
-            buttons. Data saves in{" "}
-            <span className="font-medium text-primary-blue/80">
-              localStorage
-            </span>{" "}
-            until your API is ready.
+            Pick a colour preset for backgrounds, text, and buttons. Preview
+            updates immediately.
           </p>
           <div>
-            <label
-              htmlFor="sf-theme"
-              className="mb-1.5 block font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60"
-            >
-              Theme preset
-            </label>
-            <select
-              id="sf-theme"
-              className="w-full border border-primary-blue/15 bg-white px-3 py-2 font-sans text-sm outline-none focus-visible:border-primary-blue/35 focus-visible:ring-2 focus-visible:ring-primary-blue/15"
-              value={config.themeId}
-              onChange={(e) =>
-                selectTheme(e.target.value as StorefrontThemeId)
-              }
-            >
-              {Object.values(STOREFRONT_THEME_DEFINITIONS).map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-            <p className="mt-2 font-sans text-[11px] leading-relaxed text-muted-foreground">
-              Switching theme updates the live preview immediately.
+            <p className="mb-2.5 font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-blue/60">
+              Theme presets
             </p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {Object.values(STOREFRONT_THEME_DEFINITIONS).map((t) => {
+                const active = config.themeId === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => selectTheme(t.id)}
+                    className={`flex flex-col gap-2 border px-3 py-3 text-left transition-colors ${
+                      active
+                        ? "border-primary-blue bg-primary-blue/[0.04] ring-1 ring-primary-blue/20"
+                        : "border-primary-blue/12 bg-white hover:border-primary-blue/25"
+                    }`}
+                  >
+                    <span
+                      className="h-8 w-full border border-black/5"
+                      style={{ background: t.defaultAccent }}
+                      aria-hidden
+                    />
+                    <span className="font-sans text-sm font-semibold text-primary-blue">
+                      {t.label}
+                    </span>
+                    <span className="font-sans text-[11px] leading-snug text-muted-foreground">
+                      {t.vibe}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       );

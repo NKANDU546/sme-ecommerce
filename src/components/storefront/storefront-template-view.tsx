@@ -1,5 +1,6 @@
 import { StorefrontThemeRoot } from "@/components/storefront/storefront-theme-root";
 import { ClassicBoutiqueStorefront } from "@/components/storefront/templates/classic-boutique-storefront";
+import { MinimalCatalogueStorefront } from "@/components/storefront/templates/minimal-catalogue-storefront";
 import type { StorefrontConfig, StorefrontSection } from "@/types/storefront";
 
 type StorefrontTemplateViewProps = {
@@ -17,7 +18,7 @@ type StorefrontTemplateViewProps = {
   onRemoveSection?: (index: number) => void;
 };
 
-/** Registry: add cases when new `templateId` values ship from the backend. */
+/** Registry: route by `config.templateId`. */
 export function StorefrontTemplateView({
   config,
   workspaceId,
@@ -29,18 +30,24 @@ export function StorefrontTemplateView({
   onEditSection,
   onRemoveSection,
 }: StorefrontTemplateViewProps) {
-  const body = (
-    <ClassicBoutiqueStorefront
-      config={config}
-      workspaceId={workspaceId}
-      basePath={basePath}
-      isEditing={isEditing}
-      forceViewport={forceViewport}
-      onMoveSection={onMoveSection}
-      onAddSection={onAddSection}
-      onEditSection={onEditSection}
-      onRemoveSection={onRemoveSection}
-    />
-  );
+  const shared = {
+    config,
+    workspaceId,
+    basePath,
+    isEditing,
+    forceViewport,
+    onMoveSection,
+    onAddSection,
+    onEditSection,
+    onRemoveSection,
+  };
+
+  const body =
+    config.templateId === "minimal-catalogue" ? (
+      <MinimalCatalogueStorefront {...shared} />
+    ) : (
+      <ClassicBoutiqueStorefront {...shared} />
+    );
+
   return <StorefrontThemeRoot config={config}>{body}</StorefrontThemeRoot>;
 }

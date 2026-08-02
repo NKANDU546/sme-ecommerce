@@ -23,6 +23,7 @@ type FeaturedProductsSectionProps = {
   section: StorefrontFeaturedProductsSection;
   workspaceId?: string;
   basePath?: string;
+  variant?: "default" | "catalogue";
 };
 
 /** Renders active catalogue products from the API (not storefront config placeholders). */
@@ -30,11 +31,13 @@ export function FeaturedProductsSection({
   section,
   workspaceId,
   basePath,
+  variant = "default",
 }: FeaturedProductsSectionProps) {
   const storeSlug = storeSlugFromBasePath(basePath);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const usePublic = Boolean(storeSlug);
   const limit = resolveStorefrontProductSectionLimit(section.limit);
+  const isCatalogue = variant === "catalogue";
 
   useEffect(() => {
     setAccessToken(getStoredAuthSession()?.accessToken ?? null);
@@ -60,22 +63,47 @@ export function FeaturedProductsSection({
 
   return (
     <section
-      className="mx-auto max-w-[100%] px-4 py-14 sm:px-8 sm:py-20"
+      className={
+        isCatalogue
+          ? "mx-auto max-w-[100%] border-b border-[color:var(--sf-accent)]/10 px-4 py-12 @sm/storefront:px-8 @sm/storefront:py-14"
+          : "mx-auto max-w-[100%] px-4 py-14 sm:px-8 sm:py-20"
+      }
       aria-labelledby={`${section.id}-heading`}
     >
-      <div className="mb-8 flex flex-col gap-3 @sm/storefront:mb-10 @sm/storefront:flex-row @sm/storefront:flex-wrap @sm/storefront:items-end @sm/storefront:justify-between @sm/storefront:gap-4">
-        <h2
-          id={`${section.id}-heading`}
-          className="font-serif text-2xl font-light text-[color:var(--sf-accent)] @sm/storefront:text-3xl"
-        >
-          {section.title}
-        </h2>
+      <div
+        className={
+          isCatalogue
+            ? "mb-8 flex flex-col gap-2 border-b border-[color:var(--sf-accent)]/10 pb-5 @sm/storefront:flex-row @sm/storefront:items-end @sm/storefront:justify-between"
+            : "mb-8 flex flex-col gap-3 @sm/storefront:mb-10 @sm/storefront:flex-row @sm/storefront:flex-wrap @sm/storefront:items-end @sm/storefront:justify-between @sm/storefront:gap-4"
+        }
+      >
+        <div>
+          {isCatalogue ? (
+            <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.24em] text-[color:var(--sf-accent-text-45)]">
+              Products
+            </p>
+          ) : null}
+          <h2
+            id={`${section.id}-heading`}
+            className={
+              isCatalogue
+                ? "mt-2 font-sans text-2xl font-semibold tracking-tight text-[color:var(--sf-accent)] @sm/storefront:text-3xl"
+                : "font-serif text-2xl font-light text-[color:var(--sf-accent)] @sm/storefront:text-3xl"
+            }
+          >
+            {section.title}
+          </h2>
+        </div>
         {section.viewAll ? (
           <SmartLink
             link={section.viewAll}
             workspaceId={workspaceId}
             basePath={basePath}
-            className={storefrontButtonClassName({ variant: "text" })}
+            className={
+              isCatalogue
+                ? "font-sans text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--sf-accent)] underline-offset-4 hover:underline"
+                : storefrontButtonClassName({ variant: "text" })
+            }
           />
         ) : null}
       </div>
@@ -97,7 +125,13 @@ export function FeaturedProductsSection({
           publicMessage="Nothing here yet."
         />
       ) : (
-        <div className="grid grid-cols-2 gap-4 @md/storefront:grid-cols-3 @md/storefront:gap-6 @xl/storefront:grid-cols-4 @xl/storefront:gap-8">
+        <div
+          className={
+            isCatalogue
+              ? "grid grid-cols-2 gap-px bg-[color:var(--sf-accent)]/10 @md/storefront:grid-cols-3 @xl/storefront:grid-cols-4"
+              : "grid grid-cols-2 gap-4 @md/storefront:grid-cols-3 @md/storefront:gap-6 @xl/storefront:grid-cols-4 @xl/storefront:gap-8"
+          }
+        >
           {products.map((p) => {
             const apiItem = query.data?.items.find((i) => i.id === p.id);
             const pathSegment =
@@ -108,22 +142,27 @@ export function FeaturedProductsSection({
                 ? `/preview/${workspaceId}/shop/${encodeURIComponent(p.id)}`
                 : undefined;
             return (
-              <StorefrontProductCard
+              <div
                 key={p.id}
-                title={p.title}
-                priceLabel={p.priceLabel}
-                compareAtPriceLabel={p.compareAtPriceLabel}
-                imageUrl={p.imageUrl}
-                href={productHref}
-                badges={(() => {
-                  const list: Array<"Sold out" | "Sale"> = [];
-                  if (p.inStock === false) list.push("Sold out");
-                  if (p.onSale || p.compareAtPriceLabel?.trim()) list.push("Sale");
-                  return list.length ? list : undefined;
-                })()}
-                showUploadHint={!isPublicStorefrontContext(basePath)}
-                ctaLabel="View product"
-              />
+                className={isCatalogue ? "bg-[color:var(--sf-page-bg)] p-3 @sm/storefront:p-4" : undefined}
+              >
+                <StorefrontProductCard
+                  title={p.title}
+                  priceLabel={p.priceLabel}
+                  compareAtPriceLabel={p.compareAtPriceLabel}
+                  imageUrl={p.imageUrl}
+                  href={productHref}
+                  variant={isCatalogue ? "catalogue" : "default"}
+                  badges={(() => {
+                    const list: Array<"Sold out" | "Sale"> = [];
+                    if (p.inStock === false) list.push("Sold out");
+                    if (p.onSale || p.compareAtPriceLabel?.trim()) list.push("Sale");
+                    return list.length ? list : undefined;
+                  })()}
+                  showUploadHint={!isPublicStorefrontContext(basePath)}
+                  ctaLabel="View"
+                />
+              </div>
             );
           })}
         </div>

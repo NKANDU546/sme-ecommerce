@@ -3,6 +3,11 @@ import {
   type ShopCollectionFilter,
 } from "@/lib/preview-shop-href";
 import { resolveShopChrome } from "@/lib/storefront-collection-pages";
+import {
+  shopCollectionCopyForTemplate,
+  shopToolbarTitle,
+  type ShopCollectionCopy,
+} from "@/lib/shop-collection-copy";
 import type { StorefrontShopChromeConfig } from "@/types/storefront";
 
 type ShopCollectionToolbarProps = {
@@ -13,6 +18,10 @@ type ShopCollectionToolbarProps = {
   categories: Array<{ name: string; slug: string }>;
   resultCount: number;
   chrome?: StorefrontShopChromeConfig;
+  /** Drives All / Just in / Specials vs fashion collection wording. */
+  templateId?: string;
+  /** Optional override; defaults from `templateId`. */
+  copy?: ShopCollectionCopy;
   onSearchChange: (value: string) => void;
   onSearchSubmit: () => void;
   /** When set, tabs/categories use buttons instead of links (editor preview). */
@@ -23,16 +32,6 @@ type ShopCollectionToolbarProps = {
   }) => void;
 };
 
-const TABS: Array<{
-  id: ShopCollectionFilter;
-  label: string;
-  chromeKey: "tabAll" | "tabNew" | "tabSale";
-}> = [
-  { id: "all", label: "All", chromeKey: "tabAll" },
-  { id: "new", label: "New arrivals", chromeKey: "tabNew" },
-  { id: "sale", label: "Sale", chromeKey: "tabSale" },
-];
-
 export function ShopCollectionToolbar({
   basePath,
   collection,
@@ -41,25 +40,37 @@ export function ShopCollectionToolbar({
   categories,
   resultCount,
   chrome: chromeRaw,
+  templateId,
+  copy: copyProp,
   onSearchChange,
   onSearchSubmit,
   onNavigate,
 }: ShopCollectionToolbarProps) {
   const chrome = resolveShopChrome(chromeRaw);
+  const copy = copyProp ?? shopCollectionCopyForTemplate(templateId);
+  const tabs: Array<{
+    id: ShopCollectionFilter;
+    label: string;
+    chromeKey: "tabAll" | "tabNew" | "tabSale";
+  }> = [
+    { id: "all", label: copy.tabAll, chromeKey: "tabAll" },
+    { id: "new", label: copy.tabNew, chromeKey: "tabNew" },
+    { id: "sale", label: copy.tabSale, chromeKey: "tabSale" },
+  ];
   const visibleTabs = chrome.showCollectionTabs
-    ? TABS.filter((tab) => chrome[tab.chromeKey])
+    ? tabs.filter((tab) => chrome[tab.chromeKey])
     : [];
   const showCategories =
     chrome.showCategoryFilters && categories.length > 0;
 
-  const title =
-    collection === "sale"
-      ? "Sale"
-      : collection === "new"
-        ? "New arrivals"
-        : category
-          ? categories.find((c) => c.slug === category)?.name || category
-          : "All products";
+  const title = shopToolbarTitle(
+    copy,
+    collection,
+    category,
+    categories.find((c) => c.slug === category)?.name,
+  );
+
+  const isCatalogue = templateId === "minimal-catalogue";
 
   function go(next: {
     collection: ShopCollectionFilter;
@@ -77,7 +88,13 @@ export function ShopCollectionToolbar({
     <div className="border-b border-[color:var(--sf-accent-border-10)] pb-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="font-serif text-2xl font-light text-[color:var(--sf-accent)] @sm/storefront:text-3xl">
+          <h2
+            className={
+              isCatalogue
+                ? "font-sans text-2xl font-semibold tracking-tight text-[color:var(--sf-accent)] @sm/storefront:text-3xl"
+                : "font-serif text-2xl font-light text-[color:var(--sf-accent)] @sm/storefront:text-3xl"
+            }
+          >
             {title}
           </h2>
           <p className="mt-1 font-sans text-sm text-[color:var(--sf-accent-text-55)]">
@@ -102,7 +119,7 @@ export function ShopCollectionToolbar({
               type="search"
               value={q}
               onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Search products…"
+              placeholder="Search by name or category…"
               className="w-full border-0 bg-[color:var(--sf-nav-hover-wash)] px-4 py-2.5 font-sans text-sm text-[color:var(--sf-accent)] outline-none placeholder:text-[color:var(--sf-accent-text-45)] focus:ring-2 focus:ring-[color:var(--sf-accent)]/15"
             />
             <button
@@ -118,7 +135,7 @@ export function ShopCollectionToolbar({
       {visibleTabs.length > 0 ? (
         <nav
           className="mt-6 flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          aria-label="Collections"
+          aria-label={copy.filtersAriaLabel}
         >
           {visibleTabs.map((tab) => {
             const active = collection === tab.id && !category;
@@ -164,16 +181,14 @@ export function ShopCollectionToolbar({
           {onNavigate ? (
             <button
               type="button"
-              onClick={() =>
-                go({ collection, q: q || undefined })
-              }
+              onClick={() => go({ collection, q: q || undefined })}
               className={`px-3 py-1.5 font-sans text-xs font-semibold transition-colors ${
                 !category
                   ? "text-[color:var(--sf-accent)] underline underline-offset-4"
                   : "text-[color:var(--sf-accent-text-55)] hover:text-[color:var(--sf-accent)]"
               }`}
             >
-              All categories
+              {copy.allCategories}
             </button>
           ) : (
             <a
@@ -187,7 +202,7 @@ export function ShopCollectionToolbar({
                   : "text-[color:var(--sf-accent-text-55)] hover:text-[color:var(--sf-accent)]"
               }`}
             >
-              All categories
+              {copy.allCategories}
             </a>
           )}
           {categories.map((cat) => {

@@ -4,10 +4,8 @@ export const DASHBOARD_NAV_IDS = [
   "products",
   "storefront",
   "templates",
-  "customers",
   "analytics",
   "inventory",
-  "reports",
   "settings",
 ] as const;
 
@@ -32,10 +30,8 @@ export type DashboardSectionConfig = {
     | "box"
     | "store"
     | "layout"
-    | "users"
     | "chart"
     | "inventory"
-    | "report"
     | "gear";
   /** Main column heading */
   panelTitle: string;
@@ -54,13 +50,11 @@ export const DASHBOARD_SECTIONS: readonly DashboardSectionConfig[] = [
     icon: "grid",
     panelTitle: "Dashboard overview",
     panelSubtitle:
-      "Welcome back—here is your business at a glance. More soon.",
-    showHeaderCta: true,
-    headerCtaLabel: "New order",
+      "Paid revenue, orders, and stock health for the last weeks.",
     empty: {
-      title: "Overview in preview",
+      title: "Overview",
       description:
-        "Your workspace is ready. Charts, alerts, and quick actions will appear here as we ship them—bookmark this URL and check back.",
+        "Charts and KPIs appear here once you have storefront orders.",
     },
   },
   {
@@ -125,23 +119,12 @@ export const DASHBOARD_SECTIONS: readonly DashboardSectionConfig[] = [
     },
   },
   {
-    id: "customers",
-    label: "Customers",
-    icon: "users",
-    panelTitle: "Customers",
-    panelSubtitle: "People who buy from you—history and context in one place.",
-    empty: {
-      title: "No customers yet",
-      description:
-        "After first orders, customer profiles will appear here with contact preferences and order history.",
-    },
-  },
-  {
     id: "analytics",
     label: "Analytics",
     icon: "chart",
     panelTitle: "Analytics",
-    panelSubtitle: "See what is selling, stalling, and worth your attention.",
+    panelSubtitle:
+      "Revenue trends, status mix, top products, and category sales.",
     empty: {
       title: "No analytics yet",
       description:
@@ -158,18 +141,6 @@ export const DASHBOARD_SECTIONS: readonly DashboardSectionConfig[] = [
       title: "No stock records yet",
       description:
         "Publish products first, then set quantities here so sold-out states stay honest.",
-    },
-  },
-  {
-    id: "reports",
-    label: "Reports",
-    icon: "report",
-    panelTitle: "Reports",
-    panelSubtitle: "Exports and summaries for you or your accountant.",
-    empty: {
-      title: "No reports yet",
-      description:
-        "Run summaries when you need them—daily sales, VAT-friendly exports, and order logs will be available here.",
     },
   },
   {

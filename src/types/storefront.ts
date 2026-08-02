@@ -1,7 +1,13 @@
-export type StorefrontTemplateId = "classic-boutique";
+export type StorefrontTemplateId = "classic-boutique" | "minimal-catalogue";
 
 /** Visual preset (surfaces + default accent). See `src/lib/storefront-themes.ts`. */
-export type StorefrontThemeId = "blue" | "red";
+export type StorefrontThemeId =
+  | "blue"
+  | "red"
+  | "ink"
+  | "forest"
+  | "teal"
+  | "stone";
 
 export type StorefrontLink = {
   label: string;

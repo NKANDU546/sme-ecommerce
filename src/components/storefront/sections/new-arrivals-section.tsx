@@ -23,16 +23,19 @@ type NewArrivalsSectionProps = {
   section: StorefrontNewArrivalsSection;
   workspaceId?: string;
   basePath?: string;
+  variant?: "default" | "catalogue";
 };
 
 export function NewArrivalsSection({
   section,
   workspaceId,
   basePath,
+  variant = "default",
 }: NewArrivalsSectionProps) {
   const storeSlug = storeSlugFromBasePath(basePath);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const usePublic = Boolean(storeSlug);
+  const isCatalogue = variant === "catalogue";
   const limit = resolveStorefrontProductSectionLimit(section.limit);
   const eyebrow = section.eyebrow?.trim() ?? "";
   const title = section.title.trim();
@@ -74,7 +77,7 @@ export function NewArrivalsSection({
     <section
       className="border-y border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-values-section-bg)] py-14 sm:py-20"
       aria-labelledby={title ? `${section.id}-heading` : undefined}
-      aria-label={title ? undefined : "New arrivals"}
+      aria-label={title ? undefined : isCatalogue ? "Just in" : "New arrivals"}
     >
       <div className="mx-auto max-w-[100%] px-4 sm:px-8">
         {showHeader ? (
@@ -87,7 +90,11 @@ export function NewArrivalsSection({
             {title ? (
               <h2
                 id={`${section.id}-heading`}
-                className={`font-serif text-3xl font-light text-[color:var(--sf-accent)] sm:text-4xl ${
+                className={`${
+                  isCatalogue
+                    ? "font-sans text-2xl font-semibold tracking-tight text-[color:var(--sf-accent)] sm:text-3xl"
+                    : "font-serif text-3xl font-light text-[color:var(--sf-accent)] sm:text-4xl"
+                } ${
                   eyebrow ? "mt-3" : ""
                 }`}
               >

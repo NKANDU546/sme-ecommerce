@@ -170,6 +170,42 @@ Prepare for production:
 
 Send this before production launch.
 
+### Step 09: Merchant Analytics
+
+File: `docs/storefront-backend-step-09-merchant-analytics.md`
+
+Add (backend **in place**):
+
+- `GET …/analytics/summary` — paid revenue, order counts, AOV, stock KPIs
+- `GET …/analytics/timeseries` — daily paid revenue + orders (zeros filled)
+- `GET …/analytics/breakdowns` — status / payment pies, top products, category revenue
+
+Depends on Steps 03 (catalog/stock) and 06 (paid orders). Money in major units.
+Frontend: wire Dashboard / Analytics sections to these APIs.
+
+### Step 10: Merchant AI Assist (OpenAI)
+
+File: `docs/storefront-backend-step-10-ai-assist.md`
+
+Add (server-side OpenAI only):
+
+- `POST …/ai/product-draft` — suggest title / summary / slug / category (no DB write)
+- `POST …/ai/analytics-explain` — bullets from real Step 09 metrics (no client-supplied totals)
+
+Depends on Steps 03 + 09. Feature flag + rate limit per workspace. FE Accept before save.
+
+### Step 11: Second Template — Minimal Catalogue
+
+File: `docs/storefront-backend-step-11-minimal-catalogue.md`
+
+Add built-in template `minimal-catalogue` (multi-category / general retail):
+
+- Backend seed + `draft/reset` support
+- FE renderer, chrome registry, picker catalog entry
+- Neutral default copy (not fashion-only)
+
+Prefer this over Step 10 AI assist when prioritizing merchant adoption beyond clothing.
+
 ## Recommended Timeline
 
 1. Send Step 01 now.
@@ -181,6 +217,9 @@ Send this before production launch.
 7. Send Step 03C for hard inventory once cart/checkout/paid are stable.
 8. Use Step 07 internally for frontend integration.
 9. Use Step 08 as the launch readiness checklist.
+10. Step 09 analytics APIs → dashboard charts UI.
+11. Step 11 second template (`minimal-catalogue`) for non-fashion merchants.
+12. Step 10 AI assist (product draft + analytics explain) when OpenAI key is ready.
 
 ## Parallel Work Option
 

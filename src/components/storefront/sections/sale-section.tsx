@@ -23,16 +23,19 @@ type SaleSectionProps = {
   section: StorefrontSaleSection;
   workspaceId?: string;
   basePath?: string;
+  variant?: "default" | "catalogue";
 };
 
 export function SaleSection({
   section,
   workspaceId,
   basePath,
+  variant = "default",
 }: SaleSectionProps) {
   const storeSlug = storeSlugFromBasePath(basePath);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const usePublic = Boolean(storeSlug);
+  const isCatalogue = variant === "catalogue";
   const limit = resolveStorefrontProductSectionLimit(section.limit);
   const eyebrow = section.eyebrow?.trim() ?? "";
   const title = section.title.trim();
@@ -78,7 +81,7 @@ export function SaleSection({
     <section
       className="mx-auto max-w-[100%] px-4 py-14 sm:px-8 sm:py-20"
       aria-labelledby={title ? `${section.id}-heading` : undefined}
-      aria-label={title ? undefined : "Sale"}
+      aria-label={title ? undefined : isCatalogue ? "Specials" : "Sale"}
     >
       {showHeader ? (
         <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
@@ -92,7 +95,11 @@ export function SaleSection({
               {title ? (
                 <h2
                   id={`${section.id}-heading`}
-                  className={`font-serif text-2xl font-light text-[color:var(--sf-accent)] sm:text-3xl ${
+                  className={`${
+                    isCatalogue
+                      ? "font-sans text-2xl font-semibold tracking-tight text-[color:var(--sf-accent)] sm:text-3xl"
+                      : "font-serif text-2xl font-light text-[color:var(--sf-accent)] sm:text-3xl"
+                  } ${
                     eyebrow ? "mt-2" : ""
                   }`}
                 >
@@ -132,8 +139,12 @@ export function SaleSection({
       ) : products.length === 0 ? (
         <StorefrontSectionEmpty
           basePath={basePath}
-          merchantMessage="No sale products yet. Set a compare-at price higher than the selling price on active products in the Products panel."
-          publicMessage="Nothing on sale right now."
+          merchantMessage="No specials yet. Set a compare-at price higher than the selling price on active products in the Products panel."
+          publicMessage={
+            isCatalogue
+              ? "No specials right now."
+              : "Nothing on sale right now."
+          }
         />
       ) : (
         <div className="grid grid-cols-2 gap-4 @md/storefront:grid-cols-3 @md/storefront:gap-5 @xl/storefront:grid-cols-4 @xl/storefront:gap-6">
@@ -154,12 +165,13 @@ export function SaleSection({
                 compareAtPriceLabel={catalog.compareAtPriceLabel}
                 imageUrl={catalog.imageUrl}
                 href={productHref}
+                variant={isCatalogue ? "catalogue" : "default"}
                 badges={
                   catalog.inStock === false ? ["Sold out", "Sale"] : ["Sale"]
                 }
-                aspect="portrait"
+                aspect={isCatalogue ? "square" : "portrait"}
                 showUploadHint={!isPublicStorefrontContext(basePath)}
-                ctaLabel="Shop sale"
+                ctaLabel={isCatalogue ? "View" : "Shop sale"}
               />
             );
           })}

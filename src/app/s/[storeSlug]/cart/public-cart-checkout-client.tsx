@@ -10,8 +10,7 @@ import {
 } from "@/components/storefront/storefront-button";
 import { StorefrontImagePlaceholder } from "@/components/storefront/storefront-image-placeholder";
 import { StorefrontThemeRoot } from "@/components/storefront/storefront-theme-root";
-import { ClassicBoutiqueSiteFooter } from "@/components/storefront/templates/classic-boutique-site-footer";
-import { ClassicBoutiqueSiteHeader } from "@/components/storefront/templates/classic-boutique-site-header";
+import { StorefrontSiteFooter, StorefrontSiteHeader } from "@/components/storefront/storefront-chrome";
 import { usePreviewCartOptional } from "@/contexts/preview-cart-context";
 import { useCheckout } from "@/hooks/use-checkout";
 import { usePublicStorefront } from "@/hooks/use-public-storefront";
@@ -230,7 +229,7 @@ export function PublicCartCheckoutClient({
   return (
     <StorefrontThemeRoot config={config}>
       <div className="min-h-screen bg-[color:var(--sf-page-bg)] pb-28 lg:pb-0">
-        <ClassicBoutiqueSiteHeader config={config} basePath={basePath} />
+        <StorefrontSiteHeader config={config} basePath={basePath} />
         <main className="w-full px-4 py-8 sm:px-8 sm:py-10">
           <CheckoutSteps step={step} />
           <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
@@ -465,7 +464,7 @@ export function PublicCartCheckoutClient({
           {renderPrimaryActions(true)}
         </div>
 
-        <ClassicBoutiqueSiteFooter config={config} basePath={basePath} />
+        <StorefrontSiteFooter config={config} basePath={basePath} />
       </div>
     </StorefrontThemeRoot>
   );

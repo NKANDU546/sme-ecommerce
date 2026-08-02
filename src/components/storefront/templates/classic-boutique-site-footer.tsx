@@ -1,4 +1,4 @@
-import { ClassicBoutiqueSmartLink } from "@/components/storefront/templates/classic-boutique-smart-link";
+import { StorefrontSmartLink } from "@/components/storefront/storefront-smart-link";
 import type { StorefrontConfig } from "@/types/storefront";
 
 type ClassicBoutiqueSiteFooterProps = {
@@ -28,7 +28,7 @@ export function ClassicBoutiqueSiteFooter({
           <ul className="mt-4 space-y-2 font-sans text-sm">
             {config.footerShopLinks.map((l) => (
               <li key={l.label}>
-                <ClassicBoutiqueSmartLink
+                <StorefrontSmartLink
                   link={l}
                   workspaceId={workspaceId}
                   basePath={basePath}
@@ -45,7 +45,7 @@ export function ClassicBoutiqueSiteFooter({
           <ul className="mt-4 space-y-2 font-sans text-sm">
             {config.footerPolicyLinks.map((l) => (
               <li key={l.label}>
-                <ClassicBoutiqueSmartLink
+                <StorefrontSmartLink
                   link={l}
                   workspaceId={workspaceId}
                   basePath={basePath}
@@ -62,7 +62,7 @@ export function ClassicBoutiqueSiteFooter({
           <ul className="mt-4 space-y-2 font-sans text-sm">
             {config.footerConnectLinks.map((l) => (
               <li key={l.label}>
-                <ClassicBoutiqueSmartLink
+                <StorefrontSmartLink
                   link={l}
                   workspaceId={workspaceId}
                   basePath={basePath}

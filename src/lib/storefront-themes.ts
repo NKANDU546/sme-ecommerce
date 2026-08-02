@@ -6,6 +6,8 @@ export const DEFAULT_STOREFRONT_THEME_ID: StorefrontThemeId = "blue";
 export type StorefrontThemeDefinition = {
   id: StorefrontThemeId;
   label: string;
+  /** Short hint under the swatch in Appearance. */
+  vibe: string;
   /** Used when `config.accentColor` is empty or invalid. */
   defaultAccent: string;
   pageBg: string;
@@ -28,6 +30,7 @@ export const STOREFRONT_THEME_DEFINITIONS: Record<
   blue: {
     id: "blue",
     label: "Blue",
+    vibe: "Classic boutique navy",
     defaultAccent: "#0a2540",
     pageBg: "#ffffff",
     bodyText: "#1a1a1a",
@@ -44,6 +47,7 @@ export const STOREFRONT_THEME_DEFINITIONS: Record<
   red: {
     id: "red",
     label: "Red",
+    vibe: "Bold retail accent",
     defaultAccent: "#b91c1c",
     pageBg: "#fffafa",
     bodyText: "#211818",
@@ -56,6 +60,78 @@ export const STOREFRONT_THEME_DEFINITIONS: Record<
     neutralWashMedium: "rgba(248, 113, 113, 0.16)",
     neutralWashStrong: "rgba(248, 113, 113, 0.24)",
     cartBadgeText: "#ffffff",
+  },
+  /** Cool zinc — used by Minimal Catalogue (not boutique blue/red). */
+  ink: {
+    id: "ink",
+    label: "Ink",
+    vibe: "Neutral catalogue",
+    defaultAccent: "#18181b",
+    pageBg: "#fafafa",
+    bodyText: "#18181b",
+    headerSurface: "rgba(250, 250, 250, 0.94)",
+    promoSectionBg: "#f4f4f5",
+    valuesSectionBg: "#f0f0f1",
+    footerBg: "#e4e4e7",
+    neutralWash: "rgba(24, 24, 27, 0.08)",
+    neutralWashSoft: "rgba(24, 24, 27, 0.04)",
+    neutralWashMedium: "rgba(24, 24, 27, 0.1)",
+    neutralWashStrong: "rgba(24, 24, 27, 0.14)",
+    cartBadgeText: "#fafafa",
+  },
+  /** Deep green — pantry, produce, outdoors, wellness. */
+  forest: {
+    id: "forest",
+    label: "Forest",
+    vibe: "Pantry & wellness",
+    defaultAccent: "#1b4332",
+    pageBg: "#f7faf8",
+    bodyText: "#14261c",
+    headerSurface: "rgba(247, 250, 248, 0.95)",
+    promoSectionBg: "#eef5f0",
+    valuesSectionBg: "#e4efe8",
+    footerBg: "#d7e6dc",
+    neutralWash: "rgba(27, 67, 50, 0.12)",
+    neutralWashSoft: "rgba(27, 67, 50, 0.06)",
+    neutralWashMedium: "rgba(27, 67, 50, 0.1)",
+    neutralWashStrong: "rgba(27, 67, 50, 0.16)",
+    cartBadgeText: "#f7faf8",
+  },
+  /** Fresh teal — general retail / electronics / services. */
+  teal: {
+    id: "teal",
+    label: "Teal",
+    vibe: "Fresh general retail",
+    defaultAccent: "#0f766e",
+    pageBg: "#f6fbfb",
+    bodyText: "#134e4a",
+    headerSurface: "rgba(246, 251, 251, 0.95)",
+    promoSectionBg: "#e8f5f4",
+    valuesSectionBg: "#d9efed",
+    footerBg: "#c5e5e2",
+    neutralWash: "rgba(15, 118, 110, 0.14)",
+    neutralWashSoft: "rgba(15, 118, 110, 0.07)",
+    neutralWashMedium: "rgba(15, 118, 110, 0.12)",
+    neutralWashStrong: "rgba(15, 118, 110, 0.18)",
+    cartBadgeText: "#f6fbfb",
+  },
+  /** Warm stone — hardware, home goods (not fashion cream/terracotta). */
+  stone: {
+    id: "stone",
+    label: "Stone",
+    vibe: "Hardware & home",
+    defaultAccent: "#44403c",
+    pageBg: "#fafaf9",
+    bodyText: "#292524",
+    headerSurface: "rgba(250, 250, 249, 0.95)",
+    promoSectionBg: "#f5f5f4",
+    valuesSectionBg: "#e7e5e4",
+    footerBg: "#d6d3d1",
+    neutralWash: "rgba(68, 64, 60, 0.12)",
+    neutralWashSoft: "rgba(68, 64, 60, 0.05)",
+    neutralWashMedium: "rgba(68, 64, 60, 0.1)",
+    neutralWashStrong: "rgba(68, 64, 60, 0.15)",
+    cartBadgeText: "#fafaf9",
   },
 };
 

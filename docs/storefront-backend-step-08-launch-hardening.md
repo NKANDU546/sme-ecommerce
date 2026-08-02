@@ -249,4 +249,4 @@ Good follow-up features:
 - Merchant order dashboard.
 - Shipping integrations.
 - Discounts/coupons.
-- Analytics.
+- Analytics (see Step 09 — APIs in place; dashboard UI remaining).

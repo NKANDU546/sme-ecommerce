@@ -7,7 +7,7 @@ import {
   shopProductBadges,
 } from "@/components/storefront/storefront-product-card";
 import { StorefrontTrustStrip } from "@/components/storefront/storefront-trust-strip";
-import { ClassicBoutiqueSiteFooter } from "@/components/storefront/templates/classic-boutique-site-footer";
+import { StorefrontSiteFooter, StorefrontSiteHeader } from "@/components/storefront/storefront-chrome";
 import { StorefrontThemeRoot } from "@/components/storefront/storefront-theme-root";
 import { useProducts } from "@/hooks/use-products";
 import { getStoredAuthSession } from "@/lib/auth-login-storage";
@@ -157,7 +157,7 @@ export function StorefrontShopCollectionPreview({
           </div>
         </section>
 
-        <StorefrontTrustStrip />
+        <StorefrontTrustStrip templateId={config.templateId} />
 
         <main className="mx-auto max-w-[100%] px-4 py-8 @sm/storefront:px-8 @sm/storefront:py-10">
           <ShopCollectionToolbar
@@ -168,6 +168,7 @@ export function StorefrontShopCollectionPreview({
             categories={categories}
             resultCount={products.length}
             chrome={chrome}
+            templateId={config.templateId}
             onSearchChange={setSearchDraft}
             onSearchSubmit={() => setCommittedQ(searchDraft.trim())}
             onNavigate={handleNavigate}
@@ -195,6 +196,11 @@ export function StorefrontShopCollectionPreview({
                     compareAtPriceLabel={p.compareAtPriceLabel}
                     imageUrl={p.imageUrl}
                     category={p.category}
+                    variant={
+                      config.templateId === "minimal-catalogue"
+                        ? "catalogue"
+                        : "default"
+                    }
                     badges={shopProductBadges({
                       collection,
                       onSale: p.onSale,
@@ -211,7 +217,7 @@ export function StorefrontShopCollectionPreview({
           )}
         </main>
 
-        <ClassicBoutiqueSiteFooter
+        <StorefrontSiteFooter
           config={config}
           workspaceId={workspaceId}
           basePath={`/preview/${workspaceId}`}

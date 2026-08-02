@@ -12,6 +12,13 @@ import { FeaturedProductsSection } from "@/components/storefront/sections/featur
 import { NewArrivalsSection } from "@/components/storefront/sections/new-arrivals-section";
 import { SaleSection } from "@/components/storefront/sections/sale-section";
 import { ShopByCategorySection } from "@/components/storefront/sections/shop-by-category-section";
+import {
+  MinimalCatalogueContactCta,
+  MinimalCatalogueFaq,
+  MinimalCatalogueFeatures,
+  MinimalCatalogueHero,
+  MinimalCataloguePromo,
+} from "@/components/storefront/templates/minimal-catalogue-sections";
 import { ClassicBoutiqueSmartLink as SmartLink } from "@/components/storefront/templates/classic-boutique-smart-link";
 import { storefrontButtonClassName } from "@/components/storefront/storefront-button";
 import {
@@ -29,13 +36,14 @@ import type {
 const SITE_SECTION_LIBRARY: Array<{
   type: StorefrontSection["type"];
   label: string;
+  catalogueLabel?: string;
 }> = [
   { type: "hero", label: "Hero" },
-  { type: "featuredProducts", label: "Products" },
-  { type: "newArrivals", label: "New arrivals" },
-  { type: "sale", label: "Sale" },
+  { type: "featuredProducts", label: "Products", catalogueLabel: "Popular products" },
+  { type: "newArrivals", label: "New arrivals", catalogueLabel: "Just in" },
+  { type: "sale", label: "Sale", catalogueLabel: "Specials" },
   { type: "shopByCategory", label: "Categories" },
-  { type: "promoBanner", label: "Promo" },
+  { type: "promoBanner", label: "Promo", catalogueLabel: "Special banner" },
   { type: "textImage", label: "Text + image" },
   { type: "features", label: "Benefits" },
   { type: "testimonials", label: "Testimonials" },
@@ -45,6 +53,15 @@ const SITE_SECTION_LIBRARY: Array<{
   { type: "contact", label: "Contact form" },
   { type: "contactCta", label: "Contact CTA" },
 ];
+
+function sectionLibraryLabel(
+  item: (typeof SITE_SECTION_LIBRARY)[number],
+  isCatalogue: boolean,
+): string {
+  return isCatalogue && item.catalogueLabel
+    ? item.catalogueLabel
+    : item.label;
+}
 
 type SectionDragState = {
   index: number;
@@ -119,8 +136,19 @@ export function StorefrontSectionRenderer({
   basePath,
   isEditing = false,
 }: StorefrontSectionRendererProps) {
+  const isCatalogue = config.templateId === "minimal-catalogue";
+
   switch (section.type) {
     case "hero": {
+      if (isCatalogue) {
+        return (
+          <MinimalCatalogueHero
+            section={section}
+            workspaceId={workspaceId}
+            basePath={basePath}
+          />
+        );
+      }
       const heroBg = withDefaultImageUrl(
         section.imageUrl,
         STOREFRONT_DEFAULT_MEDIA.hero,
@@ -182,6 +210,7 @@ export function StorefrontSectionRenderer({
           section={section}
           workspaceId={workspaceId}
           basePath={basePath}
+          variant={isCatalogue ? "catalogue" : "default"}
         />
       );
     case "newArrivals":
@@ -190,6 +219,7 @@ export function StorefrontSectionRenderer({
           section={section}
           workspaceId={workspaceId}
           basePath={basePath}
+          variant={isCatalogue ? "catalogue" : "default"}
         />
       );
     case "sale":
@@ -198,6 +228,7 @@ export function StorefrontSectionRenderer({
           section={section}
           workspaceId={workspaceId}
           basePath={basePath}
+          variant={isCatalogue ? "catalogue" : "default"}
         />
       );
     case "shopByCategory":
@@ -206,9 +237,19 @@ export function StorefrontSectionRenderer({
           section={section}
           workspaceId={workspaceId}
           basePath={basePath}
+          variant={isCatalogue ? "catalogue" : "default"}
         />
       );
     case "promoBanner": {
+      if (isCatalogue) {
+        return (
+          <MinimalCataloguePromo
+            section={section}
+            workspaceId={workspaceId}
+            basePath={basePath}
+          />
+        );
+      }
       const promoSrc = withDefaultImageUrl(
         section.imageUrl,
         defaultPromoImageUrl(0),
@@ -320,6 +361,9 @@ export function StorefrontSectionRenderer({
         </section>
       );
     case "features":
+      if (isCatalogue) {
+        return <MinimalCatalogueFeatures section={section} />;
+      }
       return (
         <section
           className="border-y border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-values-section-bg)]"
@@ -348,6 +392,9 @@ export function StorefrontSectionRenderer({
         </section>
       );
     case "faq":
+      if (isCatalogue) {
+        return <MinimalCatalogueFaq section={section} />;
+      }
       return (
         <section className="px-4 py-14 sm:px-8 sm:py-20">
           <div className="mx-auto max-w-3xl">
@@ -370,6 +417,11 @@ export function StorefrontSectionRenderer({
         </section>
       );
     case "contactCta": {
+      if (isCatalogue) {
+        return (
+          <MinimalCatalogueContactCta section={section} basePath={basePath} />
+        );
+      }
       const href = resolveStorefrontHref(
         { label: section.buttonLabel, href: section.href.trim() || "#" },
         basePath,
@@ -460,6 +512,7 @@ export function StorefrontSections({
   onEditSection?: (sectionId: string) => void;
   onRemoveSection?: (index: number) => void;
 }) {
+  const isCatalogue = config.templateId === "minimal-catalogue";
   const [dragState, setDragState] = useState<SectionDragState | null>(null);
   const dragStateRef = useRef<SectionDragState | null>(null);
   const scrollParentRef = useRef<HTMLElement | Window | null>(null);
@@ -551,9 +604,12 @@ export function StorefrontSections({
   ) {
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
-    const label =
-      SITE_SECTION_LIBRARY.find((item) => item.type === section.type)?.label ??
-      section.type;
+    const libraryItem = SITE_SECTION_LIBRARY.find(
+      (item) => item.type === section.type,
+    );
+    const label = libraryItem
+      ? sectionLibraryLabel(libraryItem, isCatalogue)
+      : section.type;
     scrollParentRef.current = getScrollParent(event.currentTarget);
     pointerPositionRef.current = { x: event.clientX, y: event.clientY };
     setDragState({ index, label, x: event.clientX, y: event.clientY });
@@ -598,7 +654,7 @@ export function StorefrontSections({
                   onClick={() => onAddSection(item.type, index)}
                   className="rounded-full border border-primary-blue/15 bg-white px-2.5 py-1 text-[11px] font-semibold text-primary-blue shadow-sm"
                 >
-                  + {item.label}
+                  + {sectionLibraryLabel(item, isCatalogue)}
                 </button>
               ))}
             </>

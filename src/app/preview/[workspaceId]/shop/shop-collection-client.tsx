@@ -10,8 +10,7 @@ import {
   shopProductBadges,
 } from "@/components/storefront/storefront-product-card";
 import { StorefrontTrustStrip } from "@/components/storefront/storefront-trust-strip";
-import { ClassicBoutiqueSiteFooter } from "@/components/storefront/templates/classic-boutique-site-footer";
-import { ClassicBoutiqueSiteHeader } from "@/components/storefront/templates/classic-boutique-site-header";
+import { StorefrontSiteFooter, StorefrontSiteHeader } from "@/components/storefront/storefront-chrome";
 import { StorefrontThemeRoot } from "@/components/storefront/storefront-theme-root";
 import { useProducts } from "@/hooks/use-products";
 import { usePreviewStorefrontConfig } from "@/hooks/use-preview-storefront-config";
@@ -187,7 +186,7 @@ function ShopCollectionBody({ workspaceId }: ShopCollectionClientProps) {
   return (
     <StorefrontThemeRoot config={config}>
       <div className="@container/storefront min-h-full bg-[color:var(--sf-page-bg)]">
-        <ClassicBoutiqueSiteHeader
+        <StorefrontSiteHeader
           config={config}
           workspaceId={workspaceId}
           basePath={basePath}
@@ -216,7 +215,7 @@ function ShopCollectionBody({ workspaceId }: ShopCollectionClientProps) {
           </div>
         </section>
 
-        <StorefrontTrustStrip />
+        <StorefrontTrustStrip templateId={config.templateId} />
 
         <main className="mx-auto max-w-[100%] px-4 py-10 @sm/storefront:px-8 @sm/storefront:py-14">
           <ShopCollectionToolbar
@@ -227,6 +226,7 @@ function ShopCollectionBody({ workspaceId }: ShopCollectionClientProps) {
             categories={categories}
             resultCount={products.length}
             chrome={chrome}
+            templateId={config.templateId}
             onSearchChange={setSearchDraft}
             onSearchSubmit={commitSearch}
           />
@@ -246,6 +246,11 @@ function ShopCollectionBody({ workspaceId }: ShopCollectionClientProps) {
                     compareAtPriceLabel={p.compareAtPriceLabel}
                     imageUrl={p.imageUrl}
                     category={p.category}
+                    variant={
+                      config.templateId === "minimal-catalogue"
+                        ? "catalogue"
+                        : "default"
+                    }
                     badges={shopProductBadges({
                       collection,
                       onSale: p.onSale,
@@ -254,7 +259,7 @@ function ShopCollectionBody({ workspaceId }: ShopCollectionClientProps) {
                     })}
                     href={`/preview/${workspaceId}/shop/${p.id}`}
                     showUploadHint
-                    ctaLabel={cart ? "View product" : "View"}
+                    ctaLabel="View"
                   />
                 </li>
               ))}
@@ -262,7 +267,7 @@ function ShopCollectionBody({ workspaceId }: ShopCollectionClientProps) {
           )}
         </main>
 
-        <ClassicBoutiqueSiteFooter
+        <StorefrontSiteFooter
           config={config}
           workspaceId={workspaceId}
           basePath={basePath}

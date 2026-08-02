@@ -28,13 +28,20 @@ function previewConfigForTemplate(
   entry: StorefrontTemplateCatalogEntry,
 ): StorefrontConfig | null {
   if (!entry.available) return null;
-  if (entry.id === "classic-boutique") {
-    const config = createInitialStorefrontFromSeed();
+  if (
+    entry.id === "classic-boutique" ||
+    entry.id === "minimal-catalogue"
+  ) {
+    const config = createInitialStorefrontFromSeed(entry.id);
     return {
       ...config,
       templateId: entry.id as StorefrontTemplateId,
-      shopName: "Your shop name",
-      tagline: "Replace this with your brand story.",
+      shopName:
+        entry.id === "minimal-catalogue" ? "Your store" : "Your shop name",
+      tagline:
+        entry.id === "minimal-catalogue"
+          ? "Clear prices. Easy online orders."
+          : "Replace this with your brand story.",
     };
   }
   return null;

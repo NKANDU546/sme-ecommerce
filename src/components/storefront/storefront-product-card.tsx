@@ -15,14 +15,18 @@ type StorefrontProductCardProps = {
   badges?: StorefrontProductBadge[];
   /** Aspect ratio of the media frame. */
   aspect?: "square" | "portrait";
+  /** `catalogue` = denser Minimal Catalogue look. */
+  variant?: "default" | "catalogue";
   showUploadHint?: boolean;
   ctaLabel?: string;
 };
 
-function badgeClassName(kind: string): string {
+function badgeClassName(kind: string, catalogue: boolean): string {
   const key = kind.toLowerCase();
   if (key === "sale") {
-    return "bg-[color:var(--sf-accent)] text-white";
+    return catalogue
+      ? "bg-[color:var(--sf-accent)] text-[color:var(--sf-cart-badge-fg)]"
+      : "bg-[color:var(--sf-accent)] text-white";
   }
   if (key === "new") {
     return "bg-white text-[color:var(--sf-accent)] ring-1 ring-[color:var(--sf-accent)]/25";
@@ -47,11 +51,13 @@ export function StorefrontProductCard({
   badge,
   badges,
   aspect = "square",
+  variant = "default",
   showUploadHint,
   ctaLabel = "View",
 }: StorefrontProductCardProps) {
   const aspectClass =
     aspect === "portrait" ? "aspect-[3/4]" : "aspect-square";
+  const isCatalogue = variant === "catalogue";
 
   const resolvedBadges: string[] = [];
   if (badges?.length) {
@@ -69,15 +75,23 @@ export function StorefrontProductCard({
   const card = (
     <article className="group flex flex-col">
       <div
-        className={`relative ${aspectClass} overflow-hidden bg-[color:var(--sf-card-frame-bg)]`}
+        className={`relative ${aspectClass} overflow-hidden bg-[color:var(--sf-card-frame-bg)] ${
+          isCatalogue ? "border border-[color:var(--sf-accent)]/10" : ""
+        }`}
       >
         {imageUrl.trim() ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={imageUrl}
             alt=""
-            className={`h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04] ${
-              soldOut ? "opacity-55" : ""
+            className={`h-full w-full object-cover ${
+              isCatalogue
+                ? soldOut
+                  ? "opacity-55"
+                  : ""
+                : `transition-transform duration-500 group-hover:scale-[1.04] ${
+                    soldOut ? "opacity-55" : ""
+                  }`
             }`}
           />
         ) : (
@@ -87,18 +101,26 @@ export function StorefrontProductCard({
           />
         )}
         {resolvedBadges.length > 0 ? (
-          <div className="absolute left-3 top-3 z-[1] flex flex-col gap-1.5">
+          <div className="absolute left-2 top-2 z-[1] flex flex-col gap-1">
             {resolvedBadges.map((label) => (
               <span
                 key={label}
-                className={`px-2 py-1 font-sans text-[10px] font-bold uppercase tracking-[0.14em] shadow-sm ${badgeClassName(label)}`}
+                className={`px-1.5 py-0.5 font-sans text-[9px] font-bold uppercase tracking-[0.12em] ${badgeClassName(label, isCatalogue)}`}
               >
-                {label}
+                {isCatalogue
+                  ? label === "Sale"
+                    ? "Special"
+                    : label === "New"
+                      ? "Just in"
+                      : label === "Sold out"
+                        ? "Out of stock"
+                        : label
+                  : label}
               </span>
             ))}
           </div>
         ) : null}
-        {href ? (
+        {href && !isCatalogue ? (
           <span
             className="pointer-events-none absolute inset-x-3 bottom-3 z-[1] translate-y-2 bg-[color:var(--sf-accent)] px-3 py-2 text-center font-sans text-[11px] font-bold uppercase tracking-[0.16em] text-white opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100"
             aria-hidden
@@ -107,20 +129,26 @@ export function StorefrontProductCard({
           </span>
         ) : null}
       </div>
-      <div className="mt-3 flex flex-1 flex-col">
+      <div className={`flex flex-1 flex-col ${isCatalogue ? "mt-2.5" : "mt-3"}`}>
         {category ? (
           <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--sf-accent-text-45)]">
             {category}
           </p>
         ) : null}
         <h3
-          className={`line-clamp-2 font-sans text-[15px] font-semibold text-[color:var(--sf-accent)] ${
-            category ? "mt-1" : ""
+          className={`line-clamp-2 font-sans text-[color:var(--sf-accent)] ${
+            isCatalogue
+              ? `text-sm font-medium ${category ? "mt-0.5" : ""}`
+              : `text-[15px] font-semibold ${category ? "mt-1" : ""}`
           }`}
         >
           {title}
         </h3>
-        <p className="mt-1 flex flex-wrap items-baseline gap-2 font-sans text-sm">
+        <p
+          className={`flex flex-wrap items-baseline gap-2 font-sans ${
+            isCatalogue ? "mt-1 text-[15px]" : "mt-1 text-sm"
+          }`}
+        >
           <span className="font-semibold tabular-nums text-[color:var(--sf-accent)]">
             {priceLabel}
           </span>

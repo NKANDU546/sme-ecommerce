@@ -1,4 +1,5 @@
 import defaultStorefrontJson from "@/data/default-storefront.json";
+import minimalCatalogueStorefrontJson from "@/data/minimal-catalogue-storefront.json";
 import {
   defaultCollectionPages,
   mergeCollectionPages,
@@ -796,8 +797,21 @@ export function getDefaultStorefrontSeed(): StorefrontSeed {
   return { ...(defaultStorefrontJson as unknown as StorefrontSeed) };
 }
 
-export function createInitialStorefrontFromSeed(): StorefrontConfig {
-  const seed = getDefaultStorefrontSeed();
+export function getStorefrontSeedForTemplate(
+  templateId: StorefrontTemplateId | string,
+): StorefrontSeed {
+  if (templateId === "minimal-catalogue") {
+    return {
+      ...(minimalCatalogueStorefrontJson as unknown as StorefrontSeed),
+    };
+  }
+  return getDefaultStorefrontSeed();
+}
+
+export function createInitialStorefrontFromSeed(
+  templateId: StorefrontTemplateId | string = "classic-boutique",
+): StorefrontConfig {
+  const seed = getStorefrontSeedForTemplate(templateId);
   return upgradeStorefrontConfig({
     ...seed,
     updatedAt: Date.now(),

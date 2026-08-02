@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { StorefrontSections } from "@/components/storefront/sections/storefront-section-renderer";
 import { StorefrontThemeRoot } from "@/components/storefront/storefront-theme-root";
-import { ClassicBoutiqueSiteFooter } from "@/components/storefront/templates/classic-boutique-site-footer";
-import { ClassicBoutiqueSiteHeader } from "@/components/storefront/templates/classic-boutique-site-header";
+import { StorefrontSiteFooter, StorefrontSiteHeader } from "@/components/storefront/storefront-chrome";
 import { usePreviewStorefrontConfig } from "@/hooks/use-preview-storefront-config";
 import { isReservedStorefrontPageSlug } from "@/lib/storefront-reserved-slugs";
 
@@ -82,7 +81,7 @@ export function CustomPageClient({ workspaceId, slug }: CustomPageClientProps) {
     return (
       <StorefrontThemeRoot config={config}>
         <div className="flex min-h-screen flex-col bg-[color:var(--sf-page-bg)] @container/storefront">
-          <ClassicBoutiqueSiteHeader config={config} workspaceId={workspaceId} />
+          <StorefrontSiteHeader config={config} workspaceId={workspaceId} />
           <main className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
             <h1 className="font-serif text-3xl font-light text-[color:var(--sf-accent)]">
               Page not found
@@ -94,7 +93,7 @@ export function CustomPageClient({ workspaceId, slug }: CustomPageClientProps) {
               Back to storefront
             </Link>
           </main>
-          <ClassicBoutiqueSiteFooter config={config} workspaceId={workspaceId} />
+          <StorefrontSiteFooter config={config} workspaceId={workspaceId} />
         </div>
       </StorefrontThemeRoot>
     );
@@ -103,14 +102,14 @@ export function CustomPageClient({ workspaceId, slug }: CustomPageClientProps) {
   return (
     <StorefrontThemeRoot config={config}>
       <div className="@container/storefront min-h-full">
-        <ClassicBoutiqueSiteHeader config={config} workspaceId={workspaceId} />
+        <StorefrontSiteHeader config={config} workspaceId={workspaceId} />
         <StorefrontSections
           sections={page.sections}
           config={config}
           workspaceId={workspaceId}
           basePath={`/preview/${workspaceId}`}
         />
-        <ClassicBoutiqueSiteFooter config={config} workspaceId={workspaceId} />
+        <StorefrontSiteFooter config={config} workspaceId={workspaceId} />
       </div>
     </StorefrontThemeRoot>
   );

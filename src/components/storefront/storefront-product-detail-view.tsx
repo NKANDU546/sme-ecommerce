@@ -5,8 +5,7 @@ import { useState } from "react";
 import { usePreviewCartOptional } from "@/contexts/preview-cart-context";
 import { StorefrontButton } from "@/components/storefront/storefront-button";
 import { StorefrontImagePlaceholder } from "@/components/storefront/storefront-image-placeholder";
-import { ClassicBoutiqueSiteFooter } from "@/components/storefront/templates/classic-boutique-site-footer";
-import { ClassicBoutiqueSiteHeader } from "@/components/storefront/templates/classic-boutique-site-header";
+import { StorefrontSiteFooter, StorefrontSiteHeader } from "@/components/storefront/storefront-chrome";
 import type { CatalogProductPdpView } from "@/lib/catalog-product-pdp";
 import type { StorefrontConfig } from "@/types/storefront";
 
@@ -86,7 +85,7 @@ export function StorefrontProductDetailView({
 
   return (
     <div className="@container/storefront min-h-full">
-      <ClassicBoutiqueSiteHeader config={config} basePath={basePath} workspaceId={workspaceId} />
+      <StorefrontSiteHeader config={config} basePath={basePath} workspaceId={workspaceId} />
 
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-8">
         <nav
@@ -354,7 +353,7 @@ export function StorefrontProductDetailView({
         </section>
       </div>
 
-      <ClassicBoutiqueSiteFooter
+      <StorefrontSiteFooter
         config={config}
         workspaceId={workspaceId}
         basePath={basePath ?? (workspaceId ? `/preview/${workspaceId}` : undefined)}

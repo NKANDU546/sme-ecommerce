@@ -18,17 +18,37 @@ const DEFAULT_TRUST: TrustItem[] = [
   },
 ];
 
+const CATALOGUE_TRUST: TrustItem[] = [
+  {
+    title: "Straightforward ordering",
+    description: "Browse, add to cart, and pay online.",
+  },
+  {
+    title: "Stock you can trust",
+    description: "Live quantities before you check out.",
+  },
+  {
+    title: "Secure payments",
+    description: "Card checkout handled safely.",
+  },
+];
+
 type StorefrontTrustStripProps = {
   items?: TrustItem[];
+  /** When `minimal-catalogue`, use goods-friendly trust copy. */
+  templateId?: string;
   className?: string;
 };
 
 /** Compact Darik-style trust row for shop / home — one job, no mega-footer. */
 export function StorefrontTrustStrip({
-  items = DEFAULT_TRUST,
+  items,
+  templateId,
   className = "",
 }: StorefrontTrustStripProps) {
-  const row = items.slice(0, 3);
+  const defaults =
+    templateId === "minimal-catalogue" ? CATALOGUE_TRUST : DEFAULT_TRUST;
+  const row = (items ?? defaults).slice(0, 3);
   return (
     <section
       className={`border-y border-[color:var(--sf-accent-border-10)] bg-[color:var(--sf-values-section-bg)] ${className}`}

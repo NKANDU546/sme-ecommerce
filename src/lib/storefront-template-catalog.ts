@@ -14,7 +14,6 @@ export type StorefrontTemplateCatalogEntry = {
 
 /**
  * Frontend template catalog until `GET /storefront-templates` ships.
- * Only `classic-boutique` can be applied today.
  */
 export const STOREFRONT_TEMPLATE_CATALOG: StorefrontTemplateCatalogEntry[] = [
   {
@@ -27,6 +26,17 @@ export const STOREFRONT_TEMPLATE_CATALOG: StorefrontTemplateCatalogEntry[] = [
     templateVersion: 1,
     previewImageUrl:
       "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=1200&q=80",
+  },
+  {
+    id: "minimal-catalogue",
+    name: "Minimal Catalogue",
+    description:
+      "Product-first layout for any goods — groceries, hardware, beauty, electronics, gifts. Clear prices, honest stock.",
+    vibe: "Multi-category shop",
+    available: true,
+    templateVersion: 1,
+    previewImageUrl:
+      "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1200&q=80",
   },
 ];
 

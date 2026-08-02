@@ -647,12 +647,14 @@ Backend should reject invalid draft or publish requests when:
 
 ### Coming Templates
 
-The dashboard already displays placeholders for:
+- `bold-retail` (placeholder — not shipped)
 
-- `minimal-catalogue`
-- `bold-retail`
+Shipped:
 
-Before enabling them, add:
+- `classic-boutique`
+- `minimal-catalogue` — see `docs/storefront-backend-step-11-minimal-catalogue.md`
+
+Before enabling more templates, add:
 
 - Frontend renderer component
 - Template registry entry in `StorefrontTemplateView`

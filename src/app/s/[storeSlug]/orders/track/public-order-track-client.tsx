@@ -8,8 +8,7 @@ import {
 } from "@/components/storefront/storefront-button";
 import { OrderStatusTimeline } from "@/components/storefront/order-status-timeline";
 import { StorefrontThemeRoot } from "@/components/storefront/storefront-theme-root";
-import { ClassicBoutiqueSiteFooter } from "@/components/storefront/templates/classic-boutique-site-footer";
-import { ClassicBoutiqueSiteHeader } from "@/components/storefront/templates/classic-boutique-site-header";
+import { StorefrontSiteFooter, StorefrontSiteHeader } from "@/components/storefront/storefront-chrome";
 import { useLookupPublicOrder } from "@/hooks/use-checkout";
 import { usePublicStorefront } from "@/hooks/use-public-storefront";
 import { formatMinorAmount } from "@/lib/format-money";
@@ -167,7 +166,7 @@ export function PublicOrderTrackClient({
   return (
     <StorefrontThemeRoot config={config}>
       <div className="@container/storefront min-h-screen bg-[color:var(--sf-page-bg)]">
-        <ClassicBoutiqueSiteHeader config={config} basePath={basePath} />
+        <StorefrontSiteHeader config={config} basePath={basePath} />
         <main className="mx-auto max-w-3xl px-4 py-10 sm:px-8 sm:py-14">
           <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--sf-accent-text-45)]">
             Orders
@@ -239,7 +238,7 @@ export function PublicOrderTrackClient({
             </Link>
           </p>
         </main>
-        <ClassicBoutiqueSiteFooter config={config} basePath={basePath} />
+        <StorefrontSiteFooter config={config} basePath={basePath} />
       </div>
     </StorefrontThemeRoot>
   );

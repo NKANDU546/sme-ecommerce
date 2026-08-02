@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { StorefrontSections } from "@/components/storefront/sections/storefront-section-renderer";
 import { StorefrontThemeRoot } from "@/components/storefront/storefront-theme-root";
-import { ClassicBoutiqueSiteFooter } from "@/components/storefront/templates/classic-boutique-site-footer";
-import { ClassicBoutiqueSiteHeader } from "@/components/storefront/templates/classic-boutique-site-header";
+import { StorefrontSiteFooter, StorefrontSiteHeader } from "@/components/storefront/storefront-chrome";
 import {
   usePublicPage,
   usePublicStorefront,
@@ -92,7 +91,7 @@ export function PublicCustomPageClient({
     return (
       <StorefrontThemeRoot config={config}>
         <div className="flex min-h-screen flex-col bg-[color:var(--sf-page-bg)] @container/storefront">
-          <ClassicBoutiqueSiteHeader config={config} basePath={basePath} />
+          <StorefrontSiteHeader config={config} basePath={basePath} />
           <main className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
             <h1 className="font-serif text-3xl font-light text-[color:var(--sf-accent)]">
               Page not found
@@ -104,7 +103,7 @@ export function PublicCustomPageClient({
               Back to storefront
             </Link>
           </main>
-          <ClassicBoutiqueSiteFooter config={config} basePath={basePath} />
+          <StorefrontSiteFooter config={config} basePath={basePath} />
         </div>
       </StorefrontThemeRoot>
     );
@@ -125,13 +124,13 @@ export function PublicCustomPageClient({
   return (
     <StorefrontThemeRoot config={config}>
       <div className="@container/storefront min-h-full">
-        <ClassicBoutiqueSiteHeader config={config} basePath={basePath} />
+        <StorefrontSiteHeader config={config} basePath={basePath} />
         <StorefrontSections
           sections={resolvedPage.sections}
           config={config}
           basePath={basePath}
         />
-        <ClassicBoutiqueSiteFooter config={config} basePath={basePath} />
+        <StorefrontSiteFooter config={config} basePath={basePath} />
       </div>
     </StorefrontThemeRoot>
   );

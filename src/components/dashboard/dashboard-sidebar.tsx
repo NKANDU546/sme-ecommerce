@@ -41,12 +41,6 @@ function NavIcon({ name }: { name: (typeof DASHBOARD_SECTIONS)[number]["icon"] }
           <path strokeLinecap="round" d="M4 5h16v14H4V5zM4 10h16M10 10v9" />
         </svg>
       );
-    case "users":
-      return (
-        <svg className={common} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" aria-hidden>
-          <path d="M8 11a4 4 0 108 0 4 4 0 10-8 0zM4 20a6 6 0 0116 0" />
-        </svg>
-      );
     case "chart":
       return (
         <svg className={common} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" aria-hidden>
@@ -57,12 +51,6 @@ function NavIcon({ name }: { name: (typeof DASHBOARD_SECTIONS)[number]["icon"] }
       return (
         <svg className={common} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" aria-hidden>
           <path d="M4 7h16v10H4V7zM8 7V5h8v2" />
-        </svg>
-      );
-    case "report":
-      return (
-        <svg className={common} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" aria-hidden>
-          <path d="M6 4h9l3 3v13H6V4zM9 4v4h6M8 12h8M8 16h6" />
         </svg>
       );
     case "gear":

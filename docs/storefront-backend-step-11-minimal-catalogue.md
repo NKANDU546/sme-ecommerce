@@ -101,7 +101,7 @@ Same as today: Templates panel → Choose → `reset` draft with
 - `bold-retail` (third template)
 - HTML / ZIP theme import
 - Per-template section schema fork (same section types)
-- Custom domain / CSS upload
+- Custom domain (see Step 12) / CSS upload
 
 ## Send order
 

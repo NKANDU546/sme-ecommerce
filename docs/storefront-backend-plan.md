@@ -532,15 +532,19 @@ Payment attempts and provider metadata.
 
 ### `custom_domains`
 
-Optional later feature for merchant-owned domains.
+Optional later feature for merchant-owned domains and platform subdomains.
+Full contract: `docs/storefront-backend-step-12-custom-domains.md`.
 
 | Column | Notes |
 | --- | --- |
 | `id` | Primary key |
 | `workspace_id` | FK to `workspaces.id` |
-| `domain` | Unique domain |
-| `status` | `pending`, `verified`, `failed` |
-| `verification_token` | DNS verification token |
+| `hostname` | Unique hostname (no scheme/path) |
+| `kind` | `platform_subdomain` or `custom` |
+| `status` | `pending`, `verifying`, `active`, `failed`, `disabled` |
+| `is_primary` | Used for emails / Paystack return / canonical |
+| `verification_token` | DNS TXT token (custom only) |
+| `tls_status` | `none`, `pending`, `active`, `failed` |
 | `created_at` | Timestamp |
 | `updated_at` | Timestamp |
 
@@ -666,7 +670,8 @@ Before enabling more templates, add:
 
 ## Open Decisions
 
-- Final public URL format: `/s/{storeSlug}`, `/store/{storeSlug}`, or custom subdomains.
+- Final public URL format: `/s/{storeSlug}` now; platform subdomain + custom
+  domain in Step 12 (`docs/storefront-backend-step-12-custom-domains.md`).
 - Whether storefront configs stay mostly JSON or sections/pages become normalized tables.
 - Which backend stack owns database migrations.
 - Which object storage provider will host media.

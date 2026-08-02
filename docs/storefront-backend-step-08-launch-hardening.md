@@ -242,7 +242,7 @@ Step 08 is complete when:
 
 Good follow-up features:
 
-- Custom domains.
+- Custom domains (see Step 12 — platform subdomain then bring-your-own).
 - More templates.
 - Inventory tracking.
 - Product variants.

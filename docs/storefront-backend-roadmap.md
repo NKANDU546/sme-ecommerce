@@ -206,6 +206,20 @@ Add built-in template `minimal-catalogue` (multi-category / general retail):
 
 Prefer this over Step 10 AI assist when prioritizing merchant adoption beyond clothing.
 
+### Step 12: Custom Domains
+
+File: `docs/storefront-backend-step-12-custom-domains.md`
+
+Post-launch branding URLs:
+
+- **12A** Platform subdomain — `{storeSlug}.stores.example.com` (wildcard DNS/TLS)
+- **12B** Merchant custom domain — DNS TXT + CNAME verify, TLS provisioning
+- Host → store resolve, middleware rewrite, primary origin for Paystack/emails
+- Dashboard Domains panel (copy URL / add / verify / set primary / remove)
+
+Depends on Steps 02, 05, 06, and a stable Step 08 path-based live site. Prefer
+after Steps 09 + 11 unless merchants block on branded URLs.
+
 ## Recommended Timeline
 
 1. Send Step 01 now.
@@ -220,6 +234,7 @@ Prefer this over Step 10 AI assist when prioritizing merchant adoption beyond cl
 10. Step 09 analytics APIs → dashboard charts UI.
 11. Step 11 second template (`minimal-catalogue`) for non-fashion merchants.
 12. Step 10 AI assist (product draft + analytics explain) when OpenAI key is ready.
+13. Step 12 custom domains (12A platform subdomain, then 12B bring-your-own).
 
 ## Parallel Work Option
 

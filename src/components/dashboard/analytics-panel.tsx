@@ -348,28 +348,41 @@ function KpiCard({
   hint,
   delta,
   delay = 0,
+  tone = "slate",
 }: {
   label: string;
   value: string;
   hint?: string;
   delta?: ReturnType<typeof formatDelta> | null;
   delay?: number;
+  tone?: "slate" | "mint" | "sky" | "sand" | "rose";
 }) {
   const deltaClass =
     delta?.tone === "up"
-      ? "text-emerald-700"
+      ? "text-emerald-800"
       : delta?.tone === "down"
-        ? "text-red-700"
-        : "text-muted-foreground";
+        ? "text-red-800"
+        : "text-primary-blue/55";
+
+  const toneClass =
+    tone === "mint"
+      ? "border-emerald-700/15 bg-emerald-50"
+      : tone === "sky"
+        ? "border-sky-700/15 bg-sky-50"
+        : tone === "sand"
+          ? "border-amber-700/15 bg-amber-50"
+          : tone === "rose"
+            ? "border-rose-700/15 bg-rose-50"
+            : "border-primary-blue/10 bg-blue-gray/50";
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay }}
-      className="border border-primary-blue/10 bg-white/80 px-4 py-4 backdrop-blur-sm"
+      className={`border px-4 py-4 ${toneClass}`}
     >
-      <p className="font-sans text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <p className="font-sans text-xs font-medium uppercase tracking-wide text-primary-blue/55">
         {label}
       </p>
       <p className="mt-2 font-serif text-2xl font-light tabular-nums text-primary-blue sm:text-[1.7rem]">
@@ -381,7 +394,7 @@ function KpiCard({
         </p>
       ) : null}
       {hint ? (
-        <p className="mt-1 font-sans text-xs text-muted-foreground">{hint}</p>
+        <p className="mt-1 font-sans text-xs text-primary-blue/50">{hint}</p>
       ) : null}
     </motion.div>
   );
@@ -665,7 +678,7 @@ export function AnalyticsPanel({
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
-                className="h-24 animate-pulse border border-primary-blue/10 bg-white/60"
+                className="h-24 animate-pulse border border-primary-blue/10 bg-blue-gray/40"
               />
             ))}
           </div>
@@ -676,6 +689,7 @@ export function AnalyticsPanel({
               value={formatMajorAmount(summary?.revenuePaid ?? 0, currency)}
               hint={`${summary?.ordersPaidCount ?? 0} paid orders`}
               delta={revenueDelta}
+              tone="mint"
               delay={0}
             />
             <KpiCard
@@ -683,6 +697,7 @@ export function AnalyticsPanel({
               value={String(summary?.ordersCount ?? 0)}
               hint={`${summary?.ordersPaidCount ?? 0} paid in range`}
               delta={ordersDelta}
+              tone="sky"
               delay={0.05}
             />
             <KpiCard
@@ -693,18 +708,20 @@ export function AnalyticsPanel({
               )}
               hint="Paid orders only"
               delta={aovDelta}
+              tone="sand"
               delay={0.1}
             />
             <KpiCard
               label="Catalog health"
               value={`${summary?.productsPublished ?? 0} live`}
               hint={`${summary?.lowStockCount ?? 0} low · ${summary?.outOfStockCount ?? 0} sold out`}
+              tone="rose"
               delay={0.15}
             />
           </div>
         )}
 
-        <section className="border border-primary-blue/10 bg-white px-4 py-5 sm:px-6 sm:py-6">
+        <section className="border border-primary-blue/10 bg-blue-gray/35 px-4 py-5 sm:px-6 sm:py-6">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
             <div>
               <h2 className="font-serif text-lg font-light text-primary-blue">
@@ -726,7 +743,7 @@ export function AnalyticsPanel({
           )}
         </section>
 
-        <section className="border border-primary-blue/10 bg-white px-4 py-5 sm:px-6">
+        <section className="border border-primary-blue/10 bg-blue-gray/35 px-4 py-5 sm:px-6">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
             <div>
               <h2 className="font-serif text-lg font-light text-primary-blue">
@@ -749,7 +766,7 @@ export function AnalyticsPanel({
         {variant === "full" ? (
           <>
             <div className="grid gap-6 lg:grid-cols-2">
-              <section className="border border-primary-blue/10 bg-white px-4 py-5 sm:px-5">
+              <section className="border border-primary-blue/10 bg-sky-50/80 px-4 py-5 sm:px-5">
                 <h2 className="font-serif text-lg font-light text-primary-blue">
                   Order status
                 </h2>
@@ -766,7 +783,7 @@ export function AnalyticsPanel({
                   />
                 )}
               </section>
-              <section className="border border-primary-blue/10 bg-white px-4 py-5 sm:px-5">
+              <section className="border border-primary-blue/10 bg-emerald-50/80 px-4 py-5 sm:px-5">
                 <h2 className="font-serif text-lg font-light text-primary-blue">
                   Payment status
                 </h2>
@@ -786,7 +803,7 @@ export function AnalyticsPanel({
             </div>
 
             <div className="grid gap-6 lg:grid-cols-2">
-              <section className="border border-primary-blue/10 bg-white px-4 py-5 sm:px-5">
+              <section className="border border-primary-blue/10 bg-amber-50/80 px-4 py-5 sm:px-5">
                 <h2 className="font-serif text-lg font-light text-primary-blue">
                   Top products
                 </h2>
@@ -803,7 +820,7 @@ export function AnalyticsPanel({
                   }))}
                 />
               </section>
-              <section className="border border-primary-blue/10 bg-white px-4 py-5 sm:px-5">
+              <section className="border border-primary-blue/10 bg-rose-50/70 px-4 py-5 sm:px-5">
                 <h2 className="font-serif text-lg font-light text-primary-blue">
                   Revenue by category
                 </h2>

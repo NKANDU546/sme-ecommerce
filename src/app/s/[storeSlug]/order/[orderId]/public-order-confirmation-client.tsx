@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { getAppOrigin } from "@/apis/config";
 import {
   StorefrontButton,
   StorefrontButtonLink,
@@ -94,12 +95,8 @@ export function PublicOrderConfirmationClient({
 
   async function onPay() {
     try {
-      const origin =
-        typeof window !== "undefined" ? window.location.origin : "";
       const orderConfirmPath = `${basePath}/order/${orderId}`;
-      const callbackUrl = origin
-        ? `${origin}${paystackCallbackPath()}`
-        : undefined;
+      const callbackUrl = `${getAppOrigin()}${paystackCallbackPath()}`;
       const result = await payMutation.mutateAsync({
         orderId,
         callbackUrl,

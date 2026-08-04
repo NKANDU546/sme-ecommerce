@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { buildPublicStoreUrl } from "@/apis/config";
 import { GoLiveModal } from "@/components/storefront/go-live-modal";
 import { UnpublishModal } from "@/components/storefront/unpublish-modal";
 import { useWorkspace } from "@/hooks/use-workspaces";
@@ -49,11 +50,6 @@ export function StorefrontPublishControls({
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">(
     "idle",
   );
-  const [origin, setOrigin] = useState("");
-
-  useEffect(() => {
-    setOrigin(window.location.origin);
-  }, []);
 
   const workspaceQuery = useWorkspace(workspaceId);
   const publishedQuery = usePublishedStorefront(workspaceId);
@@ -67,10 +63,6 @@ export function StorefrontPublishControls({
   const isLive = status === "LIVE";
   const publicSlug =
     publishedQuery.data?.publicSlug ?? workspaceQuery.data?.publicSlug ?? null;
-
-  function buildPublicStoreUrl(slug: string): string {
-    return origin ? `${origin}/s/${slug}` : `/s/${slug}`;
-  }
 
   const publicStoreUrl = publicSlug ? buildPublicStoreUrl(publicSlug) : null;
   const publishedAtLabel = formatPublishedAt(

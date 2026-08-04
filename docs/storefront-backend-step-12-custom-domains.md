@@ -9,8 +9,12 @@ the path-based public site.
 
 ## Status
 
-**Not started** — docs / schema sketch only. `/s/{storeSlug}` remains the
-canonical live URL until this step ships.
+**Not started** (custom hostnames). **For now** use the **hosting app URL**
+(Level 0): `{NEXT_PUBLIC_APP_ORIGIN}/s/{storeSlug}` — same origin the Netlify
+(or other) frontend is served from. Align with backend `FRONTEND_URL` /
+`FRONTEND_BASE_URL` for Paystack callbacks and emails.
+
+`/s/{storeSlug}` remains the canonical live path until 12A/12B ship.
 
 ## Product intent
 
@@ -346,9 +350,12 @@ Only for published (or publish-ready) workspaces; disable with hint if no
 Env examples:
 
 ```text
-NEXT_PUBLIC_APP_ORIGIN=https://app.example.com
+NEXT_PUBLIC_APP_ORIGIN=https://sme-operations.netlify.app
 NEXT_PUBLIC_STORES_ZONE=stores.example.com
 ```
+
+Until 12A/12B, set `NEXT_PUBLIC_APP_ORIGIN` (and backend `FRONTEND_URL`) to the
+same hosting origin so Go Live copy-link and Paystack returns stay consistent.
 
 ---
 

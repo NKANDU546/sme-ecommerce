@@ -28,6 +28,7 @@ import type {
   AnalyticsTimeseriesPoint,
 } from "@/types/analytics";
 import type { ProductApi } from "@/types/product";
+import { DatePicker } from "@/components/ui/date-picker";
 
 type AnalyticsPanelProps = {
   workspaceId: string;
@@ -606,22 +607,20 @@ export function AnalyticsPanel({
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 font-sans text-xs text-muted-foreground">
               From
-              <input
-                type="date"
+              <DatePicker
                 value={from}
                 max={to}
-                onChange={(e) => onFromChange(e.target.value)}
-                className="border border-primary-blue/15 bg-white px-2 py-1.5 text-sm text-primary-blue"
+                onChange={onFromChange}
+                placeholder="From date"
               />
             </label>
             <label className="flex flex-col gap-1 font-sans text-xs text-muted-foreground">
               To
-              <input
-                type="date"
+              <DatePicker
                 value={to}
                 min={from}
-                onChange={(e) => onToChange(e.target.value)}
-                className="border border-primary-blue/15 bg-white px-2 py-1.5 text-sm text-primary-blue"
+                onChange={onToChange}
+                placeholder="To date"
               />
             </label>
             <div

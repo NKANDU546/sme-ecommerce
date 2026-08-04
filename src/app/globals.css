@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 /* HSL channel values (no hsl() wrapper) — used as hsl(var(--name)) */
 :root {

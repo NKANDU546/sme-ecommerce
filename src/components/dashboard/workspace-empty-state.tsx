@@ -28,7 +28,7 @@ export function WorkspaceEmptyState({
     <div
       className={`flex flex-1 flex-col items-center justify-center px-6 py-12 sm:py-16 ${className}`}
     >
-      <div className="w-full max-w-md rounded-lg border border-primary-blue/12 bg-white px-6 py-10 text-center shadow-sm sm:px-8 sm:py-12">
+      <div className="w-full max-w-md rounded-lg border border-primary-blue/12 bg-blue-gray/40 px-6 py-10 text-center sm:px-8 sm:py-12">
         <h2 className="font-serif text-2xl font-light text-primary-blue sm:text-3xl">
           {title}
         </h2>

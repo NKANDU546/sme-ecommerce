@@ -5,6 +5,7 @@ import {
   ProductMediaFields,
   type SelectedMedia,
 } from "@/components/dashboard/product-media-fields";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Modal } from "@modals";
 import type {
   CreateProductBody,
@@ -396,11 +397,10 @@ export function ProductFormModal({
 
         <div>
           <label className="flex cursor-pointer items-center gap-2 font-sans text-sm text-foreground">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={form.compareAtPrice.trim().length > 0}
-              onChange={(e) => {
-                if (e.target.checked) {
+              onCheckedChange={(checked) => {
+                if (checked === true) {
                   const price = parsePriceToMinorUnits(form.price);
                   const suggested =
                     price != null
@@ -412,7 +412,6 @@ export function ProductFormModal({
                 }
               }}
               disabled={isSubmitting}
-              className="h-4 w-4 rounded border-border text-primary-blue focus:ring-primary-blue/30"
             />
             Put on sale
           </label>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { ImageUploadField } from "@/components/storefront/image-upload-field";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   STOREFRONT_COLLECTION_PAGE_META,
   collectionPageSelectionId,
@@ -214,11 +215,11 @@ function ProductLimitField({
   return (
     <div className="space-y-2">
       <label className="flex cursor-pointer items-center gap-2 font-sans text-sm text-foreground">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={showAll}
-          onChange={(e) => onChange(e.target.checked ? null : 4)}
-          className="h-4 w-4 rounded border-border text-primary-blue focus:ring-primary-blue/30"
+          onCheckedChange={(checked) =>
+            onChange(checked === true ? null : 4)
+          }
         />
         Show all products
       </label>
@@ -1948,15 +1949,13 @@ export function StorefrontEditor({
                       key={key}
                       className="flex cursor-pointer items-center gap-2 font-sans text-xs text-primary-blue"
                     >
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={selectedCollectionPage.chrome[key]}
-                        onChange={(e) =>
+                        onCheckedChange={(checked) =>
                           patchSelectedCollectionChrome({
-                            [key]: e.target.checked,
+                            [key]: checked === true,
                           })
                         }
-                        className="rounded border-primary-blue/30"
                       />
                       {label}
                     </label>
@@ -1978,15 +1977,13 @@ export function StorefrontEditor({
                         key={key}
                         className="flex cursor-pointer items-center gap-2 font-sans text-xs text-primary-blue"
                       >
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={selectedCollectionPage.chrome[key]}
-                          onChange={(e) =>
+                          onCheckedChange={(checked) =>
                             patchSelectedCollectionChrome({
-                              [key]: e.target.checked,
+                              [key]: checked === true,
                             })
                           }
-                          className="rounded border-primary-blue/30"
                         />
                         {label}
                       </label>

@@ -57,9 +57,9 @@ function paymentLabel(key: string): string {
 
 function formatDelta(pct: number | null): {
   text: string;
-  tone: "up" | "down" | "flat" | "new";
-} {
-  if (pct == null) return { text: "New vs prior", tone: "new" };
+  tone: "up" | "down" | "flat";
+} | null {
+  if (pct == null) return null;
   if (Math.abs(pct) < 0.05) return { text: "Flat vs prior", tone: "flat" };
   const rounded = Math.abs(pct) >= 10 ? pct.toFixed(0) : pct.toFixed(1);
   if (pct > 0) return { text: `↑ ${rounded}% vs prior`, tone: "up" };

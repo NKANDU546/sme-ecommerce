@@ -1,11 +1,17 @@
 "use client";
 
 import { useEffect, useId, useState, type FormEvent } from "react";
+import { toast } from "sonner";
+import {
+  AiProductDraftError,
+  requestAiProductDraft,
+} from "@/apis/ai-product-draft";
 import {
   ProductMediaFields,
   type SelectedMedia,
 } from "@/components/dashboard/product-media-fields";
 import { Checkbox } from "@/components/ui/checkbox";
+import { getStoredWorkspace } from "@/lib/workspace-id";
 import { Modal } from "@modals";
 import type {
   CreateProductBody,
@@ -170,10 +176,12 @@ export function ProductFormModal({
   const [mainImage, setMainImage] = useState<SelectedMedia | null>(null);
   const [gallery, setGallery] = useState<SelectedMedia[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [aiGenerating, setAiGenerating] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setError(null);
+    setAiGenerating(false);
     if (mode === "edit" && product) {
       setForm({
         title: product.title ?? "",
@@ -205,6 +213,60 @@ export function ProductFormModal({
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function handleGenerateWithAi() {
+    const imageUrl = mainImage?.url?.trim() || undefined;
+    const titleHint = form.title.trim() || undefined;
+    if (!imageUrl && !titleHint && !form.summary.trim()) {
+      setError("Add a main image or a title first, then generate with AI.");
+      return;
+    }
+
+    setError(null);
+    setAiGenerating(true);
+    try {
+      const priceAmount = parsePriceToMinorUnits(form.price) ?? undefined;
+      const draft = await requestAiProductDraft({
+        titleHint,
+        notes: form.summary.trim() || undefined,
+        imageUrl,
+        priceAmount,
+        currency: "ZAR",
+        categoryHint: form.categoryName.trim() || undefined,
+        categoryNames: categories.map((c) => c.name),
+        businessName: getStoredWorkspace()?.businessName || undefined,
+        tone: "adaptive",
+      });
+
+      setForm((prev) => {
+        const autoSku = /^SKU-\d+$/i.test(prev.sku.trim());
+        return {
+          ...prev,
+          title: draft.title || prev.title,
+          summary: draft.summary || prev.summary,
+          categoryName:
+            draft.suggestedCategoryName?.trim() || prev.categoryName,
+          sku:
+            draft.skuSuggestion?.trim() &&
+            (!prev.sku.trim() || autoSku)
+              ? draft.skuSuggestion.trim()
+              : prev.sku,
+        };
+      });
+      toast.success("AI draft applied — review before saving.");
+    } catch (err) {
+      const message =
+        err instanceof AiProductDraftError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Could not generate product copy.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setAiGenerating(false);
+    }
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -297,10 +359,10 @@ export function ProductFormModal({
   return (
     <Modal
       open={open}
-      onClose={isSubmitting ? () => undefined : onClose}
+      onClose={isSubmitting || aiGenerating ? () => undefined : onClose}
       labelledBy={titleId}
       describedBy={descriptionId}
-      closeOnBackdropClick={!isSubmitting}
+      closeOnBackdropClick={!isSubmitting && !aiGenerating}
       panelClassName="max-h-[min(90vh,780px)] max-w-lg overflow-y-auto"
     >
       <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-primary-blue/55">
@@ -322,6 +384,37 @@ export function ProductFormModal({
       </p>
 
       <form className="mt-6 space-y-4" onSubmit={(e) => void handleSubmit(e)}>
+        <ProductMediaFields
+          workspaceId={workspaceId}
+          mainImage={mainImage}
+          gallery={gallery}
+          onMainImageChange={setMainImage}
+          onGalleryChange={setGallery}
+          disabled={isSubmitting || aiGenerating}
+        />
+
+        <div className="rounded-md border border-primary-blue/15 bg-blue-gray/40 px-3 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="font-sans text-sm font-medium text-primary-blue">
+                Generate with AI
+              </p>
+              <p className="mt-0.5 font-sans text-[11px] leading-relaxed text-muted-foreground">
+                Upload a main image (or type a title), then draft title, summary,
+                and category. Review before saving.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleGenerateWithAi()}
+              disabled={isSubmitting || aiGenerating}
+              className="shrink-0 bg-primary-blue px-3 py-2 font-sans text-xs font-semibold text-white transition-colors hover:bg-primary-blue/90 disabled:opacity-60"
+            >
+              {aiGenerating ? "Generating…" : "Generate with AI"}
+            </button>
+          </div>
+        </div>
+
         <div>
           <label htmlFor="product-form-title" className={labelClass}>
             Title
@@ -332,7 +425,7 @@ export function ProductFormModal({
             required
             value={form.title}
             onChange={(e) => update("title", e.target.value)}
-            disabled={isSubmitting}
+            disabled={isSubmitting || aiGenerating}
             placeholder="Titanium task light"
             className={fieldClass}
             autoFocus
@@ -486,15 +579,6 @@ export function ProductFormModal({
           </div>
         </div>
 
-        <ProductMediaFields
-          workspaceId={workspaceId}
-          mainImage={mainImage}
-          gallery={gallery}
-          onMainImageChange={setMainImage}
-          onGalleryChange={setGallery}
-          disabled={isSubmitting}
-        />
-
         <div>
           <label htmlFor="product-form-summary" className={labelClass}>
             Summary
@@ -504,7 +588,7 @@ export function ProductFormModal({
             rows={3}
             value={form.summary}
             onChange={(e) => update("summary", e.target.value)}
-            disabled={isSubmitting}
+            disabled={isSubmitting || aiGenerating}
             placeholder="Short product description for the storefront."
             className={`${fieldClass} resize-y`}
           />
@@ -520,14 +604,14 @@ export function ProductFormModal({
           <button
             type="button"
             onClick={onClose}
-            disabled={isSubmitting}
+            disabled={isSubmitting || aiGenerating}
             className="font-sans text-sm font-medium text-primary-blue underline decoration-primary-blue/30 underline-offset-4 hover:decoration-primary-blue disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || aiGenerating}
             className="bg-primary-blue px-5 py-2.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-primary-blue/90 disabled:opacity-60"
           >
             {isSubmitting

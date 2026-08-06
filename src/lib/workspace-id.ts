@@ -19,3 +19,14 @@ export type StoredWorkspace = {
   businessName?: string;
   publicLink?: string;
 };
+
+export function getStoredWorkspace(): StoredWorkspace | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(SME_WORKSPACE_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as StoredWorkspace;
+  } catch {
+    return null;
+  }
+}

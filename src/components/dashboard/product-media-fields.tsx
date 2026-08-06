@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useUploadMedia } from "@/hooks/use-media";
 
 export type SelectedMedia = {
@@ -35,6 +35,16 @@ export function ProductMediaFields({
   const upload = useUploadMedia(workspaceId);
   const [error, setError] = useState<string | null>(null);
   const [busySlot, setBusySlot] = useState<"main" | "gallery" | null>(null);
+  const [zoomUrl, setZoomUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!zoomUrl) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setZoomUrl(null);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [zoomUrl]);
 
   async function handleFile(
     file: File | undefined,
@@ -67,7 +77,16 @@ export function ProductMediaFields({
       <div>
         <span className={labelClass}>Main image</span>
         <div className="mt-1 flex items-start gap-3">
-          <div className="h-20 w-20 shrink-0 overflow-hidden rounded-md border border-primary-blue/15 bg-blue-gray/30">
+          <button
+            type="button"
+            disabled={!mainImage?.url}
+            onClick={() => {
+              if (mainImage?.url) setZoomUrl(mainImage.url);
+            }}
+            className="h-20 w-20 shrink-0 overflow-hidden rounded-md border border-primary-blue/15 bg-blue-gray/30 transition hover:border-primary-blue/35 disabled:cursor-default"
+            title={mainImage?.url ? "Click to zoom" : undefined}
+            aria-label={mainImage?.url ? "Zoom main image" : "No main image"}
+          >
             {mainImage?.url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -76,7 +95,7 @@ export function ProductMediaFields({
                 className="h-full w-full object-cover"
               />
             ) : null}
-          </div>
+          </button>
           <div className="min-w-0 flex-1 space-y-2">
             <input
               ref={mainInputRef}
@@ -113,6 +132,7 @@ export function ProductMediaFields({
             </div>
             <p className="font-sans text-[11px] text-muted-foreground">
               JPEG, PNG, or WebP · max 5 MB
+              {mainImage?.url ? " · click image to zoom" : ""}
             </p>
           </div>
         </div>
@@ -127,12 +147,20 @@ export function ProductMediaFields({
                 key={item.id}
                 className="relative h-16 w-16 overflow-hidden rounded-md border border-primary-blue/15 bg-blue-gray/30"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={item.url}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
+                <button
+                  type="button"
+                  className="absolute inset-0"
+                  aria-label="Zoom gallery image"
+                  title="Click to zoom"
+                  onClick={() => setZoomUrl(item.url)}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={item.url}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                </button>
                 <button
                   type="button"
                   disabled={disabled || isBusy}
@@ -140,7 +168,7 @@ export function ProductMediaFields({
                   onClick={() =>
                     onGalleryChange(gallery.filter((g) => g.id !== item.id))
                   }
-                  className="absolute inset-x-0 bottom-0 bg-black/55 py-0.5 font-sans text-[10px] font-semibold text-white"
+                  className="absolute inset-x-0 bottom-0 z-10 bg-black/55 py-0.5 font-sans text-[10px] font-semibold text-white"
                 >
                   Remove
                 </button>
@@ -175,6 +203,31 @@ export function ProductMediaFields({
         <p className="font-sans text-xs text-red-700" role="alert">
           {error}
         </p>
+      ) : null}
+
+      {zoomUrl ? (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Image zoom"
+          onClick={() => setZoomUrl(null)}
+        >
+          <button
+            type="button"
+            className="absolute right-4 top-4 font-sans text-sm font-semibold text-white"
+            onClick={() => setZoomUrl(null)}
+          >
+            Close
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={zoomUrl}
+            alt="Zoomed product"
+            className="max-h-[min(90vh,900px)] max-w-[min(96vw,900px)] rounded-md object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
       ) : null}
     </div>
   );

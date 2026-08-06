@@ -27,3 +27,25 @@ export type AiProductDraftResult = {
   model: string;
   disclaimer: string;
 };
+
+/** Analytics explain — Next.js MVP (mirrors Step 10 response shape). */
+export type AiAnalyticsExplainRequest = {
+  workspaceId: string;
+  from?: string;
+  to?: string;
+};
+
+export type AiAnalyticsSuggestedAction = {
+  label: string;
+  section: string;
+};
+
+export type AiAnalyticsExplainResult = {
+  from: string;
+  to: string;
+  headline: string;
+  bullets: string[];
+  suggestedActions: AiAnalyticsSuggestedAction[];
+  model: string;
+  disclaimer: string;
+};

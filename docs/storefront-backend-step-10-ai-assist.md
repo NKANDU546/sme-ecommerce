@@ -244,16 +244,17 @@ If analytics range invalid → same as Step 09 (`INVALID_ANALYTICS_QUERY`), no O
 
 ## Frontend follow-up (this repo)
 
-**MVP in this repo (branch `feat/ai-product-copy`):** Next.js route
-`POST /api/ai/product-draft` calls OpenAI directly (including optional vision
-via `imageUrl`). Product form has **Generate with AI**. Set `OPENAI_API_KEY`
-in `.env.local`. Persist still uses existing product APIs.
+**MVP in this repo:**
+- Product draft: Next.js `POST /api/ai/product-draft` + product form **Generate with AI**
+- Analytics explain: Next.js `POST /api/ai/analytics-explain` + analytics **Explain this period**
+  (server re-fetches summary/breakdowns with the merchant JWT — does not trust client KPI numbers)
+
+Set `OPENAI_API_KEY` in `.env.local`. Persist still uses existing product APIs.
 
 After SME backend ships Step 10:
 
-1. Point FE at `POST /workspaces/{id}/ai/product-draft` instead of the Next route
-2. Analytics panel — Explain this period
-3. Docs: mark this step **backend in place** when done
+1. Point FE at backend AI routes instead of the Next routes
+2. Docs: mark this step **backend in place** when done
 
 ## Send to backend
 

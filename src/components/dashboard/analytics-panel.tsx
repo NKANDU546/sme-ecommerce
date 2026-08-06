@@ -3,6 +3,13 @@
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
 import { motion } from "framer-motion";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
+import { toast } from "sonner";
+import {
+  AiAnalyticsExplainError,
+  requestAiAnalyticsExplain,
+} from "@/apis/ai-analytics-explain";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   useAnalyticsBreakdowns,
   useAnalyticsSummary,
@@ -19,16 +26,20 @@ import {
   type AnalyticsGrain,
 } from "@/lib/analytics-range";
 import {
+  DASHBOARD_NAV_IDS,
+  type DashboardNavId,
+} from "@/lib/dashboard-nav";
+import {
   orderStatusLabel,
   paymentStatusLabel,
 } from "@/lib/order-status";
 import type { OrderStatus, PaymentStatus } from "@/types/cart";
+import type { AiAnalyticsExplainResult } from "@/types/ai";
 import type {
   AnalyticsCountBucket,
   AnalyticsTimeseriesPoint,
 } from "@/types/analytics";
 import type { ProductApi } from "@/types/product";
-import { DatePicker } from "@/components/ui/date-picker";
 
 type AnalyticsPanelProps = {
   workspaceId: string;
@@ -480,6 +491,12 @@ export function AnalyticsPanel({
   workspaceId,
   variant = "full",
 }: AnalyticsPanelProps) {
+  const [, setActiveSection] = useQueryState(
+    "section",
+    parseAsStringLiteral(DASHBOARD_NAV_IDS)
+      .withDefault("dashboard")
+      .withOptions({ history: "push", shallow: true }),
+  );
   const [signedIn, setSignedIn] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -487,6 +504,11 @@ export function AnalyticsPanel({
   const [from, setFrom] = useState(() => rangeForPreset(30).from);
   const [to, setTo] = useState(() => rangeForPreset(30).to);
   const [grain, setGrain] = useState<AnalyticsGrain>("day");
+  const [explainLoading, setExplainLoading] = useState(false);
+  const [explain, setExplain] = useState<AiAnalyticsExplainResult | null>(
+    null,
+  );
+  const [explainError, setExplainError] = useState<string | null>(null);
 
   const range = { from, to };
   const prior = previousRange(from, to);
@@ -535,21 +557,55 @@ export function AnalyticsPanel({
     seriesQuery.error ??
     (variant === "full" ? breakdownsQuery.error : null);
 
-  function applyPreset(days: RangePreset) {
-    const next = rangeForPreset(days);
-    setPreset(days);
-    setFrom(next.from);
-    setTo(next.to);
-  }
-
   function onFromChange(value: string) {
     setPreset(null);
     setFrom(value);
+    setExplain(null);
+    setExplainError(null);
   }
 
   function onToChange(value: string) {
     setPreset(null);
     setTo(value);
+    setExplain(null);
+    setExplainError(null);
+  }
+
+  function applyPreset(days: RangePreset) {
+    const next = rangeForPreset(days);
+    setPreset(days);
+    setFrom(next.from);
+    setTo(next.to);
+    setExplain(null);
+    setExplainError(null);
+  }
+
+  async function handleExplainPeriod() {
+    if (!accessToken) {
+      toast.error("Sign in to explain analytics.");
+      return;
+    }
+    setExplainLoading(true);
+    setExplainError(null);
+    try {
+      const result = await requestAiAnalyticsExplain(
+        { workspaceId, from, to },
+        accessToken,
+      );
+      setExplain(result);
+      toast.success("AI explanation ready.");
+    } catch (err) {
+      const message =
+        err instanceof AiAnalyticsExplainError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Could not explain this period.";
+      setExplainError(message);
+      toast.error(message);
+    } finally {
+      setExplainLoading(false);
+    }
   }
 
   if (authReady && !signedIn) {
@@ -663,8 +719,65 @@ export function AnalyticsPanel({
                 </button>
               ))}
             </div>
+            <button
+              type="button"
+              onClick={() => void handleExplainPeriod()}
+              disabled={explainLoading || loading || !accessToken}
+              className="bg-primary-blue px-3 py-1.5 font-sans text-xs font-semibold text-white transition-colors hover:bg-primary-blue/90 disabled:opacity-60"
+            >
+              {explainLoading ? "Explaining…" : "Explain this period"}
+            </button>
           </div>
         </div>
+
+        {explainError ? (
+          <div className="border border-red-200 bg-red-50 px-4 py-3 font-sans text-sm text-red-800">
+            {explainError}
+          </div>
+        ) : null}
+
+        {explain ? (
+          <section className="border border-primary-blue/10 bg-blue-gray/35 px-4 py-5 sm:px-6">
+            <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-primary-blue/55">
+              AI insights
+            </p>
+            <h2 className="mt-2 font-serif text-xl font-light text-primary-blue sm:text-2xl">
+              {explain.headline}
+            </h2>
+            <ul className="mt-4 list-disc space-y-2 pl-5 font-sans text-sm text-primary-blue/85">
+              {explain.bullets.map((bullet) => (
+                <li key={bullet}>{bullet}</li>
+              ))}
+            </ul>
+            {explain.suggestedActions.length > 0 ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {explain.suggestedActions.map((action) => {
+                  const section = action.section as DashboardNavId;
+                  const isKnown = (DASHBOARD_NAV_IDS as readonly string[]).includes(
+                    section,
+                  );
+                  return (
+                    <button
+                      key={`${action.section}-${action.label}`}
+                      type="button"
+                      disabled={!isKnown}
+                      onClick={() => {
+                        if (!isKnown) return;
+                        void setActiveSection(section);
+                      }}
+                      className="border border-primary-blue/20 bg-white px-3 py-1.5 font-sans text-xs font-semibold text-primary-blue hover:bg-blue-gray/40 disabled:opacity-50"
+                    >
+                      {action.label}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+            <p className="mt-4 font-sans text-[11px] text-muted-foreground">
+              {explain.disclaimer}
+            </p>
+          </section>
+        ) : null}
 
         {error ? (
           <div className="border border-red-200 bg-red-50 px-4 py-3 font-sans text-sm text-red-800">

@@ -3,8 +3,14 @@
 import Link from "next/link";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import {
+  AiStorefrontCopyError,
+  requestAiStorefrontCopy,
+} from "@/apis/ai-storefront-copy";
 import { ImageUploadField } from "@/components/storefront/image-upload-field";
 import { Checkbox } from "@/components/ui/checkbox";
+import { applyAiStorefrontSectionCopy, sectionSupportsAiCopy } from "@/lib/ai-storefront-copy-apply";
 import {
   STOREFRONT_COLLECTION_PAGE_META,
   collectionPageSelectionId,
@@ -18,6 +24,7 @@ import {
 } from "@/lib/storefront-default-media";
 import { STOREFRONT_THEME_DEFINITIONS } from "@/lib/storefront-themes";
 import { isReservedStorefrontPageSlug } from "@/lib/storefront-reserved-slugs";
+import { getStoredWorkspace } from "@/lib/workspace-id";
 import type {
   StorefrontCollectionPageConfig,
   StorefrontCollectionPageId,
@@ -542,6 +549,9 @@ export function StorefrontEditor({
     EDITOR_SECTIONS[0].id,
   );
   const [focusedSectionId, setFocusedSectionId] = useState<string | null>(null);
+  const [aiNotes, setAiNotes] = useState("");
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiSectionId, setAiSectionId] = useState<string | null>(null);
 
   useEffect(() => {
     // Keep the taller sidebar + mobile preview behavior while editing settings.
@@ -738,6 +748,71 @@ export function StorefrontEditor({
       themeId,
       accentColor: STOREFRONT_THEME_DEFINITIONS[themeId].defaultAccent,
     });
+  }
+
+  async function handleGenerateSectionCopy(
+    item: StorefrontSection,
+    index: number,
+  ) {
+    if (!sectionSupportsAiCopy(item.type)) {
+      toast.error("AI rewrite is not available for this section type.");
+      return;
+    }
+
+    const businessName =
+      getStoredWorkspace()?.businessName?.trim() ||
+      config.shopName.trim() ||
+      undefined;
+    const notes = aiNotes.trim() || undefined;
+    const shopNameHint = config.shopName.trim() || undefined;
+
+    if (!businessName && !notes && !shopNameHint) {
+      toast.error(
+        "Add a shop name (Brand) or a short note about what you sell, then rewrite.",
+      );
+      return;
+    }
+
+    setAiGenerating(true);
+    setAiSectionId(item.id);
+    try {
+      const draft = await requestAiStorefrontCopy({
+        businessName,
+        notes,
+        shopNameHint,
+        templateId: config.templateId,
+        scope: "section",
+        section: {
+          type: item.type,
+          current: item,
+        },
+        tone:
+          config.templateId === "classic-boutique"
+            ? "classic_boutique"
+            : "adaptive",
+      });
+      if (draft.kind !== "section") {
+        throw new AiStorefrontCopyError(
+          "AI_PROVIDER_ERROR",
+          "Unexpected AI response for section copy.",
+        );
+      }
+      patchSectionAt(index, applyAiStorefrontSectionCopy(item, draft));
+      toast.success("AI rewrote this section", {
+        description: draft.disclaimer,
+      });
+    } catch (err) {
+      const message =
+        err instanceof AiStorefrontCopyError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "AI section copy failed.";
+      toast.error(message);
+    } finally {
+      setAiGenerating(false);
+      setAiSectionId(null);
+    }
   }
 
   function renderSectionLayoutField(item: StorefrontSection, index: number) {
@@ -2117,6 +2192,16 @@ export function StorefrontEditor({
                 this panel to edit section content.
               </p>
             </div>
+            <div className="mt-3 rounded-md border border-primary-blue/15 bg-blue-gray/40 px-3 py-3">
+              <TextAreaField
+                label="What you sell (optional, for AI rewrite)"
+                id="sf-ai-notes"
+                value={aiNotes}
+                onChange={(e) => setAiNotes(e.target.value)}
+                disabled={aiGenerating}
+                placeholder="e.g. Fresh kota and cold drinks in Soweto; weeknight takeaways."
+              />
+            </div>
             <div className="mt-4 space-y-3">
               {visibleSectionEntries.length === 0 ? (
                 <p className="rounded border border-dashed border-primary-blue/20 bg-white px-3 py-4 font-sans text-xs leading-relaxed text-muted-foreground">
@@ -2144,13 +2229,30 @@ export function StorefrontEditor({
                         Section {index + 1}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => removeSection(index)}
-                      className="rounded border border-primary-blue/15 bg-white px-2 py-1 font-sans text-[11px] font-medium text-red-700/90"
-                    >
-                      Remove
-                    </button>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {sectionSupportsAiCopy(item.type) ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void handleGenerateSectionCopy(item, index)
+                          }
+                          disabled={aiGenerating}
+                          className="rounded border border-primary-blue/20 bg-primary-blue px-2 py-1 font-sans text-[11px] font-semibold text-white disabled:opacity-60"
+                        >
+                          {aiGenerating && aiSectionId === item.id
+                            ? "Rewriting…"
+                            : "Rewrite with AI"}
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => removeSection(index)}
+                        disabled={aiGenerating}
+                        className="rounded border border-primary-blue/15 bg-white px-2 py-1 font-sans text-[11px] font-medium text-red-700/90 disabled:opacity-60"
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </div>
                   {renderSectionLayoutField(item, index)}
                   <div className="mt-3">
@@ -2168,23 +2270,24 @@ export function StorefrontEditor({
       body = (
         <div className="space-y-4">
           <p className="font-sans text-xs leading-relaxed text-muted-foreground">
-            Shown in the header and footer. Defaults live in{" "}
-            <code className="rounded bg-blue-gray/50 px-1 text-[11px]">
-              default-storefront.json
-            </code>
-            .
+            Shown in the header and footer. To rewrite section copy with AI, open
+            Pages and use{" "}
+            <span className="font-medium text-primary-blue">Rewrite with AI</span>{" "}
+            on a section.
           </p>
           <Field
             label="Brand name (header & footer)"
             id="sf-shop-name"
             value={config.shopName}
             onChange={(e) => patch({ shopName: e.target.value })}
+            disabled={aiGenerating}
           />
           <TextAreaField
             label="Tagline (under logo)"
             id="sf-tagline"
             value={config.tagline}
             onChange={(e) => patch({ tagline: e.target.value })}
+            disabled={aiGenerating}
           />
         </div>
       );

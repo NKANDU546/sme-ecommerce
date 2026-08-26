@@ -739,38 +739,86 @@ export function AnalyticsPanel({
         {explain ? (
           <section className="border border-primary-blue/10 bg-blue-gray/35 px-4 py-5 sm:px-6">
             <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-primary-blue/55">
-              AI insights
+              AI coach
             </p>
             <h2 className="mt-2 font-serif text-xl font-light text-primary-blue sm:text-2xl">
               {explain.headline}
             </h2>
-            <ul className="mt-4 list-disc space-y-2 pl-5 font-sans text-sm text-primary-blue/85">
-              {explain.bullets.map((bullet) => (
-                <li key={bullet}>{bullet}</li>
-              ))}
-            </ul>
+            {explain.diagnosis ? (
+              <p className="mt-2 max-w-3xl font-sans text-sm leading-relaxed text-primary-blue/80">
+                {explain.diagnosis}
+              </p>
+            ) : null}
+
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <div className="border border-emerald-200/80 bg-emerald-50/70 px-4 py-3">
+                <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-800/80">
+                  What&apos;s working
+                </p>
+                {explain.wins.length > 0 ? (
+                  <ul className="mt-2 list-disc space-y-2 pl-4 font-sans text-sm text-emerald-950/85">
+                    {explain.wins.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-2 font-sans text-sm text-emerald-900/60">
+                    No clear win signal in this range yet.
+                  </p>
+                )}
+              </div>
+              <div className="border border-amber-200/80 bg-amber-50/70 px-4 py-3">
+                <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-900/80">
+                  Watch / fix next
+                </p>
+                {explain.watchouts.length > 0 ? (
+                  <ul className="mt-2 list-disc space-y-2 pl-4 font-sans text-sm text-amber-950/85">
+                    {explain.watchouts.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-2 font-sans text-sm text-amber-900/60">
+                    No major risk flagged for this range.
+                  </p>
+                )}
+              </div>
+            </div>
+
             {explain.suggestedActions.length > 0 ? (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {explain.suggestedActions.map((action) => {
-                  const section = action.section as DashboardNavId;
-                  const isKnown = (DASHBOARD_NAV_IDS as readonly string[]).includes(
-                    section,
-                  );
-                  return (
-                    <button
-                      key={`${action.section}-${action.label}`}
-                      type="button"
-                      disabled={!isKnown}
-                      onClick={() => {
-                        if (!isKnown) return;
-                        void setActiveSection(section);
-                      }}
-                      className="border border-primary-blue/20 bg-white px-3 py-1.5 font-sans text-xs font-semibold text-primary-blue hover:bg-blue-gray/40 disabled:opacity-50"
-                    >
-                      {action.label}
-                    </button>
-                  );
-                })}
+              <div className="mt-5">
+                <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.14em] text-primary-blue/55">
+                  Do this next
+                </p>
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                  {explain.suggestedActions.map((action) => {
+                    const section = action.section as DashboardNavId;
+                    const isKnown = (
+                      DASHBOARD_NAV_IDS as readonly string[]
+                    ).includes(section);
+                    return (
+                      <button
+                        key={`${action.section}-${action.label}`}
+                        type="button"
+                        disabled={!isKnown}
+                        onClick={() => {
+                          if (!isKnown) return;
+                          void setActiveSection(section);
+                        }}
+                        className="border border-primary-blue/20 bg-white px-3 py-2 text-left font-sans hover:bg-blue-gray/40 disabled:opacity-50"
+                      >
+                        <span className="block text-xs font-semibold text-primary-blue">
+                          {action.label}
+                        </span>
+                        {action.reason ? (
+                          <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                            {action.reason}
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             ) : null}
             <p className="mt-4 font-sans text-[11px] text-muted-foreground">

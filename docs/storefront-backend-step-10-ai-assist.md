@@ -19,12 +19,11 @@ Depends on:
 1. **Product draft** — suggest title, summary, slug, category from sparse input.
 2. **Analytics explain** — short natural-language insight from real KPI JSON.
 
-## Non-goals (v1)
+## Non-goals (v1 backend)
 
 - Auto-create / auto-update products without merchant confirmation
 - Public customer chatbot
-- Vision / photo → listing (phase 2)
-- Storefront section rewrite (phase 2)
+- Vision / photo → listing (phase 2 backend; FE product draft already supports imageUrl)
 - Embeddings / semantic search
 - Using the model to compute revenue, stock, or payment status
 
@@ -232,30 +231,55 @@ If analytics range invalid → same as Step 09 (`INVALID_ANALYTICS_QUERY`), no O
 - [ ] Bad `from`/`to` → `INVALID_ANALYTICS_QUERY` without calling OpenAI.
 - [ ] Rate limit after N calls → `AI_RATE_LIMITED`.
 
-## Out of scope / phase 2
+## Out of scope / later
 
 | Item | Notes |
 |------|--------|
-| Vision product from photo | `imageMediaId` + Vision |
-| Storefront section rewrite | `POST …/ai/storefront-copy` |
 | Order reply drafts | WhatsApp / email templates |
 | Customer-facing chat | Needs tool-calling + hard status from APIs |
 | Native `previousRevenue` on analytics | Optional; FE/backend can still compute prior window |
+| Per-section rewrite only | FE MVP rewrites brand + homepage section text in one Accept |
 
 ## Frontend follow-up (this repo)
 
 **MVP in this repo:**
 - Product draft: Next.js `POST /api/ai/product-draft` + product form **Generate with AI**
-- Analytics explain: Next.js `POST /api/ai/analytics-explain` + analytics **Explain this period**
-  (server re-fetches summary/breakdowns with the merchant JWT — does not trust client KPI numbers)
+  (optional vision via `imageUrl`)
+- Analytics explain: Next.js `POST /api/ai/analytics-explain` + analytics
+  **Explain this period** (server re-fetches summary/breakdowns with the merchant
+  JWT — does not trust client KPI numbers)
+- Storefront / template copy: Next.js `POST /api/ai/storefront-copy` + My Store
+  → Pages → per-section **Rewrite with AI** (applies to draft; autosave / publish
+  unchanged)
 
-Set `OPENAI_API_KEY` in `.env.local`. Persist still uses existing product APIs.
+Set `OPENAI_API_KEY` in `.env.local`. Persist still uses existing product / draft APIs.
 
 After SME backend ships Step 10:
 
 1. Point FE at backend AI routes instead of the Next routes
 2. Docs: mark this step **backend in place** when done
 
+### Storefront copy (FE MVP → later `POST …/ai/storefront-copy`)
+
+In My Store → Pages, each section can **Rewrite with AI** (hero, promo, FAQ,
+contact, features, sale, …). Optional “what you sell” notes sit above the
+section list.
+
+Section scope request:
+
+```json
+{
+  "businessName": "Bridge Labs Kota",
+  "notes": "Fresh kota",
+  "scope": "section",
+  "section": { "type": "hero", "current": { "heading": "…" } }
+}
+```
+
+FE merges into that section without changing images, hrefs, or theme. Merchant
+must still publish.
+
 ## Send to backend
 
-Ship this file as **Step 10**. Implement product-draft first, then analytics-explain (reuses Step 09 services).
+Ship this file as **Step 10**. Implement product-draft first, then
+analytics-explain (reuses Step 09 services), then storefront-copy.
